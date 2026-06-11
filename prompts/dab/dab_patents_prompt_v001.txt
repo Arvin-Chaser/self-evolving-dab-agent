@@ -1,0 +1,48 @@
+You are a data agent solving a DAB benchmark task.
+
+You are given:
+1. A natural language data-analysis query.
+2. Database descriptions and hints.
+3. Local file paths for the required data.
+4. SQLite schema and sample rows.
+
+Your job is to generate a Python script named solve.py.
+
+The script must:
+1. Read the local data files.
+2. Perform the required data analysis.
+3. Write the final answer to the path provided by FINAL_ANSWER_PATH.
+4. Print useful execution/debug information to stdout.
+5. Avoid hard-coding the ground truth answer.
+6. Avoid using internet access.
+7. Use only local files and standard Python libraries unless necessary.
+
+Important:
+- If the task requires a complete set of results, the script must compute the complete set, not examples.
+- If the task requires codes, output only the required codes in final_answer.txt.
+- The final answer should be validator-oriented: concise, complete, and formatted clearly.
+- You may inspect and parse JSON-like text fields in the database.
+- You may parse the CPC definition SQL dump as a text file if needed.
+- You should make reasonable assumptions explicit in comments.
+
+Available local paths:
+DAB_ROOT = {dab_root}
+CASE_DIR = {case_dir}
+PUBLICATION_DB_PATH = {publication_db_path}
+CPC_DEFINITION_SQL_PATH = {cpc_definition_sql_path}
+FINAL_ANSWER_PATH = {final_answer_path}
+
+Question:
+{question}
+
+Database description:
+{db_description}
+
+SQLite table schema:
+{sqlite_schema}
+
+Sample rows:
+{sample_rows}
+
+Now generate only the Python code for solve.py.
+Do not include explanations outside the code.

@@ -1,0 +1,64 @@
+{
+  "parent_prompt": "prompts/dab/dab_code_agent_prompt_v001.txt",
+  "error_summary": "logs/dab_agent/run_dab_code_agent_v001_query_PATENTS_query1_20260608_132018/agent_error_summary.json",
+  "child_prompt": "prompts/dab/dab_code_agent_prompt_v002.txt",
+  "created_at": "2026-06-10 12:01:25",
+  "stage_distribution": {
+    "S8_answer_synthesis_validation": 1,
+    "S7_transformation_calculation": 2,
+    "S2_data_schema_grounding": 1
+  },
+  "error_distribution": {
+    "S8_answer_synthesis_validation.output_set_mismatch": 1,
+    "S7_transformation_calculation.over_broad_filtering_or_granularity_error": 1,
+    "S2_data_schema_grounding.missing_required_metadata_source": 1,
+    "S7_transformation_calculation.granularity_level_error": 1
+  },
+  "localized_errors": [
+    {
+      "stage": "S8_answer_synthesis_validation",
+      "type": "output_set_mismatch",
+      "subtype": "missing_and_extra_items",
+      "confidence": "high",
+      "evidence": "strict_match_failed: expected 50 unique CPC codes, got 11469 unique CPC codes.\nMissing CPC codes (50): A22B, A23J, A23P, A24D, A24F, A41G, A47F, A61P, A62B, A62D, A63H, B08B, B09B, B09C, B24B, B27C, B27G, B28D, B30B, B60H, B60P, B63G, B65G, C01D, C01G, C21B, C25B, E02D, E04G, E21D, ... (+20 more)\nExtra CPC codes (11469): A01B29/04, A01B29/041, A01B29/048, A01B29/06, A01B33/00, A01B33/02, A01B33/04, A01B35/08, A01B35/16, A01B35/20, A01B35/26, A01B49/02, A01B49/027, A01B49/04, A01B49/065, A01B63/10, A01B63/24, A01B77/00, A01C11/00, A01C15/00, A01C19/04, A01C21/005, A01C23/008, A01C23/04, A01C23/047, A01C3/00, A01C5/062, A01C7/18, A01C7/205, A01C9/08, ... (+11439 more)",
+      "target_modules": [
+        "answer_synthesis",
+        "final_answer_filtering"
+      ]
+    },
+    {
+      "stage": "S7_transformation_calculation",
+      "type": "over_broad_filtering_or_granularity_error",
+      "subtype": "output_cardinality_explosion",
+      "confidence": "medium",
+      "evidence": "Expected 50 unique items, but generated 11469.",
+      "target_modules": [
+        "transformation_logic",
+        "filtering_logic",
+        "granularity_control"
+      ]
+    },
+    {
+      "stage": "S2_data_schema_grounding",
+      "type": "missing_required_metadata_source",
+      "subtype": "hierarchy_level_not_grounded_in_definition_data",
+      "confidence": "high",
+      "evidence": "The task has a hierarchy/level requirement and a definition/metadata source is provided, but generated_solve.py does not actually read CPC_DEFINITION_SQL_PATH.",
+      "target_modules": [
+        "data_source_grounding",
+        "schema_grounding"
+      ]
+    },
+    {
+      "stage": "S7_transformation_calculation",
+      "type": "granularity_level_error",
+      "subtype": "level_inferred_from_string_shape",
+      "confidence": "high",
+      "evidence": "Generated code appears to infer hierarchy level from string shape, for example slash/pattern matching, instead of grounding the level in metadata.",
+      "target_modules": [
+        "granularity_mapping",
+        "transformation_logic"
+      ]
+    }
+  ]
+}

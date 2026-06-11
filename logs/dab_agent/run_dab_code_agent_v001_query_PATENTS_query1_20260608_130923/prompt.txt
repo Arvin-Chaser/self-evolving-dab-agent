@@ -1,0 +1,97 @@
+You are a data agent solving a DAB benchmark task.
+
+You are given:
+1. A natural language data-analysis query.
+2. Database descriptions and hints.
+3. Local file paths for the required data.
+4. SQLite schema and sample rows.
+
+Your job is to generate a Python script named solve.py.
+
+The script must:
+1. Read the local data files.
+2. Perform the required data analysis.
+3. Write the final answer to the path provided by FINAL_ANSWER_PATH.
+4. Print useful execution/debug information to stdout.
+5. Avoid hard-coding the ground truth answer.
+6. Avoid using internet access.
+7. Use only local files and standard Python libraries unless necessary.
+
+Important:
+- If the task requires a complete set of results, the script must compute the complete set, not examples.
+- If the task requires codes, output only the required codes in final_answer.txt.
+- The final answer should be validator-oriented: concise, complete, and formatted clearly.
+- You may inspect and parse JSON-like text fields in the database.
+- You may parse the CPC definition SQL dump as a text file if needed.
+- You should make reasonable assumptions explicit in comments.
+
+Available local paths:
+DAB_ROOT = /home/m0st1ma/research/DataAgentBench
+CASE_DIR = /home/m0st1ma/research/DataAgentBench/query_PATENTS/query1
+PUBLICATION_DB_PATH = /home/m0st1ma/research/DataAgentBench/query_PATENTS/query_dataset/patent_publication.db
+CPC_DEFINITION_SQL_PATH = /home/m0st1ma/research/DataAgentBench/query_PATENTS/query_dataset/patent_CPCDefinition.sql
+FINAL_ANSWER_PATH = /home/m0st1ma/research/text2sql/logs/dab_agent/run_dab_code_agent_v001_query_PATENTS_query1_20260608_130923/final_answer.txt
+
+Question:
+Identify the CPC technology areas with the highest exponential moving average of patent filings each year (smoothing factor 0.2), and return only the CPC group codes at level 5 whose best year is 2022.
+
+Database description:
+HINTS:
+- The `cpc` field in the `publicationinfo` table of `publication_database` contains CPC classification codes. The full definitions for these CPC codes are located in the `cpc_definition` table of `CPCDefinition_database`, where each row includes fields such as `symbol` and `titleFull`.
+- The descriptive title for each CPC code can be found in the `titleFull` field of the `cpc_definition` table.
+- Citation information is stored in the `citation` field of the `publicationinfo` table in `publication_database`.
+- Date-related information such as `publication_date`, `filing_date`, and `grant_date` is located in the `publicationinfo` table and is expressed in natural-language format.
+- The `Patents_info` field in the `publicationinfo` table is a natural-language summary that includes information like `application_number`, `publication_number`, `assignee_harmonized`, and `country_code`.
+
+SQLite table schema:
+CREATE TABLE "publicationinfo" (
+"Patents_info" TEXT,
+  "kind_code" TEXT,
+  "application_kind" TEXT,
+  "pct_number" TEXT,
+  "family_id" INTEGER,
+  "title_localized" TEXT,
+  "abstract_localized" TEXT,
+  "claims_localized_html" TEXT,
+  "description_localized_html" TEXT,
+  "publication_date" TEXT,
+  "filing_date" TEXT,
+  "grant_date" TEXT,
+  "priority_date" TEXT,
+  "priority_claim" TEXT,
+  "inventor_harmonized" TEXT,
+  "examiner" TEXT,
+  "uspc" TEXT,
+  "ipc" TEXT,
+  "cpc" TEXT,
+  "citation" TEXT,
+  "parent" TEXT,
+  "child" TEXT,
+  "entity_status" TEXT,
+  "art_unit" TEXT
+)
+
+Sample rows:
+[
+  {
+    "filing_date": "dated 5th March 2019",
+    "publication_date": "Aug 3rd, 2021",
+    "grant_date": "3rd August 2021",
+    "cpc_prefix": "[\n  {\n    \"code\": \"C01B33/00\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"C01B35/00\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"H01M10/0565\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"H01M10/0562\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"C01G45/006\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"H01M10/0566\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"H01M10/052\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"C01P2002/76\",\n    \"first\": false,\n    \"inventive\": false,\n    \"tree\": []\n  },\n  {\n    \"code\": \"C01G45/006\",\n    \"first\": false,\n "
+  },
+  {
+    "filing_date": "March the 18th, 2019",
+    "publication_date": "Oct 6th, 2020",
+    "grant_date": "dated 6th October 2020",
+    "cpc_prefix": "[\n  {\n    \"code\": \"F16H47/04\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"F16H37/08\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"F16H47/04\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"F16H47/04\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"F16H2037/0893\",\n    \"first\": false,\n    \"inventive\": false,\n    \"tree\": []\n  },\n  {\n    \"code\": \"F16H2200/2007\",\n    \"first\": false,\n    \"inventive\": false,\n    \"tree\": []\n  },\n  {\n    \"code\": \"F16H37/084\",\n    \"first\": true,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"F16H2200/0043\",\n    \"first\": false,\n    \"inventive\": false,\n    \"tree\": []\n  },\n  {\n    \"code\": \"F16H2037/0873\",\n    \"first\": f"
+  },
+  {
+    "filing_date": "29th March 2019",
+    "publication_date": "Sep 21st, 2021",
+    "grant_date": "21st of September, 2021",
+    "cpc_prefix": "[\n  {\n    \"code\": \"B29C70/48\",\n    \"first\": true,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"C08J5/246\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"C08J5/244\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"C08J5/246\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"C08J5/244\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"B32B15/14\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"B32B2262/101\",\n    \"first\": false,\n    \"inventive\": false,\n    \"tree\": []\n  },\n  {\n    \"code\": \"C09D175/08\",\n    \"first\": false,\n    \"inventive\": true,\n    \"tree\": []\n  },\n  {\n    \"code\": \"B29L2031/3017\",\n    \"first\": false,\n    \""
+  }
+]
+
+Now generate only the Python code for solve.py.
+Do not include explanations outside the code.

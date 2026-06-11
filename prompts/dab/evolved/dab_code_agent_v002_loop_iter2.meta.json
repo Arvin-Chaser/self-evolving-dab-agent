@@ -1,0 +1,38 @@
+{
+  "parent_prompt": "prompts/dab/dab_code_agent_prompt_v002.txt",
+  "error_summary": "/home/m0st1ma/research/text2sql/logs/dab_agent/run_dab_code_agent_v002_loop_query_PATENTS_query1_20260610_121601/agent_error_summary.json",
+  "child_prompt": "/home/m0st1ma/research/text2sql/prompts/dab/evolved/dab_code_agent_v002_loop_iter2.txt",
+  "created_at": "2026-06-10 12:20:24",
+  "stage_distribution": {
+    "S7_transformation_calculation": 1,
+    "S6_execution": 1
+  },
+  "error_distribution": {
+    "S7_transformation_calculation.granularity_level_error": 1,
+    "S6_execution.agent_code_execution_error": 1
+  },
+  "localized_errors": [
+    {
+      "stage": "S7_transformation_calculation",
+      "type": "granularity_level_error",
+      "subtype": "level_inferred_from_string_shape",
+      "confidence": "high",
+      "evidence": "Generated code appears to infer hierarchy level from string shape, for example slash/pattern matching, instead of grounding the level in metadata.",
+      "target_modules": [
+        "granularity_mapping",
+        "transformation_logic"
+      ]
+    },
+    {
+      "stage": "S6_execution",
+      "type": "agent_code_execution_error",
+      "subtype": "runtime_or_timeout_error",
+      "confidence": "high",
+      "evidence": "unknown execution error",
+      "target_modules": [
+        "code_execution",
+        "runtime_environment"
+      ]
+    }
+  ]
+}

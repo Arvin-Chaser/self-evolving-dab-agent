@@ -1,0 +1,49 @@
+{
+  "run_dir": "logs/dab/run_dab_patents_v001_query_PATENTS_query1_20260608_105342",
+  "prompt_version": "dab_patents_v001",
+  "total": 1,
+  "correct": 0,
+  "accuracy": 0.0,
+  "stage_distribution": {
+    "S8_answer_synthesis_validation": 1
+  },
+  "error_distribution": {
+    "S8_answer_synthesis_validation.output_completeness_error": 1
+  },
+  "failed_cases": [
+    {
+      "case_group": "query_PATENTS",
+      "case_name": "query1",
+      "question": "Identify the CPC technology areas with the highest exponential moving average of patent filings each year (smoothing factor 0.2), and return only the CPC group codes at level 5 whose best year is 2022.",
+      "validation_reason": "Missing CPC code: A22B",
+      "llm_output": "G06N3/08, G06F40/20, H04L29/08, H01M10/44, B60L11/18, G16B20/00, G01S13/88, A61B5/00",
+      "error_localization": {
+        "surface_error": {
+          "stage": "S8_answer_synthesis_validation",
+          "type": "output_completeness_error",
+          "subtype": "missing_required_item",
+          "evidence": "Missing CPC code: A22B",
+          "domain_object": "CPC code"
+        },
+        "root_cause_hypothesis": {
+          "stage": "unknown",
+          "type": "unknown_without_execution_trace",
+          "confidence": "low",
+          "reason": "The validator only reports that a required item is missing. Without intermediate execution traces, this cannot be uniquely attributed to retrieval, grounding, calculation, or final answer synthesis."
+        },
+        "possible_upstream_stages": [
+          "S2_data_schema_grounding",
+          "S3_planning_decomposition",
+          "S6_execution",
+          "S7_transformation_calculation",
+          "S8_answer_synthesis_validation"
+        ],
+        "target_modules": [
+          "answer_synthesis",
+          "completeness_checking",
+          "execution_trace_logging"
+        ]
+      }
+    }
+  ]
+}

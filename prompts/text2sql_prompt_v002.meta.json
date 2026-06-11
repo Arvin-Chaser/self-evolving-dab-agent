@@ -1,0 +1,9 @@
+{
+  "parent_prompt_path": "prompts/text2sql_prompt_v001.txt",
+  "output_prompt_path": "prompts/text2sql_prompt_v002.txt",
+  "source_error_summary": "/home/m0st1ma/research/text2sql/logs/run_v001_20260607_114423/error_summary.json",
+  "error_distribution": {
+    "projection_error": 3
+  },
+  "modification_summary": "Added targeted prompt rules based on failure types: 3 projection_error"
+}

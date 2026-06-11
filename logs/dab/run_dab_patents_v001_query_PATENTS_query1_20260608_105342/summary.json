@@ -1,0 +1,8 @@
+{
+  "prompt_version": "dab_patents_v001",
+  "total": 1,
+  "correct": 0,
+  "accuracy": 0.0,
+  "validation_reason": "Missing CPC code: A22B",
+  "run_dir": "/home/m0st1ma/research/text2sql/logs/dab/run_dab_patents_v001_query_PATENTS_query1_20260608_105342"
+}

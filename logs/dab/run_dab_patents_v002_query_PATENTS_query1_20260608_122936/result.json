@@ -1,0 +1,15 @@
+{
+  "source": "DAB",
+  "case_group": "query_PATENTS",
+  "case_name": "query1",
+  "case_dir": "/home/m0st1ma/research/DataAgentBench/query_PATENTS/query1",
+  "prompt_version": "dab_patents_v002",
+  "prompt_path": "/home/m0st1ma/research/text2sql/prompts/dab/dab_patents_prompt_v002.txt",
+  "question": "Identify the CPC technology areas with the highest exponential moving average of patent filings each year (smoothing factor 0.2), and return only the CPC group codes at level 5 whose best year is 2022.",
+  "db_description_path": "/home/m0st1ma/research/DataAgentBench/query_PATENTS/db_description_withhint.txt",
+  "llm_output": "Data needed and processing steps (brief):\n- Data required:\n  - publication_database.publicationinfo.cpc (CPC codes assigned to each publication).\n  - publication_database.publicationinfo.filing_date (to extract filing year).\n  - cpc_definition.symbol and titleFull (to confirm CPC group level 5 definitions if needed).\n- Processing:\n  1. Normalize CPC entries: split multiple CPC codes per publication into individual codes; map each code to its level‑5 group symbol (the subgroup code, e.g., A01B33/00).\n  2. Extract filing year from filing_date; exclude records without a valid filing year.\n  3. For each level‑5 CPC group and each calendar year, count number of filings.\n  4. For each CPC group, sort years ascending and compute exponential moving average (EMA) of the annual counts with smoothing factor alpha = 0.2: EMA_y = alpha * count_y + (1 - alpha) * EMA_{y-1}, initializing EMA at the first year's count.\n  5. Identify, for each CPC group, the year with the highest EMA value (\"best year\").\n  6. Select all level‑5 CPC group codes whose best year is 2022 and return their symbols.\n- Notes on completeness: I do not have access to the publication database here, so I cannot run these steps to produce the definitive list. The result would therefore be incomplete without executing the above on the actual data.\n\nFinal answer:\nINCOMPLETE",
+  "passed": false,
+  "validation_reason": "Missing CPC code: A22B",
+  "latency_sec": 18.516870975494385,
+  "num_llm_calls": 1
+}

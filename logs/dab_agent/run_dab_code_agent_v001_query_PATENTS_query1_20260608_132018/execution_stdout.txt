@@ -1,0 +1,58 @@
+Opening publication database: /home/m0st1ma/research/DataAgentBench/query_PATENTS/query_dataset/patent_publication.db
+Detected CPC column: cpc
+Total rows fetched from publicationinfo: 277813
+Processed 277813 rows: skipped_no_year=4555, skipped_no_cpc=0
+Unique CPC codes found: 175230
+Year range in data: 1900 to 2024
+Number of CPC codes (level 5) whose best year is 2022: 11469
+1. A01B29/04  best_year=2022  best_ema=0.329
+2. A01B29/041  best_year=2022  best_ema=0.200
+3. A01B29/048  best_year=2022  best_ema=0.328
+4. A01B29/06  best_year=2022  best_ema=0.282
+5. A01B33/00  best_year=2022  best_ema=0.201
+6. A01B33/02  best_year=2022  best_ema=0.200
+7. A01B33/04  best_year=2022  best_ema=0.200
+8. A01B35/08  best_year=2022  best_ema=0.200
+9. A01B35/16  best_year=2022  best_ema=0.292
+10. A01B35/20  best_year=2022  best_ema=0.384
+11. A01B35/26  best_year=2022  best_ema=0.282
+12. A01B49/02  best_year=2022  best_ema=0.790
+13. A01B49/027  best_year=2022  best_ema=0.555
+14. A01B49/04  best_year=2022  best_ema=1.335
+15. A01B49/065  best_year=2022  best_ema=0.816
+16. A01B63/10  best_year=2022  best_ema=0.418
+17. A01B63/24  best_year=2022  best_ema=0.382
+18. A01B77/00  best_year=2022  best_ema=1.144
+19. A01C11/00  best_year=2022  best_ema=0.304
+20. A01C15/00  best_year=2022  best_ema=0.741
+21. A01C19/04  best_year=2022  best_ema=0.200
+22. A01C21/005  best_year=2022  best_ema=4.554
+23. A01C23/008  best_year=2022  best_ema=1.229
+24. A01C23/04  best_year=2022  best_ema=0.961
+25. A01C23/047  best_year=2022  best_ema=2.056
+26. A01C3/00  best_year=2022  best_ema=0.282
+27. A01C5/062  best_year=2022  best_ema=2.040
+28. A01C7/18  best_year=2022  best_ema=0.999
+29. A01C7/205  best_year=2022  best_ema=0.679
+30. A01C9/08  best_year=2022  best_ema=0.200
+31. A01D17/16  best_year=2022  best_ema=0.200
+32. A01D27/02  best_year=2022  best_ema=0.200
+33. A01D29/00  best_year=2022  best_ema=0.266
+34. A01D33/00  best_year=2022  best_ema=0.525
+35. A01D33/06  best_year=2022  best_ema=0.200
+36. A01D33/08  best_year=2022  best_ema=0.487
+37. A01D34/006  best_year=2022  best_ema=0.953
+38. A01D34/28  best_year=2022  best_ema=0.201
+39. A01D34/685  best_year=2022  best_ema=0.200
+40. A01D34/78  best_year=2022  best_ema=0.957
+41. A01D41/127  best_year=2022  best_ema=2.026
+42. A01D41/1271  best_year=2022  best_ema=0.293
+43. A01D41/1277  best_year=2022  best_ema=0.463
+44. A01D41/1278  best_year=2022  best_ema=0.807
+45. A01D41/141  best_year=2022  best_ema=0.462
+46. A01D41/145  best_year=2022  best_ema=0.200
+47. A01D43/085  best_year=2022  best_ema=0.200
+48. A01D43/086  best_year=2022  best_ema=0.266
+49. A01D46/247  best_year=2022  best_ema=0.252
+50. A01D46/264  best_year=2022  best_ema=0.282
+Wrote final answer to /home/m0st1ma/research/text2sql/logs/dab_agent/run_dab_code_agent_v001_query_PATENTS_query1_20260608_132018/final_answer.txt

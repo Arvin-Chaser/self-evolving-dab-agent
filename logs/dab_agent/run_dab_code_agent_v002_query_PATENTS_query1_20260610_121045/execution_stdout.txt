@@ -1,0 +1,11 @@
+Starting solve.py
+PUBLICATION_DB_PATH: /home/m0st1ma/research/DataAgentBench/query_PATENTS/query_dataset/patent_publication.db
+CPC_DEFINITION_SQL_PATH: /home/m0st1ma/research/DataAgentBench/query_PATENTS/query_dataset/patent_CPCDefinition.sql
+FINAL_ANSWER_PATH: /home/m0st1ma/research/text2sql/logs/dab_agent/run_dab_code_agent_v002_query_PATENTS_query1_20260610_121045/final_answer.txt
+Parsing CPC definition SQL...
+Parsed 0 definition rows (tuples found in INSERTs: 0).
+Level map size: 0; Parent map size: 0; Titles: 0
+Publication table columns: ['Patents_info', 'kind_code', 'application_kind', 'pct_number', 'family_id', 'title_localized', 'abstract_localized', 'claims_localized_html', 'description_localized_html', 'publication_date', 'filing_date', 'grant_date', 'priority_date', 'priority_claim', 'inventor_harmonized', 'examiner', 'uspc', 'ipc', 'cpc', 'citation', 'parent', 'child', 'entity_status', 'art_unit']
+Using CPC columns: ['cpc']
+Using date column for year extraction: filing_date
+Total publicationinfo rows fetched: 277813

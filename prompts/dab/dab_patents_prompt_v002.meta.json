@@ -1,0 +1,9 @@
+{
+  "parent_prompt_path": "prompts/dab/dab_patents_prompt_v001.txt",
+  "output_prompt_path": "prompts/dab/dab_patents_prompt_v002.txt",
+  "source_error_summary": "logs/dab/run_dab_patents_v001_query_PATENTS_query1_20260608_105342/error_summary.json",
+  "stage_level_error_distribution": {
+    "S8_answer_synthesis_validation.output_completeness_error": 1
+  },
+  "modification_summary": "Added generic stage-level prompt rules based on: 1 S8_answer_synthesis_validation.output_completeness_error"
+}

@@ -1,0 +1,54 @@
+[
+  {
+    "iteration": 1,
+    "version": "dab_code_agent_v002_loop",
+    "prompt": "prompts/dab/dab_code_agent_prompt_v002.txt",
+    "run_dir": "/home/m0st1ma/research/text2sql/logs/dab_agent/run_dab_code_agent_v002_loop_query_PATENTS_query1_20260610_121601",
+    "passed": false,
+    "validation_reason": "agent_code_execution_error: unknown execution error",
+    "stage_distribution": {
+      "S7_transformation_calculation": 1,
+      "S6_execution": 1
+    },
+    "error_distribution": {
+      "S7_transformation_calculation.granularity_level_error": 1,
+      "S6_execution.agent_code_execution_error": 1
+    }
+  },
+  {
+    "iteration": 2,
+    "version": "dab_code_agent_v002_loop_iter2",
+    "prompt": "/home/m0st1ma/research/text2sql/prompts/dab/evolved/dab_code_agent_v002_loop_iter2.txt",
+    "run_dir": "/home/m0st1ma/research/text2sql/logs/dab_agent/run_dab_code_agent_v002_loop_iter2_query_PATENTS_query1_20260610_122025",
+    "passed": false,
+    "validation_reason": "agent_code_execution_error: WARNING: No INSERT INTO cpc_definition found in SQL dump. Attempting to parse CREATE TABLE data.\nERROR: No CPC mapping could be parsed. Exiting.\n",
+    "stage_distribution": {
+      "S2_data_schema_grounding": 1,
+      "S7_transformation_calculation": 1,
+      "S6_execution": 1
+    },
+    "error_distribution": {
+      "S2_data_schema_grounding.missing_required_metadata_source": 1,
+      "S7_transformation_calculation.granularity_level_error": 1,
+      "S6_execution.agent_code_execution_error": 1
+    }
+  },
+  {
+    "iteration": 3,
+    "version": "dab_code_agent_v002_loop_iter3",
+    "prompt": "/home/m0st1ma/research/text2sql/prompts/dab/evolved/dab_code_agent_v002_loop_iter3.txt",
+    "run_dir": "/home/m0st1ma/research/text2sql/logs/dab_agent/run_dab_code_agent_v002_loop_iter3_query_PATENTS_query1_20260610_122204",
+    "passed": false,
+    "validation_reason": "agent_code_execution_error: WARNING: CPC definition parsing yielded no explicit level info. Will use conservative fallback heuristics.\n",
+    "stage_distribution": {
+      "S2_data_schema_grounding": 1,
+      "S7_transformation_calculation": 1,
+      "S6_execution": 1
+    },
+    "error_distribution": {
+      "S2_data_schema_grounding.missing_required_metadata_source": 1,
+      "S7_transformation_calculation.granularity_level_error": 1,
+      "S6_execution.agent_code_execution_error": 1
+    }
+  }
+]

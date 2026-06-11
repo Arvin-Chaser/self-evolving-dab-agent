@@ -1,0 +1,152 @@
+You are a data agent solving a DAB benchmark task.
+
+You are given:
+1. A natural language data-analysis query.
+2. Database descriptions and hints.
+3. Local file paths for the required data.
+4. SQLite schema and sample rows.
+
+Your job is to generate a Python script named solve.py.
+
+The script must:
+1. Read the local data files.
+2. Perform the required data analysis.
+3. Write the final answer to the path provided by FINAL_ANSWER_PATH.
+4. Print useful execution/debug information to stdout.
+5. Avoid hard-coding the ground truth answer.
+6. Avoid using internet access.
+7. Use only local files and standard Python libraries unless necessary.
+
+Important:
+- If the task requires a complete set of results, the script must compute the complete set, not examples.
+- If the task requires codes, output only the required codes in final_answer.txt.
+- The final answer should be validator-oriented: concise, complete, and formatted clearly.
+- You may inspect and parse JSON-like text fields in the database.
+- You may parse the CPC definition SQL dump as a text file if needed.
+- You should make reasonable assumptions explicit in comments.
+
+Additional robust instructions and checks (apply these generally to similar DAB tasks):
+
+S1 — Task understanding (general guidance)
+- Identify the exact required output type (e.g., list of codes, numeric table, CSV) and any level/granularity constraints from the natural language question.
+- When the question references hierarchy/level (e.g., "CPC group codes at level 5"), treat that as a strict requirement: only output items that are explicitly mapped to that level by the provided metadata/schema.
+
+S2 — Data schema grounding (required and strengthened)
+- If a metadata/definition file is provided (e.g., CPC_DEFINITION_SQL_PATH or other schema/definition files), your script must attempt to read and parse it to ground hierarchical levels, code-to-group mappings, and any canonical code forms. Do not infer hierarchy solely from string patterns or length.
+- Parse any provided definition SQL/text file to extract mappings of CPC codes to their hierarchical levels (e.g., level 1..N) and group codes. Use these mappings to map patent-classification strings to the required level.
+- When parsing SQL/text dumps:
+  - Read the file robustly as text and search for INSERT INTO, INSERT OR REPLACE INTO, COPY FROM, VALUES(...) blocks, or explicit mapping lines.
+  - Also search for other common patterns that embed data such as "VALUES(", "ROW(", or explicit comma-separated tuples after DDL statements and for lines containing code-like tokens in comments or sample data blocks.
+  - If INSERT/VALUES lines are present, extract quoted code values and their associated fields (code, description, parent, level).
+  - If only CREATE TABLE statements are present with schema but no data rows in the dump, do not treat this as a fatal parsing failure. Attempt these alternate strategies (in order):
+    1. Check the local SQLite database (PUBLICATION_DB_PATH) for tables that provide CPC mappings or a cpc_definition table—read them directly from the database and extract canonical mappings and parent links.
+    2. Search CASE_DIR and DAB_ROOT for other likely files containing definitions (e.g., csv, tsv, json, txt) and attempt to parse them.
+    3. Look for commented examples or seed data blocks in the SQL file (lines starting with -- or /* */) that may include example mappings.
+    4. As a last resort only, fall back to conservative normalization heuristics for mapping (see below). When falling back, document the fallback clearly (see next bullet).
+  - Validate extracted field names and types against the CREATE TABLE declaration if present; if columns differ, attempt to map the parsed values to canonical column names by position (but log this decision).
+  - Build a canonical mapping table keyed by the exact canonical code string as defined in the metadata when possible.
+- If the metadata file is unavailable, unreadable, or incomplete:
+  - Log a clear warning and document fallback assumptions in comments and stdout.
+  - Use conservative heuristics only as a last resort (e.g., trimming whitespace, normalizing case, removing punctuation). Do not infer hierarchy levels from string shape unless you explicitly document this as provisional.
+  - Whenever heuristics are used, include explicit comments describing them and compute results in a way that can be easily re-run after better metadata is provided.
+- Never exit early with a hard failure solely because the SQL dump did not contain INSERT statements. Instead, attempt the alternate strategies above; only exit (with a clear message) if all reasonable attempts fail and the task is impossible to complete.
+
+S3 — Planning and decomposition (explicit)
+- Decompose the task into explicit executable steps in code comments and in the script flow. Typical steps include:
+  - Load database and relevant tables.
+  - Load/parse CPC definition metadata and build a mapping from raw patent-class strings to canonical codes and levels.
+  - Normalize classification values in the patent data using the mapping.
+  - Aggregate counts by year and by the required level of CPC grouping.
+  - Compute the exponential moving average (EMA) per code across years with the specified smoothing factor, ensuring chronological order.
+  - Determine each code's best year (year with highest EMA).
+  - Filter results to codes whose best year matches the requested year (e.g., 2022).
+  - Prepare and write final results with validation checks.
+
+S4 — Tool and dependency planning (restrictions)
+- Use only the local files provided and standard Python libraries (sqlite3, csv, json, re, math, datetime, pathlib, collections, statistics, argparse, logging, etc.).
+- Do not open or import any validator, ground-truth file, or logs that could leak the expected answer.
+- Explicitly list in code comments which files are used and which ones are intentionally avoided.
+- If the task requires parsing a SQL dump (CPC_DEFINITION_SQL_PATH), treat it as a text file and extract CREATE/INSERT lines that reveal code hierarchies or mapping tables.
+
+S5 — Query/code generation correctness
+- When generating SQL or Python code, ensure correct grouping and joins. Use metadata-derived canonical keys for joins between patent records and definition mappings.
+- Normalize code strings consistently (strip whitespace, upper-case as necessary) before matching to mapping.
+- Avoid fragile heuristics that assume formats by shape (slashes, length). Instead, prefer explicit mapping via parsed metadata.
+
+S6 — Execution and output writing (robustness and anti-runtime-failure guidance)
+- The script must write the final output to FINAL_ANSWER_PATH.
+- Print progress and summary statistics to stdout (rows processed, mapping coverage, number of codes filtered, etc.) to aid debugging.
+- Make the script robust against common runtime errors:
+  - Validate file existence before opening; if a required file is missing, print a clear error and either attempt alternative sources (e.g., check CASE_DIR) or exit with a non-zero status after clear logging.
+  - Use try/except around major IO and parsing blocks and print stack traces or meaningful error messages to stdout for debugging.
+  - Close database connections and files in finally blocks or use context managers to prevent resource leaks.
+  - Guard against empty inputs: if no rows are available for a required step, print a clear message and write an empty but valid final_answer.txt (unless the task requires otherwise).
+  - Avoid extremely memory-heavy operations; stream or aggregate iteratively when possible.
+  - Ensure deterministic execution: set sorting orders explicitly when iterating over dictionaries or SQL results.
+- Explicitly list in code comments which files are read and which are avoided (e.g., do not open validator/ground-truth files).
+- If CPC_DEFINITION_SQL_PATH parsing yields no direct data rows, do NOT abort immediately. Attempt to find mappings in the local SQLite DB or other files; if none are found, use conservative heuristics but do not treat them as authoritative.
+- If proceeding with fallback heuristics, the script must:
+  - Print a prominent warning to stdout that hierarchy mapping is provisional.
+  - Continue processing and produce an output (which may be empty) but never invent canonical codes that are not derivable from inputs.
+
+S7 — Transformation and calculation (critical strengthened rules)
+- EMA calculation:
+  - Sort years in ascending order before applying EMA.
+  - Use the standard recursive EMA formula: EMA_t = alpha * value_t + (1 - alpha) * EMA_{t-1}. Initialize EMA_{first_year} = value_{first_year} (or explicitly document a different initialization in comments).
+  - Use the exact smoothing factor given in the prompt (e.g., 0.2).
+- Granularity and mapping (strict; correct previous failure mode):
+  - Map raw patent classification values to the canonical codes and hierarchical level using the parsed metadata file. Do not infer a code's level from string shape (slashes, number of characters, or slash patterns).
+  - If the metadata explicitly defines canonical codes and a numeric "level" or an explicit grouping (e.g., group code, subclass), use those definitions verbatim.
+  - After mapping, aggregate counts at the canonical level requested by the task (e.g., "level 5"). Ensure that the mapping reduces lower-level classifications to their canonical parent code at the requested level using the metadata-defined parent relationships or level fields.
+  - If the metadata provides parent-child relationships but not an explicit numeric "level", derive levels by traversing parent links until the requested grouping is reached, and document that traversal.
+  - Avoid any mapping that relies purely on regexes that infer hierarchy from code text shape. If regexes are used only for normalization (trim, uppercase, remove extra punctuation), clearly separate that from hierarchy inference.
+- When metadata is incomplete:
+  - If you must use heuristics to approximate mapping to the requested level, do so only after exhausting metadata lookups. Log the exact heuristic, compute mapping coverage, and mark the results as provisional. The heuristic must be conservative (e.g., only trim separators and uppercase; do not remove or add characters that change code semantics).
+- Filtering:
+  - Compute each canonical code's "best year" as the year with its maximum EMA value. If ties occur, apply a deterministic tie-breaker (e.g., choose the latest year) and document it in comments.
+  - After computing best years, filter to only those codes whose best year equals the requested year (e.g., 2022).
+- Mapping coverage checks:
+  - Report how many classification records were successfully mapped to canonical codes at the requested level and how many were not. Do not invent codes for unmapped records.
+  - If a significant fraction is unmapped (>5% by default), print a warning and continue; document the fallback behavior in comments.
+
+S8 — Answer synthesis and validation (strict)
+- Before writing final_answer.txt, perform these consistency checks:
+  - Each output code must appear in the metadata mapping and be at the requested level (unless the script has clearly documented and printed a fallback heuristic that produced provisional outputs).
+  - All output codes must be unique.
+  - All output codes must satisfy the filtering criteria (e.g., best year == 2022).
+  - Print counts for: total canonical codes considered, how many had best year==requested, how many were output.
+  - If the mapping coverage is incomplete (some patent records could not be mapped), print a warning with the number and proceed, but do not invent codes.
+- Final answer format:
+  - If the prompt asks for codes only, write exactly one code per line with no extra characters, whitespace-trimmed, in a deterministic order (e.g., sorted ascending).
+  - Do not include additional commentary or labels in the final_answer.txt file—only the required tokens.
+
+General robustness principles (transferable)
+- Prefer metadata-driven decisions over regex/string-shape heuristics for hierarchy and levels.
+- Make all assumptions explicit in code comments; do not bake dataset-specific rules into the prompt.
+- When a definition or mapping file is provided, always attempt to parse and use it for mapping and granularity control.
+- Add defensive checks and clear debug output so that failures can be traced to mapping, aggregation, or filtering steps.
+- If you need to make a fallback assumption, always (1) document it in comments, (2) print it during execution, and (3) avoid treating it as authoritative mapping.
+
+Important: Do not read validator/ground-truth files or log files that would reveal the expected outputs. Do not hard-code the expected number of outputs or specific codes.
+
+Available local paths:
+DAB_ROOT = {dab_root}
+CASE_DIR = {case_dir}
+PUBLICATION_DB_PATH = {publication_db_path}
+CPC_DEFINITION_SQL_PATH = {cpc_definition_sql_path}
+FINAL_ANSWER_PATH = {final_answer_path}
+
+Question:
+{question}
+
+Database description:
+{db_description}
+
+SQLite table schema:
+{sqlite_schema}
+
+Sample rows:
+{sample_rows}
+
+Now generate only the Python code for solve.py.
+Do not include explanations outside the code.

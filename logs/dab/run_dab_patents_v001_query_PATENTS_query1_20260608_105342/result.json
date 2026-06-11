@@ -1,0 +1,15 @@
+{
+  "source": "DAB",
+  "case_group": "query_PATENTS",
+  "case_name": "query1",
+  "case_dir": "/home/m0st1ma/research/DataAgentBench/query_PATENTS/query1",
+  "prompt_version": "dab_patents_v001",
+  "prompt_path": "/home/m0st1ma/research/text2sql/prompts/dab/dab_patents_prompt_v001.txt",
+  "question": "Identify the CPC technology areas with the highest exponential moving average of patent filings each year (smoothing factor 0.2), and return only the CPC group codes at level 5 whose best year is 2022.",
+  "db_description_path": "/home/m0st1ma/research/DataAgentBench/query_PATENTS/db_description_withhint.txt",
+  "llm_output": "G06N3/08, G06F40/20, H04L29/08, H01M10/44, B60L11/18, G16B20/00, G01S13/88, A61B5/00",
+  "passed": false,
+  "validation_reason": "Missing CPC code: A22B",
+  "latency_sec": 17.187387228012085,
+  "num_llm_calls": 1
+}
