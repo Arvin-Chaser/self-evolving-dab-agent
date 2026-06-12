@@ -227,7 +227,7 @@ def extract_trace_based_errors(stage_trace_info: dict) -> list[dict]:
 
     return errors
 
-def analyze_run(run_dir: Path, revalidate: bool) -> dict:
+def analyze_run(run_dir: Path, revalidate: bool = False) -> dict:
     result_path = run_dir / "result.json"
     solve_path = run_dir / "generated_solve.py"
     final_answer_path = run_dir / "final_answer.txt"

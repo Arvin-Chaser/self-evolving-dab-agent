@@ -86,8 +86,13 @@ def signal_from_error_summary(summary_path: Path) -> dict[str, Any] | None:
     )
     selected_signal = (
         selected_error.get("message")
+        or selected_error.get("evidence")
+        or selected_error.get("summary")
+        or selected_error.get("reason")
         or selected_error.get("error")
         or selected_error.get("validation_reason")
+        or selected_error.get("subtype")
+        or selected_error.get("type")
         or f"Stage {selected_stage} has the highest failure count."
     )
     return {

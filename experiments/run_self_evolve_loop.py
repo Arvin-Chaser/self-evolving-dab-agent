@@ -179,8 +179,27 @@ def summarize_parent_errors(parent_results: list[dict[str, Any]]) -> dict[str, A
     for result in parent_results:
         if bool(result.get("passed")):
             continue
+
         run_dir = Path(str(result.get("run_dir", "")))
         analysis = analyze_one_run(run_dir, result)
+
+        analysis_stage_distribution = analysis.get("stage_distribution") or {}
+        analysis_error_distribution = analysis.get("error_distribution") or {}
+        analysis_localized_errors = analysis.get("localized_errors") or []
+
+        if analysis_stage_distribution or analysis_localized_errors:
+            stage_distribution.update(analysis_stage_distribution)
+            error_distribution.update(analysis_error_distribution)
+
+            for err in analysis_localized_errors:
+                item = dict(err)
+                item.setdefault("case_dir", result.get("case_dir", ""))
+                item.setdefault("run_dir", str(run_dir))
+                item.setdefault("validation_reason", result.get("validation_reason", ""))
+                localized_errors.append(item)
+
+            continue
+
         stage = str(analysis.get("stage") or analysis.get("failed_stage") or "unknown")
         message = str(
             analysis.get("message")
@@ -189,6 +208,7 @@ def summarize_parent_errors(parent_results: list[dict[str, Any]]) -> dict[str, A
             or result.get("validation_reason")
             or "No validation reason was provided."
         )
+
         stage_distribution[stage] += 1
         error_distribution[message[:200]] += 1
         localized_errors.append(
