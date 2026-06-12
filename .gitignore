@@ -1,13 +1,20 @@
+.env
 .venv/
 __pycache__/
 *.pyc
-.env
 
+logs/
+archive/
+
+# large / external benchmark data
+benchmarks/DataAgentBench/
+DataAgentBench/
+
+# generated files
 *.db
 *.sqlite
 *.sqlite3
 
-*.log
-runs/
-outputs/
-data/
+# OS / editor
+.DS_Store
+.vscode/

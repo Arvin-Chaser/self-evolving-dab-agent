@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extract the primary stage-level failure signal from DAB agent logs."""
+"""Extract the primary stage-level failure signal from DAB agent analysis."""
 
 from __future__ import annotations
 
@@ -71,6 +71,37 @@ def looks_failed(record: dict[str, Any]) -> bool:
     return any(record.get(key) for key in ("error", "exception", "traceback", "stderr"))
 
 
+def signal_from_error_summary(summary_path: Path) -> dict[str, Any] | None:
+    data = json.loads(summary_path.read_text(encoding="utf-8"))
+    stage_distribution = data.get("stage_distribution") or {}
+    localized_errors = data.get("localized_errors") or []
+    if not stage_distribution and not localized_errors:
+        return None
+    selected_stage = "unknown"
+    if stage_distribution:
+        selected_stage = max(stage_distribution.items(), key=lambda item: item[1])[0]
+    selected_error = next(
+        (error for error in localized_errors if str(error.get("stage", "unknown")) == selected_stage),
+        localized_errors[0] if localized_errors else {},
+    )
+    selected_signal = (
+        selected_error.get("message")
+        or selected_error.get("error")
+        or selected_error.get("validation_reason")
+        or f"Stage {selected_stage} has the highest failure count."
+    )
+    return {
+        "stage": selected_stage,
+        "message": str(selected_signal),
+        "selected_stage": selected_stage,
+        "selected_signal": str(selected_signal),
+        "stage_distribution": stage_distribution,
+        "error_distribution": data.get("error_distribution") or {},
+        "supporting_observations": localized_errors[:5],
+        "source": str(summary_path),
+    }
+
+
 def extract_failure_observations(log_dir: Path) -> list[dict[str, Any]]:
     observations: list[dict[str, Any]] = []
     for path in sorted(log_dir.rglob("*")):
@@ -91,6 +122,8 @@ def choose_primary_signal(observations: list[dict[str, Any]]) -> dict[str, Any]:
         return {
             "stage": "unknown",
             "message": "No structured stage-level failure was found in the run logs.",
+            "selected_stage": "unknown",
+            "selected_signal": "No structured stage-level failure was found in the run logs.",
             "count": 0,
             "supporting_observations": [],
         }
@@ -100,13 +133,23 @@ def choose_primary_signal(observations: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "stage": primary_stage,
         "message": supporting[0]["message"],
+        "selected_stage": primary_stage,
+        "selected_signal": supporting[0]["message"],
         "count": count,
         "supporting_observations": supporting,
     }
 
 
-def extract_primary_signal(log_dir: Path) -> dict[str, Any]:
-    observations = extract_failure_observations(log_dir)
+def extract_primary_signal(input_path: Path) -> dict[str, Any]:
+    if input_path.is_file():
+        summary_signal = signal_from_error_summary(input_path)
+        if summary_signal is not None:
+            return summary_signal
+        observations = []
+        for item in load_jsonish(input_path):
+            observations.extend(record for record in iter_records(item) if looks_failed(record))
+    else:
+        observations = extract_failure_observations(input_path)
     signal = choose_primary_signal(observations)
     signal["total_observations"] = len(observations)
     return signal
@@ -114,11 +157,15 @@ def extract_primary_signal(log_dir: Path) -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--log-dir", required=True, type=Path)
+    parser.add_argument("--log-dir", type=Path)
+    parser.add_argument("--error-summary", type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
 
-    signal = extract_primary_signal(args.log_dir)
+    input_path = args.error_summary or args.log_dir
+    if input_path is None:
+        raise SystemExit("Either --error-summary or --log-dir is required.")
+    signal = extract_primary_signal(input_path)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(signal, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(json.dumps(signal, indent=2, sort_keys=True))

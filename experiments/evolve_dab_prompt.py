@@ -29,8 +29,8 @@ def load_signal(path: Path) -> dict[str, Any]:
 
 
 def deterministic_evolution(parent_prompt: str, signal: dict[str, Any]) -> str:
-    stage = str(signal.get("stage") or "unknown")
-    message = str(signal.get("message") or "No message was provided.")
+    stage = str(signal.get("stage") or signal.get("selected_stage") or "unknown")
+    message = str(signal.get("message") or signal.get("selected_signal") or "No message was provided.")
     note = EVOLUTION_HEADER.format(stage=stage, message=message)
     return parent_prompt.rstrip() + "\n\n" + note
 
@@ -53,10 +53,15 @@ def llm_evolution(parent_prompt: str, signal: dict[str, Any]) -> str:
     return text or deterministic_evolution(parent_prompt, signal)
 
 
-def evolve_prompt(parent_prompt_path: Path, signal_path: Path, output_path: Path, dry_run: bool) -> dict[str, Any]:
+def evolve_prompt(
+    parent_prompt_path: Path,
+    signal_path: Path,
+    output_path: Path,
+    use_llm_evolver: bool = False,
+) -> dict[str, Any]:
     parent_prompt = parent_prompt_path.read_text(encoding="utf-8")
     signal = load_signal(signal_path)
-    child_prompt = deterministic_evolution(parent_prompt, signal) if dry_run else llm_evolution(parent_prompt, signal)
+    child_prompt = llm_evolution(parent_prompt, signal) if use_llm_evolver else deterministic_evolution(parent_prompt, signal)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(child_prompt.rstrip() + "\n", encoding="utf-8")
@@ -64,7 +69,7 @@ def evolve_prompt(parent_prompt_path: Path, signal_path: Path, output_path: Path
         "parent_prompt": str(parent_prompt_path),
         "child_prompt": str(output_path),
         "signal": signal,
-        "dry_run": dry_run,
+        "use_llm_evolver": use_llm_evolver,
     }
 
 
@@ -73,10 +78,15 @@ def main() -> int:
     parser.add_argument("--parent-prompt", required=True, type=Path)
     parser.add_argument("--signal", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--use-llm-evolver", action="store_true")
     args = parser.parse_args()
 
-    summary = evolve_prompt(args.parent_prompt, args.signal, args.output, args.dry_run)
+    summary = evolve_prompt(
+        args.parent_prompt,
+        args.signal,
+        args.output,
+        use_llm_evolver=args.use_llm_evolver,
+    )
     print(json.dumps(summary, indent=2, sort_keys=True))
     return 0
 
