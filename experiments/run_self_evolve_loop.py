@@ -1,175 +1,170 @@
+#!/usr/bin/env python3
+"""Run the minimal DAB code-agent signal-evolve loop."""
+
+from __future__ import annotations
+
 import argparse
 import json
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any
+
+from extract_primary_signal import extract_primary_signal
+from evolve_dab_prompt import evolve_prompt
 
 
-BASE_DIR = Path(__file__).resolve().parents[1]
+DEFAULT_OUTPUT_DIR = Path("logs/dab_agent/min_loop_demo")
 
 
-def run_cmd(cmd: list[str]):
-    print("\n" + "=" * 80)
-    print("Running command:")
-    print(" ".join(cmd))
-    print("=" * 80)
+def write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
-    completed = subprocess.run(
-        cmd,
-        cwd=str(BASE_DIR),
-        text=True,
-    )
 
+def run_dab_agent(
+    *,
+    cases: list[Path],
+    prompt: Path,
+    output_dir: Path,
+    max_cases: int | None,
+    dry_run: bool,
+    label: str,
+) -> dict[str, Any]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    if dry_run:
+        result = {
+            "label": label,
+            "dry_run": True,
+            "cases": [str(path) for path in cases],
+            "prompt": str(prompt),
+            "output_dir": str(output_dir),
+            "max_cases": max_cases,
+            "success": False,
+            "stage": "pipeline_wiring",
+            "message": "Dry run placeholder: DAB agent execution was skipped.",
+        }
+        write_json(output_dir / "run_result.json", result)
+        write_json(
+            output_dir / "stage_failures.json",
+            {
+                "success": False,
+                "stage": "pipeline_wiring",
+                "observation": "Dry run verified wiring through run, signal extraction, prompt evolution, and comparison.",
+            },
+        )
+        return result
+
+    cmd = [
+        sys.executable,
+        "experiments/run_dab_agent.py",
+        "--prompt",
+        str(prompt),
+        "--output-dir",
+        str(output_dir),
+    ]
+    for case in cases:
+        cmd.extend(["--cases", str(case)])
+    if max_cases is not None:
+        cmd.extend(["--max-cases", str(max_cases)])
+
+    completed = subprocess.run(cmd, text=True, capture_output=True, check=False)
+    result = {
+        "label": label,
+        "dry_run": False,
+        "command": cmd,
+        "returncode": completed.returncode,
+        "stdout_tail": completed.stdout[-4000:],
+        "stderr_tail": completed.stderr[-4000:],
+        "success": completed.returncode == 0,
+    }
+    write_json(output_dir / "run_self_evolve_invocation.json", result)
     if completed.returncode != 0:
-        raise RuntimeError(f"Command failed with return code {completed.returncode}: {' '.join(cmd)}")
+        raise RuntimeError(f"{label} DAB run failed with exit code {completed.returncode}. See {output_dir}.")
+    return result
 
 
-def find_latest_run_dir(version: str, case_dir: Path) -> Path:
-    case_group = case_dir.parent.name
-    case_name = case_dir.name
+def compare_runs(parent_result: dict[str, Any], child_result: dict[str, Any], signal: dict[str, Any]) -> dict[str, Any]:
+    parent_success = bool(parent_result.get("success"))
+    child_success = bool(child_result.get("success"))
+    if child_success and not parent_success:
+        verdict = "child_improved"
+    elif child_success == parent_success:
+        verdict = "tie"
+    else:
+        verdict = "child_regressed"
+    return {
+        "verdict": verdict,
+        "parent_success": parent_success,
+        "child_success": child_success,
+        "primary_signal": signal,
+        "parent_result": parent_result,
+        "child_result": child_result,
+    }
 
-    pattern = f"run_{version}_{case_group}_{case_name}_*"
-    candidates = sorted(
-        (BASE_DIR / "logs" / "dab_agent").glob(pattern),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True,
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--cases", nargs="+", required=True, type=Path)
+    parser.add_argument("--parent-prompt", required=True, type=Path)
+    parser.add_argument("--output-dir", default=DEFAULT_OUTPUT_DIR, type=Path)
+    parser.add_argument("--max-cases", type=int, default=None)
+    parser.add_argument("--dry-run", action="store_true")
+    return parser.parse_args()
+
+
+def main() -> int:
+    args = parse_args()
+    output_dir: Path = args.output_dir
+    parent_run_dir = output_dir / "parent_run"
+    child_run_dir = output_dir / "child_run"
+    artifacts_dir = output_dir / "artifacts"
+    child_prompt_path = artifacts_dir / "child_prompt.txt"
+    signal_path = artifacts_dir / "primary_signal.json"
+    evolution_summary_path = artifacts_dir / "evolution_summary.json"
+    comparison_path = output_dir / "comparison_summary.json"
+    selected_cases = args.cases[: args.max_cases] if args.max_cases is not None else args.cases
+
+    write_json(
+        output_dir / "run_plan.json",
+        {
+            "dry_run": args.dry_run,
+            "parent_prompt": str(args.parent_prompt),
+            "child_prompt": str(child_prompt_path),
+            "cases": [str(path) for path in selected_cases],
+            "case_count": len(selected_cases),
+            "output_dir": str(output_dir),
+        },
     )
 
-    if not candidates:
-        raise FileNotFoundError(f"No run dir found with pattern: {pattern}")
+    parent_result = run_dab_agent(
+        cases=selected_cases,
+        prompt=args.parent_prompt,
+        output_dir=parent_run_dir,
+        max_cases=args.max_cases,
+        dry_run=args.dry_run,
+        label="parent",
+    )
+    signal = extract_primary_signal(parent_run_dir)
+    write_json(signal_path, signal)
 
-    return candidates[0]
+    evolution_summary = evolve_prompt(args.parent_prompt, signal_path, child_prompt_path, dry_run=args.dry_run)
+    write_json(evolution_summary_path, evolution_summary)
 
-
-def load_result(run_dir: Path) -> dict:
-    result_path = run_dir / "result.json"
-
-    if not result_path.exists():
-        raise FileNotFoundError(f"Missing result.json: {result_path}")
-
-    return json.loads(result_path.read_text(encoding="utf-8"))
-
-
-def main():
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("--case-dir", required=True)
-    parser.add_argument("--initial-prompt", required=True)
-    parser.add_argument("--initial-version", required=True)
-
-    parser.add_argument("--max-iters", type=int, default=3)
-    parser.add_argument("--timeout-sec", type=int, default=600)
-
-    parser.add_argument(
-        "--prompt-out-dir",
-        default="prompts/dab/evolved",
+    child_result = run_dab_agent(
+        cases=selected_cases,
+        prompt=child_prompt_path,
+        output_dir=child_run_dir,
+        max_cases=args.max_cases,
+        dry_run=args.dry_run,
+        label="child",
     )
 
-    args = parser.parse_args()
-
-    case_dir = Path(args.case_dir)
-    current_prompt = Path(args.initial_prompt)
-    current_version = args.initial_version
-
-    prompt_out_dir = BASE_DIR / args.prompt_out_dir
-    prompt_out_dir.mkdir(parents=True, exist_ok=True)
-
-    history = []
-
-    for i in range(1, args.max_iters + 1):
-        print("\n" + "#" * 100)
-        print(f"SELF-EVOLVE ITERATION {i}/{args.max_iters}")
-        print(f"Prompt: {current_prompt}")
-        print(f"Version: {current_version}")
-        print("#" * 100)
-
-        # 1. Run agent-generated code
-        run_cmd([
-            sys.executable,
-            "experiments/run_dab_agent.py",
-            "--case-dir", str(case_dir),
-            "--prompt", str(current_prompt),
-            "--version", current_version,
-            "--timeout-sec", str(args.timeout_sec),
-        ])
-
-        run_dir = find_latest_run_dir(current_version, case_dir)
-        print(f"\nLatest run dir: {run_dir}")
-
-        result = load_result(run_dir)
-        passed = bool(result.get("passed"))
-        validation_reason = result.get("validation_reason", "")
-
-        print("\nRun result:")
-        print(json.dumps({
-            "passed": passed,
-            "validation_reason": validation_reason,
-            "run_dir": str(run_dir),
-        }, indent=2, ensure_ascii=False))
-
-        # 2. Analyze error into 8-stage summary
-        run_cmd([
-            sys.executable,
-            "experiments/analyze_agent_error.py",
-            "--run-dir", str(run_dir),
-        ])
-
-        summary_path = run_dir / "agent_error_summary.json"
-
-        if not summary_path.exists():
-            raise FileNotFoundError(f"Missing agent_error_summary.json: {summary_path}")
-
-        summary = json.loads(summary_path.read_text(encoding="utf-8"))
-
-        history.append({
-            "iteration": i,
-            "version": current_version,
-            "prompt": str(current_prompt),
-            "run_dir": str(run_dir),
-            "passed": passed,
-            "validation_reason": validation_reason,
-            "stage_distribution": summary.get("stage_distribution", {}),
-            "error_distribution": summary.get("error_distribution", {}),
-        })
-
-        # 3. Stop if passed
-        if passed:
-            print("\n✅ Passed. Stop self-evolution loop.")
-            break
-
-        # 4. If not passed and still have budget, evolve prompt
-        if i == args.max_iters:
-            print("\nReached max iterations. Stop.")
-            break
-
-        next_version = f"{args.initial_version}_iter{i + 1}"
-        next_prompt = prompt_out_dir / f"{next_version}.txt"
-
-        run_cmd([
-            sys.executable,
-            "experiments/evolve_code_agent_prompt.py",
-            "--parent", str(current_prompt),
-            "--summary", str(summary_path),
-            "--out", str(next_prompt),
-        ])
-
-        current_prompt = next_prompt
-        current_version = next_version
-
-    # Save loop history
-    loop_history_path = BASE_DIR / "logs" / "dab_agent" / "self_evolve_loop_history.json"
-    loop_history_path.write_text(
-        json.dumps(history, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
-
-    print("\n" + "=" * 80)
-    print("SELF-EVOLVE LOOP FINISHED")
-    print(f"History saved to: {loop_history_path}")
-    print("=" * 80)
-
-    print(json.dumps(history, indent=2, ensure_ascii=False))
+    comparison = compare_runs(parent_result, child_result, signal)
+    write_json(comparison_path, comparison)
+    print(json.dumps({"comparison_summary": str(comparison_path), "verdict": comparison["verdict"]}, indent=2))
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
