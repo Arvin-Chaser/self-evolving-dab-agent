@@ -1,0 +1,12 @@
+{
+  "prompt_version": "v002",
+  "prompt_path": "/home/m0st1ma/research/text2sql/prompts/text2sql_prompt_v002.txt",
+  "total": 8,
+  "correct": 8,
+  "accuracy": 1.0,
+  "exec_success_count": 8,
+  "exec_success_rate": 1.0,
+  "avg_llm_latency_sec": 1.845898151397705,
+  "avg_total_latency_sec": 1.8462695479393005,
+  "total_llm_calls": 8
+}

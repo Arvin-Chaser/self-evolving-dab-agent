@@ -1,0 +1,10 @@
+{
+  "total": 8,
+  "correct": 6,
+  "accuracy": 0.75,
+  "exec_success_count": 8,
+  "exec_success_rate": 1.0,
+  "avg_llm_latency_sec": 3.6545175909996033,
+  "avg_total_latency_sec": 3.654833197593689,
+  "total_llm_calls": 8
+}

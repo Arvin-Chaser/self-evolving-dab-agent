@@ -1,0 +1,260 @@
+[
+  {
+    "id": "q001",
+    "prompt_version": "v002",
+    "prompt_path": "/home/m0st1ma/research/text2sql/prompts/text2sql_prompt_v002.txt",
+    "question": "List all employees in the Engineering department.",
+    "gold_sql": "SELECT e.name FROM employees e JOIN departments d ON e.department_id = d.department_id WHERE d.department_name = 'Engineering';",
+    "pred_sql": "SELECT e.name\nFROM employees e\nJOIN departments d ON e.department_id = d.department_id\nWHERE d.department_name = 'Engineering';",
+    "raw_llm_output": "SELECT e.name\nFROM employees e\nJOIN departments d ON e.department_id = d.department_id\nWHERE d.department_name = 'Engineering';",
+    "gold_exec_success": true,
+    "pred_exec_success": true,
+    "gold_result": [
+      [
+        "Alice"
+      ],
+      [
+        "Bob"
+      ],
+      [
+        "Eva"
+      ]
+    ],
+    "pred_result": [
+      [
+        "Alice"
+      ],
+      [
+        "Bob"
+      ],
+      [
+        "Eva"
+      ]
+    ],
+    "result_match": true,
+    "gold_error": null,
+    "pred_error": null,
+    "latency_llm_sec": 2.215838670730591,
+    "latency_total_sec": 2.216189384460449,
+    "num_llm_calls": 1
+  },
+  {
+    "id": "q002",
+    "prompt_version": "v002",
+    "prompt_path": "/home/m0st1ma/research/text2sql/prompts/text2sql_prompt_v002.txt",
+    "question": "What is the average salary of employees in Engineering?",
+    "gold_sql": "SELECT AVG(e.salary) FROM employees e JOIN departments d ON e.department_id = d.department_id WHERE d.department_name = 'Engineering';",
+    "pred_sql": "SELECT AVG(employees.salary) AS average_salary\nFROM employees\nJOIN departments ON employees.department_id = departments.department_id\nWHERE departments.department_name = 'Engineering';",
+    "raw_llm_output": "SELECT AVG(employees.salary) AS average_salary\nFROM employees\nJOIN departments ON employees.department_id = departments.department_id\nWHERE departments.department_name = 'Engineering';",
+    "gold_exec_success": true,
+    "pred_exec_success": true,
+    "gold_result": [
+      [
+        "86666.666667"
+      ]
+    ],
+    "pred_result": [
+      [
+        "86666.666667"
+      ]
+    ],
+    "result_match": true,
+    "gold_error": null,
+    "pred_error": null,
+    "latency_llm_sec": 1.5543107986450195,
+    "latency_total_sec": 1.5546667575836182,
+    "num_llm_calls": 1
+  },
+  {
+    "id": "q003",
+    "prompt_version": "v002",
+    "prompt_path": "/home/m0st1ma/research/text2sql/prompts/text2sql_prompt_v002.txt",
+    "question": "Which department has the project with the highest budget?",
+    "gold_sql": "SELECT d.department_name FROM departments d JOIN projects p ON d.department_id = p.department_id ORDER BY p.budget DESC LIMIT 1;",
+    "pred_sql": "SELECT DISTINCT d.department_name\nFROM departments d\nJOIN projects p ON d.department_id = p.department_id\nWHERE p.budget = (SELECT MAX(budget) FROM projects);",
+    "raw_llm_output": "SELECT DISTINCT d.department_name\nFROM departments d\nJOIN projects p ON d.department_id = p.department_id\nWHERE p.budget = (SELECT MAX(budget) FROM projects);",
+    "gold_exec_success": true,
+    "pred_exec_success": true,
+    "gold_result": [
+      [
+        "Engineering"
+      ]
+    ],
+    "pred_result": [
+      [
+        "Engineering"
+      ]
+    ],
+    "result_match": true,
+    "gold_error": null,
+    "pred_error": null,
+    "latency_llm_sec": 2.107513189315796,
+    "latency_total_sec": 2.1080210208892822,
+    "num_llm_calls": 1
+  },
+  {
+    "id": "q004",
+    "prompt_version": "v002",
+    "prompt_path": "/home/m0st1ma/research/text2sql/prompts/text2sql_prompt_v002.txt",
+    "question": "How many employees are in each department?",
+    "gold_sql": "SELECT d.department_name, COUNT(e.employee_id) FROM departments d LEFT JOIN employees e ON d.department_id = e.department_id GROUP BY d.department_name;",
+    "pred_sql": "SELECT d.department_name, COUNT(e.employee_id) AS employee_count\nFROM departments d\nLEFT JOIN employees e ON d.department_id = e.department_id\nGROUP BY d.department_id, d.department_name;",
+    "raw_llm_output": "SELECT d.department_name, COUNT(e.employee_id) AS employee_count\nFROM departments d\nLEFT JOIN employees e ON d.department_id = e.department_id\nGROUP BY d.department_id, d.department_name;",
+    "gold_exec_success": true,
+    "pred_exec_success": true,
+    "gold_result": [
+      [
+        "Engineering",
+        "3"
+      ],
+      [
+        "Finance",
+        "1"
+      ],
+      [
+        "Marketing",
+        "1"
+      ]
+    ],
+    "pred_result": [
+      [
+        "Engineering",
+        "3"
+      ],
+      [
+        "Finance",
+        "1"
+      ],
+      [
+        "Marketing",
+        "1"
+      ]
+    ],
+    "result_match": true,
+    "gold_error": null,
+    "pred_error": null,
+    "latency_llm_sec": 1.9289441108703613,
+    "latency_total_sec": 1.929314374923706,
+    "num_llm_calls": 1
+  },
+  {
+    "id": "q005",
+    "prompt_version": "v002",
+    "prompt_path": "/home/m0st1ma/research/text2sql/prompts/text2sql_prompt_v002.txt",
+    "question": "List projects owned by the Engineering department.",
+    "gold_sql": "SELECT p.project_name FROM projects p JOIN departments d ON p.department_id = d.department_id WHERE d.department_name = 'Engineering';",
+    "pred_sql": "SELECT projects.project_name\nFROM projects\nJOIN departments ON projects.department_id = departments.department_id\nWHERE departments.department_name = 'Engineering';",
+    "raw_llm_output": "SELECT projects.project_name\nFROM projects\nJOIN departments ON projects.department_id = departments.department_id\nWHERE departments.department_name = 'Engineering';",
+    "gold_exec_success": true,
+    "pred_exec_success": true,
+    "gold_result": [
+      [
+        "Database Optimization"
+      ],
+      [
+        "Search Engine"
+      ]
+    ],
+    "pred_result": [
+      [
+        "Database Optimization"
+      ],
+      [
+        "Search Engine"
+      ]
+    ],
+    "result_match": true,
+    "gold_error": null,
+    "pred_error": null,
+    "latency_llm_sec": 1.5425224304199219,
+    "latency_total_sec": 1.542937994003296,
+    "num_llm_calls": 1
+  },
+  {
+    "id": "q006",
+    "prompt_version": "v002",
+    "prompt_path": "/home/m0st1ma/research/text2sql/prompts/text2sql_prompt_v002.txt",
+    "question": "Which employees have salary greater than 80000?",
+    "gold_sql": "SELECT name FROM employees WHERE salary > 80000;",
+    "pred_sql": "SELECT name FROM employees WHERE salary > 80000;",
+    "raw_llm_output": "SELECT name FROM employees WHERE salary > 80000;",
+    "gold_exec_success": true,
+    "pred_exec_success": true,
+    "gold_result": [
+      [
+        "Alice"
+      ],
+      [
+        "Eva"
+      ]
+    ],
+    "pred_result": [
+      [
+        "Alice"
+      ],
+      [
+        "Eva"
+      ]
+    ],
+    "result_match": true,
+    "gold_error": null,
+    "pred_error": null,
+    "latency_llm_sec": 1.522972583770752,
+    "latency_total_sec": 1.5232374668121338,
+    "num_llm_calls": 1
+  },
+  {
+    "id": "q007",
+    "prompt_version": "v002",
+    "prompt_path": "/home/m0st1ma/research/text2sql/prompts/text2sql_prompt_v002.txt",
+    "question": "What is the total project budget for Engineering?",
+    "gold_sql": "SELECT SUM(p.budget) FROM projects p JOIN departments d ON p.department_id = d.department_id WHERE d.department_name = 'Engineering';",
+    "pred_sql": "SELECT COALESCE(SUM(p.budget), 0) AS total_budget\nFROM projects p\nJOIN departments d ON p.department_id = d.department_id\nWHERE d.department_name = 'Engineering';",
+    "raw_llm_output": "SELECT COALESCE(SUM(p.budget), 0) AS total_budget\nFROM projects p\nJOIN departments d ON p.department_id = d.department_id\nWHERE d.department_name = 'Engineering';",
+    "gold_exec_success": true,
+    "pred_exec_success": true,
+    "gold_result": [
+      [
+        "480000"
+      ]
+    ],
+    "pred_result": [
+      [
+        "480000"
+      ]
+    ],
+    "result_match": true,
+    "gold_error": null,
+    "pred_error": null,
+    "latency_llm_sec": 2.000831365585327,
+    "latency_total_sec": 2.0012338161468506,
+    "num_llm_calls": 1
+  },
+  {
+    "id": "q008",
+    "prompt_version": "v002",
+    "prompt_path": "/home/m0st1ma/research/text2sql/prompts/text2sql_prompt_v002.txt",
+    "question": "List department names with no less than 2 employees.",
+    "gold_sql": "SELECT d.department_name FROM departments d JOIN employees e ON d.department_id = e.department_id GROUP BY d.department_name HAVING COUNT(e.employee_id) >= 2;",
+    "pred_sql": "SELECT d.department_name\nFROM departments d\nJOIN employees e ON d.department_id = e.department_id\nGROUP BY d.department_id, d.department_name\nHAVING COUNT(e.employee_id) >= 2;",
+    "raw_llm_output": "SELECT d.department_name\nFROM departments d\nJOIN employees e ON d.department_id = e.department_id\nGROUP BY d.department_id, d.department_name\nHAVING COUNT(e.employee_id) >= 2;",
+    "gold_exec_success": true,
+    "pred_exec_success": true,
+    "gold_result": [
+      [
+        "Engineering"
+      ]
+    ],
+    "pred_result": [
+      [
+        "Engineering"
+      ]
+    ],
+    "result_match": true,
+    "gold_error": null,
+    "pred_error": null,
+    "latency_llm_sec": 1.894252061843872,
+    "latency_total_sec": 1.8945555686950684,
+    "num_llm_calls": 1
+  }
+]
