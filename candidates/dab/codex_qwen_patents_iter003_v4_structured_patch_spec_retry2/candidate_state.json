@@ -1,0 +1,17 @@
+{
+  "candidate_id": "codex_qwen_patents_iter003_v4_structured_patch_spec_retry2",
+  "status": "ready_for_or_completed_branch_merge_validation",
+  "manifest_status": "valid_candidate_pending_child_eval",
+  "child_eval_status": "candidate_child_eval_passed",
+  "post_child_eval_review_status": "post_child_eval_review_passed",
+  "promotion_decision_status": "post_child_eval_review_passed",
+  "merge_validation_status": "passed",
+  "merge_recommendation": "can_consider_merge_as_feedback_analyzer_repair",
+  "lifecycle": [
+    "valid_candidate_pending_child_eval",
+    "candidate_child_eval_passed",
+    "post_child_eval_review_passed",
+    "post_child_eval_review_passed",
+    "merge_validation_passed"
+  ]
+}

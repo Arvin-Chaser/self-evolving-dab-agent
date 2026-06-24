@@ -1,0 +1,9 @@
+{
+  "candidate_id": "codex_qwen_patents_iter003_v4_structured_patch_spec_retry2",
+  "status": "post_child_eval_review_passed",
+  "candidate_dir": "/home/m0st1ma/research/text2sql/candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2",
+  "promotion_review": "/home/m0st1ma/research/text2sql/candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/promotion_review.md",
+  "review_report": "/home/m0st1ma/research/text2sql/candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/post_child_eval_review/post_child_eval_review.json",
+  "merge_recommendation": "can_consider_merge_as_feedback_analyzer_repair",
+  "scope_note": "Feedback/error-analysis repair only; not a PATENTS answer solver repair."
+}

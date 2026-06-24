@@ -1,0 +1,26 @@
+{
+  "candidate_id": "codex_qwen_patents_iter003_v4_structured_patch_spec_retry2",
+  "status": "valid_candidate_pending_child_eval",
+  "workspace": "/tmp/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2.OKRCFr",
+  "validation_exit_code": 0,
+  "patch_spec_status": "patch_spec_valid",
+  "deterministic_apply_status": "patch_apply_succeeded",
+  "post_apply_gate_status": "post_apply_gate_passed",
+  "project_changed_files": [
+    "adapters/feedback/common_trace_checks.py",
+    "adapters/feedback/dab_patents_checks.py"
+  ],
+  "patch_numstat": [
+    {
+      "path": "adapters/feedback/common_trace_checks.py",
+      "added": 51,
+      "deleted": 0
+    },
+    {
+      "path": "adapters/feedback/dab_patents_checks.py",
+      "added": 4,
+      "deleted": 3
+    }
+  ],
+  "total_changed_lines": 58
+}

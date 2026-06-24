@@ -1,0 +1,11 @@
+{
+  "status": "post_apply_gate_passed",
+  "patch_nonempty": true,
+  "project_changed_files": [
+    "adapters/feedback/common_trace_checks.py",
+    "adapters/feedback/dab_patents_checks.py"
+  ],
+  "unexpected_changed_files": [],
+  "total_changed_lines": 58,
+  "validation_allowed": true
+}

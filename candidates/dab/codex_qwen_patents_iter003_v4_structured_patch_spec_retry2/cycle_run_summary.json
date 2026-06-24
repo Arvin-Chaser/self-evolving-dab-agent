@@ -1,0 +1,15 @@
+{
+  "status": "cycle_postprocess_complete",
+  "created_at": "2026-06-24T09:36:40.302467+00:00",
+  "candidate_id": "codex_qwen_patents_iter003_v4_structured_patch_spec_retry2",
+  "candidate_dir": "candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2",
+  "launcher": null,
+  "archive_root": "archive",
+  "branch": "repair/patents-feedback-analyzer-v4",
+  "head": "1d6f471a1302877bc33cd1992a0cb61093a8e90a",
+  "outputs": {
+    "candidate_state": "candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/candidate_state.json",
+    "merge_review_package": "candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/merge_review_package.md",
+    "next_data_agent_repair_seed": "candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/next_data_agent_repair_seed.json"
+  }
+}

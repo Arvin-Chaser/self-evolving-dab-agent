@@ -1,0 +1,56 @@
+{
+  "seed_id": "next_data_agent_repair_seed_from_codex_qwen_patents_iter003_v4_structured_patch_spec_retry2",
+  "created_for": "iter004_data_agent_repair",
+  "source_candidate": "codex_qwen_patents_iter003_v4_structured_patch_spec_retry2",
+  "source_candidate_dir": "/home/m0st1ma/research/text2sql/candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2",
+  "case": {
+    "case_id": "PATENTS_query1",
+    "parent_run_id": "run_demo_full_loop_20260619_200238_parent_query_PATENTS_query1_20260619_200238",
+    "parent_run_dir": "logs/dab_agent/run_demo_full_loop_20260619_200238_parent_query_PATENTS_query1_20260619_200238"
+  },
+  "selected_stage": "metadata_parser",
+  "selected_signal": "no_years_found",
+  "selected_signal_evidence": {
+    "event": "no_years_found",
+    "trigger": "runtime_check_failed",
+    "severity": "error",
+    "status": "completed",
+    "timestamp": "2026-06-19T12:04:47.180860+00:00",
+    "context": {
+      "task": "PATENTS_query1",
+      "description": "Identify CPC level-5 group codes whose best year (by EMA of filings) is 2022"
+    },
+    "purpose": "No years extracted from filing dates — cannot compute EMA",
+    "inputs": {},
+    "outputs": {
+      "all_years": []
+    },
+    "checks": [],
+    "evidence": {},
+    "assumptions": [],
+    "warnings": [],
+    "error": null,
+    "hypothesis": null,
+    "suggested_target": null,
+    "tags": []
+  },
+  "original_dab_validation": {
+    "passed": false,
+    "validation_reason": "missing_final_answer_file_or_empty_answer",
+    "still_failed_after_feedback_repair": true
+  },
+  "recommended_iter004_goal": "Repair the data-agent side for PATENTS_query1 so CPC level-5 mapping, filing-date year extraction, EMA/best-year calculation, and final answer generation produce a non-empty validated answer.",
+  "recommended_constraints": [
+    "Do not modify feedback analyzer unless a new analyzer bug is independently proven.",
+    "Use structured patch_spec protocol; Qwen should not freely edit source.",
+    "Run child eval and small regression before any merge.",
+    "Archive every candidate attempt."
+  ],
+  "recommended_focus_areas": [
+    "CPC definition metadata grounding",
+    "CPC level-5 mapping logic",
+    "filing_date year extraction",
+    "EMA/best-year calculation path",
+    "final_answer non-empty contract"
+  ]
+}

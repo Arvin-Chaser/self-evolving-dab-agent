@@ -1,0 +1,536 @@
+IMPORT_OK
+NO_YEARS_FOUND_OK
+PARSED_PATENTS_ZERO_OK
+GENERIC_OPERATION_EVENT_OK
+PUBLIC_FUNCTIONS_PRESERVED_OK
+{
+  "run_dir": "/tmp/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2.OKRCFr/validation_run",
+  "source_result_path": "/tmp/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2.OKRCFr/validation_run/result.json",
+  "revalidated": false,
+  "stage_trace_info": {
+    "exists": true,
+    "path": "/home/m0st1ma/research/text2sql/logs/dab_agent/run_demo_full_loop_20260619_200238_parent_query_PATENTS_query1_20260619_200238/stage_trace.json",
+    "trace": [
+      {
+        "event": "step_start",
+        "trigger": "runtime_observation",
+        "severity": "info",
+        "status": "completed",
+        "timestamp": "2026-06-19T12:04:40.081905+00:00",
+        "context": {
+          "task": "PATENTS_query1",
+          "description": "Identify CPC level-5 group codes whose best year (by EMA of filings) is 2022"
+        },
+        "purpose": "Starting CPC definition parsing",
+        "inputs": {
+          "CPC_DEFINITION_SQL_PATH": "/home/m0st1ma/research/DataAgentBench/query_PATENTS/query_dataset/patent_CPCDefinition.sql"
+        },
+        "outputs": {},
+        "checks": [],
+        "evidence": {},
+        "assumptions": [],
+        "warnings": [],
+        "error": null,
+        "hypothesis": null,
+        "suggested_target": null,
+        "tags": []
+      },
+      {
+        "event": "cpc_definition_parsed",
+        "trigger": "runtime_observation",
+        "severity": "info",
+        "status": "completed",
+        "timestamp": "2026-06-19T12:04:41.237973+00:00",
+        "context": {
+          "task": "PATENTS_query1",
+          "description": "Identify CPC level-5 group codes whose best year (by EMA of filings) is 2022"
+        },
+        "purpose": "CPC definition metadata parsed successfully",
+        "inputs": {
+          "sql_path": "/home/m0st1ma/research/DataAgentBench/query_PATENTS/query_dataset/patent_CPCDefinition.sql"
+        },
+        "outputs": {
+          "rows_parsed": 260808,
+          "symbols_count": 260808,
+          "parents_count": 260808
+        },
+        "checks": [],
+        "evidence": {},
+        "assumptions": [],
+        "warnings": [],
+        "error": null,
+        "hypothesis": null,
+        "suggested_target": null,
+        "tags": []
+      },
+      {
+        "event": "cpc_metadata_loaded",
+        "trigger": "runtime_observation",
+        "severity": "info",
+        "status": "completed",
+        "timestamp": "2026-06-19T12:04:41.251084+00:00",
+        "context": {
+          "task": "PATENTS_query1",
+          "description": "Identify CPC level-5 group codes whose best year (by EMA of filings) is 2022"
+        },
+        "purpose": "CPC metadata loaded for hierarchy grounding",
+        "inputs": {},
+        "outputs": {
+          "symbol_count": 260808
+        },
+        "checks": [],
+        "evidence": {},
+        "assumptions": [],
+        "warnings": [],
+        "error": null,
+        "hypothesis": null,
+        "suggested_target": null,
+        "tags": []
+      },
+      {
+        "event": "step_start",
+        "trigger": "runtime_observation",
+        "severity": "info",
+        "status": "completed",
+        "timestamp": "2026-06-19T12:04:41.251372+00:00",
+        "context": {
+          "task": "PATENTS_query1",
+          "description": "Identify CPC level-5 group codes whose best year (by EMA of filings) is 2022"
+        },
+        "purpose": "Reading patent publication database",
+        "inputs": {
+          "PUBLICATION_DB_PATH": "/home/m0st1ma/research/DataAgentBench/query_PATENTS/query_dataset/patent_publication.db"
+        },
+        "outputs": {},
+        "checks": [],
+        "evidence": {},
+        "assumptions": [],
+        "warnings": [],
+        "error": null,
+        "hypothesis": null,
+        "suggested_target": null,
+        "tags": []
+      },
+      {
+        "event": "publication_rows_fetched",
+        "trigger": "runtime_observation",
+        "severity": "info",
+        "status": "completed",
+        "timestamp": "2026-06-19T12:04:42.678247+00:00",
+        "context": {
+          "task": "PATENTS_query1",
+          "description": "Identify CPC level-5 group codes whose best year (by EMA of filings) is 2022"
+        },
+        "purpose": "Fetched patent rows with filing_date and cpc",
+        "inputs": {},
+        "outputs": {
+          "row_count": 277813
+        },
+        "checks": [],
+        "evidence": {},
+        "assumptions": [],
+        "warnings": [],
+        "error": null,
+        "hypothesis": null,
+        "suggested_target": null,
+        "tags": []
+      },
+      {
+        "event": "cpc_mapping_summary",
+        "trigger": "runtime_observation",
+        "severity": "info",
+        "status": "completed",
+        "timestamp": "2026-06-19T12:04:47.178945+00:00",
+        "context": {
+          "task": "PATENTS_query1",
+          "description": "Identify CPC level-5 group codes whose best year (by EMA of filings) is 2022"
+        },
+        "purpose": "Summary of CPC code mapping to level 5",
+        "inputs": {},
+        "outputs": {
+          "total_processed": 277813,
+          "mapped_count": 0,
+          "unmapped_count": 2675476,
+          "cpc_codes_mapped": 0
+        },
+        "checks": [],
+        "evidence": {},
+        "assumptions": [],
+        "warnings": [],
+        "error": null,
+        "hypothesis": null,
+        "suggested_target": null,
+        "tags": []
+      },
+      {
+        "event": "cpc_unmapped_codes_detected",
+        "trigger": "runtime_observation",
+        "severity": "warning",
+        "status": "completed",
+        "timestamp": "2026-06-19T12:04:47.179279+00:00",
+        "context": {
+          "task": "PATENTS_query1",
+          "description": "Identify CPC level-5 group codes whose best year (by EMA of filings) is 2022"
+        },
+        "purpose": "Some CPC codes could not be mapped to level 5 — using fallback or skipping",
+        "inputs": {},
+        "outputs": {
+          "unmapped_count": 2675476,
+          "mapped_count": 0,
+          "mapping_coverage": 0.0
+        },
+        "checks": [],
+        "evidence": {},
+        "assumptions": [],
+        "warnings": [],
+        "error": null,
+        "hypothesis": null,
+        "suggested_target": null,
+        "tags": []
+      },
+      {
+        "event": "no_years_found",
+        "trigger": "runtime_check_failed",
+        "severity": "error",
+        "status": "completed",
+        "timestamp": "2026-06-19T12:04:47.180860+00:00",
+        "context": {
+          "task": "PATENTS_query1",
+          "description": "Identify CPC level-5 group codes whose best year (by EMA of filings) is 2022"
+        },
+        "purpose": "No years extracted from filing dates — cannot compute EMA",
+        "inputs": {},
+        "outputs": {
+          "all_years": []
+        },
+        "checks": [],
+        "evidence": {},
+        "assumptions": [],
+        "warnings": [],
+        "error": null,
+        "hypothesis": null,
+        "suggested_target": null,
+        "tags": []
+      }
+    ],
+    "error": null
+  },
+  "passed": false,
+  "validation_reason": "missing_final_answer_file_or_empty_answer",
+  "strict_info": {
+    "expected_unique": null,
+    "got_unique": null,
+    "missing_count": null,
+    "extra_count": null,
+    "duplicate_count": null
+  },
+  "pipeline_diagnostics": {
+    "run_dir": "/home/m0st1ma/research/text2sql/logs/dab_agent/run_demo_full_loop_20260619_200238_parent_query_PATENTS_query1_20260619_200238",
+    "passed": false,
+    "execution_success": true,
+    "returncode": 0,
+    "validation_reason": "missing_final_answer_file_or_empty_answer",
+    "strict_info": {
+      "expected_unique": null,
+      "got_unique": null,
+      "missing_count": null,
+      "extra_count": null,
+      "duplicate_count": null
+    },
+    "final_answer_line_count": 0,
+    "final_answer_preview_lines": [],
+    "publication_schema": {
+      "available": true,
+      "path": "/home/m0st1ma/research/DataAgentBench/query_PATENTS/query_dataset/patent_publication.db",
+      "table": "publicationinfo",
+      "columns": [
+        "Patents_info",
+        "kind_code",
+        "application_kind",
+        "pct_number",
+        "family_id",
+        "title_localized",
+        "abstract_localized",
+        "claims_localized_html",
+        "description_localized_html",
+        "publication_date",
+        "filing_date",
+        "grant_date",
+        "priority_date",
+        "priority_claim",
+        "inventor_harmonized",
+        "examiner",
+        "uspc",
+        "ipc",
+        "cpc",
+        "citation",
+        "parent",
+        "child",
+        "entity_status",
+        "art_unit"
+      ],
+      "has_cpc": true,
+      "has_cpc_prefix": false,
+      "has_filing_date": true,
+      "has_publication_year": false
+    },
+    "stage_trace_event_count": 8,
+    "count_events": [
+      {
+        "event": "cpc_definition_parsed",
+        "severity": "info",
+        "trigger": "runtime_observation",
+        "purpose": "CPC definition metadata parsed successfully",
+        "outputs": {
+          "rows_parsed": 260808,
+          "symbols_count": 260808,
+          "parents_count": 260808
+        }
+      },
+      {
+        "event": "cpc_metadata_loaded",
+        "severity": "info",
+        "trigger": "runtime_observation",
+        "purpose": "CPC metadata loaded for hierarchy grounding",
+        "outputs": {
+          "symbol_count": 260808
+        }
+      },
+      {
+        "event": "publication_rows_fetched",
+        "severity": "info",
+        "trigger": "runtime_observation",
+        "purpose": "Fetched patent rows with filing_date and cpc",
+        "outputs": {
+          "row_count": 277813
+        }
+      },
+      {
+        "event": "cpc_mapping_summary",
+        "severity": "info",
+        "trigger": "runtime_observation",
+        "purpose": "Summary of CPC code mapping to level 5",
+        "outputs": {
+          "total_processed": 277813,
+          "mapped_count": 0,
+          "unmapped_count": 2675476,
+          "cpc_codes_mapped": 0
+        }
+      },
+      {
+        "event": "cpc_unmapped_codes_detected",
+        "severity": "warning",
+        "trigger": "runtime_observation",
+        "purpose": "Some CPC codes could not be mapped to level 5 — using fallback or skipping",
+        "outputs": {
+          "unmapped_count": 2675476,
+          "mapped_count": 0,
+          "mapping_coverage": 0.0
+        }
+      }
+    ],
+    "code_markers": {
+      "mentions_publicationinfo_cpc": true,
+      "mentions_cpc_prefix": false,
+      "mentions_publication_year": false,
+      "mentions_parse_cpc_definition": true
+    },
+    "preserved_invariants": [
+      {
+        "name": "publicationinfo_uses_cpc_column",
+        "evidence": "SQLite publicationinfo table has column cpc and does not have cpc_prefix.",
+        "protected_scope": [
+          "schema_grounding",
+          "sql_column_selection"
+        ],
+        "repair_boundary": "Do not introduce cpc_prefix or publication_year as required columns."
+      },
+      {
+        "name": "generated_code_executes_successfully",
+        "evidence": "Parent generated_solve.py returned success.",
+        "protected_scope": [
+          "runtime_execution",
+          "runtime_observer_api"
+        ],
+        "repair_boundary": "Do not change runtime observer usage or generated-code structure in ways that risk execution failure."
+      },
+      {
+        "name": "cpc_definition_parsed",
+        "evidence": "Runtime event cpc_definition_parsed parsed CPC definition count 260808.",
+        "protected_scope": [
+          "cpc_definition_parser",
+          "metadata_schema_grounding"
+        ],
+        "repair_boundary": "Do not rewrite CPC dump parsing unless the current failure is explicitly parser-related."
+      }
+    ]
+  },
+  "preserved_invariants": [
+    {
+      "name": "publicationinfo_uses_cpc_column",
+      "evidence": "SQLite publicationinfo table has column cpc and does not have cpc_prefix.",
+      "protected_scope": [
+        "schema_grounding",
+        "sql_column_selection"
+      ],
+      "repair_boundary": "Do not introduce cpc_prefix or publication_year as required columns."
+    },
+    {
+      "name": "generated_code_executes_successfully",
+      "evidence": "Parent generated_solve.py returned success.",
+      "protected_scope": [
+        "runtime_execution",
+        "runtime_observer_api"
+      ],
+      "repair_boundary": "Do not change runtime observer usage or generated-code structure in ways that risk execution failure."
+    },
+    {
+      "name": "cpc_definition_parsed",
+      "evidence": "Runtime event cpc_definition_parsed parsed CPC definition count 260808.",
+      "protected_scope": [
+        "cpc_definition_parser",
+        "metadata_schema_grounding"
+      ],
+      "repair_boundary": "Do not rewrite CPC dump parsing unless the current failure is explicitly parser-related."
+    }
+  ],
+  "case_group": "query_PATENTS",
+  "case_name": "query1",
+  "prompt_version": "demo_full_loop_20260619_200238_parent",
+  "question": "Identify the CPC technology areas with the highest exponential moving average of patent filings each year (smoothing factor 0.2), and return only the CPC group codes at level 5 whose best year is 2022.",
+  "stage_distribution": {
+    "cpc_mapping_summary": 1,
+    "cpc_unmapped_codes_detected": 1,
+    "no_years_found": 1,
+    "metadata_parser": 2,
+    "transformation_calculation": 1,
+    "schema_grounding": 1,
+    "granularity_mapping": 1
+  },
+  "component_distribution": {
+    "cpc_mapping_summary": 1,
+    "cpc_unmapped_codes_detected": 1,
+    "no_years_found": 1,
+    "metadata_parser": 2,
+    "transformation_calculation": 1,
+    "schema_grounding": 1,
+    "granularity_mapping": 1
+  },
+  "error_distribution": {
+    "cpc_mapping_summary.operation_zero_output_signal": 1,
+    "cpc_unmapped_codes_detected.operation_zero_output_signal": 1,
+    "no_years_found.runtime_log_exception_or_error": 1,
+    "metadata_parser.operation_zero_output_signal": 2,
+    "transformation_calculation.operation_zero_output_signal": 1,
+    "schema_grounding.missing_required_metadata_source": 1,
+    "granularity_mapping.granularity_level_error": 1
+  },
+  "localized_errors": [
+    {
+      "stage": "cpc_mapping_summary",
+      "type": "operation_zero_output_signal",
+      "subtype": "cpc_mapping_summary",
+      "confidence": "low",
+      "evidence": "Zero count-like outputs observed: mapped_count=0, cpc_codes_mapped=0. Event: {\"checks\": [], \"error\": null, \"event\": \"cpc_mapping_summary\", \"evidence\": {}, \"function\": null, \"hypothesis\": null, \"inputs\": {}, \"operation\": \"cpc_mapping_summary\", \"outputs\": {\"cpc_codes_mapped\": 0, \"mapped_count\": 0, \"total_processed\": 277813, \"unmapped_count\": 2675476}, \"purpose\": \"Summary of CPC code mapping to level 5\", \"severity\": \"info\", \"stage\": \"cpc_mapping_summary\", \"status\": \"completed\", \"suggested_target\": null, \"trigger\": \"runtime_observation\", \"warnings\": []}",
+      "target_modules": [
+        "runtime_log_analysis",
+        "data_flow_checks"
+      ],
+      "component": "cpc_mapping_summary"
+    },
+    {
+      "stage": "cpc_unmapped_codes_detected",
+      "type": "operation_zero_output_signal",
+      "subtype": "cpc_unmapped_codes_detected",
+      "confidence": "low",
+      "evidence": "Zero count-like outputs observed: mapped_count=0. Event: {\"checks\": [], \"error\": null, \"event\": \"cpc_unmapped_codes_detected\", \"evidence\": {}, \"function\": null, \"hypothesis\": null, \"inputs\": {}, \"operation\": \"cpc_unmapped_codes_detected\", \"outputs\": {\"mapped_count\": 0, \"mapping_coverage\": 0.0, \"unmapped_count\": 2675476}, \"purpose\": \"Some CPC codes could not be mapped to level 5 — using fallback or skipping\", \"severity\": \"warning\", \"stage\": \"cpc_unmapped_codes_detected\", \"status\": \"completed\", \"suggested_target\": null, \"trigger\": \"runtime_observation\", \"warnings\": []}",
+      "target_modules": [
+        "runtime_log_analysis",
+        "data_flow_checks"
+      ],
+      "component": "cpc_unmapped_codes_detected"
+    },
+    {
+      "stage": "no_years_found",
+      "type": "runtime_log_exception_or_error",
+      "subtype": "no_years_found",
+      "confidence": "high",
+      "evidence": "{\"checks\": [], \"error\": null, \"event\": \"no_years_found\", \"evidence\": {}, \"function\": null, \"hypothesis\": null, \"inputs\": {}, \"operation\": \"no_years_found\", \"outputs\": {\"all_years\": []}, \"purpose\": \"No years extracted from filing dates — cannot compute EMA\", \"severity\": \"error\", \"stage\": \"no_years_found\", \"status\": \"completed\", \"suggested_target\": null, \"trigger\": \"runtime_check_failed\", \"warnings\": []}",
+      "target_modules": [
+        "runtime_execution",
+        "adapters/runtime_observer.py"
+      ],
+      "component": "no_years_found"
+    },
+    {
+      "stage": "metadata_parser",
+      "type": "operation_zero_output_signal",
+      "subtype": "cpc_definition_parsed_zero_symbols",
+      "confidence": "high",
+      "evidence": "cpc_definition_parsed reported parsed_symbols=0: {\"rows_parsed\": 260808, \"symbols_count\": 260808, \"parents_count\": 260808}",
+      "target_modules": [
+        "metadata_parser",
+        "cpc_definition_parser"
+      ],
+      "component": "metadata_parser"
+    },
+    {
+      "stage": "transformation_calculation",
+      "type": "operation_zero_output_signal",
+      "subtype": "zero_mapping_or_year_extraction_output",
+      "confidence": "medium",
+      "evidence": "{\"event\": \"cpc_mapping_summary\", \"trigger\": \"runtime_observation\", \"severity\": \"info\", \"status\": \"completed\", \"timestamp\": \"2026-06-19T12:04:47.178945+00:00\", \"context\": {\"task\": \"PATENTS_query1\", \"description\": \"Identify CPC level-5 group codes whose best year (by EMA of filings) is 2022\"}, \"purpose\": \"Summary of CPC code mapping to level 5\", \"inputs\": {}, \"outputs\": {\"total_processed\": 277813, \"mapped_count\": 0, \"unmapped_count\": 2675476, \"cpc_codes_mapped\": 0}, \"checks\": [], \"evidence\": {}, \"assumptions\": [], \"warnings\": [], \"error\": null, \"hypothesis\": null, \"suggested_target\": null, \"tags\": []}",
+      "target_modules": [
+        "metadata_parser",
+        "granularity_mapping",
+        "transformation_logic"
+      ],
+      "component": "transformation_calculation"
+    },
+    {
+      "stage": "metadata_parser",
+      "type": "operation_zero_output_signal",
+      "subtype": "no_years_found",
+      "confidence": "high",
+      "evidence": "{\"event\": \"no_years_found\", \"trigger\": \"runtime_check_failed\", \"severity\": \"error\", \"status\": \"completed\", \"timestamp\": \"2026-06-19T12:04:47.180860+00:00\", \"context\": {\"task\": \"PATENTS_query1\", \"description\": \"Identify CPC level-5 group codes whose best year (by EMA of filings) is 2022\"}, \"purpose\": \"No years extracted from filing dates — cannot compute EMA\", \"inputs\": {}, \"outputs\": {\"all_years\": []}, \"checks\": [], \"evidence\": {}, \"assumptions\": [], \"warnings\": [], \"error\": null, \"hypothesis\": null, \"suggested_target\": null, \"tags\": []}",
+      "target_modules": [
+        "metadata_parser",
+        "year_extraction"
+      ],
+      "component": "metadata_parser"
+    },
+    {
+      "stage": "schema_grounding",
+      "type": "missing_required_metadata_source",
+      "subtype": "hierarchy_level_not_grounded_in_definition_data",
+      "confidence": "high",
+      "evidence": "The task has a hierarchy/level requirement and a definition/metadata source is provided, but generated_solve.py does not actually read CPC_DEFINITION_SQL_PATH.",
+      "target_modules": [
+        "data_source_grounding",
+        "schema_grounding"
+      ],
+      "component": "schema_grounding"
+    },
+    {
+      "stage": "granularity_mapping",
+      "type": "granularity_level_error",
+      "subtype": "level_inferred_from_string_shape",
+      "confidence": "high",
+      "evidence": "Generated code appears to infer hierarchy level from string shape, for example slash/pattern matching, instead of grounding the level in metadata.",
+      "target_modules": [
+        "granularity_mapping",
+        "transformation_logic"
+      ],
+      "component": "granularity_mapping"
+    }
+  ],
+  "failed_case": {
+    "generated_solve_path": "/tmp/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2.OKRCFr/validation_run/generated_solve.py",
+    "final_answer_path": "/tmp/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2.OKRCFr/validation_run/final_answer.txt",
+    "final_answer_preview": ""
+  },
+  "script_run_report_path": "/tmp/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2.OKRCFr/validation_run/script_run_report.analyze_agent_error.json"
+}
+
+Saved to: /tmp/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2.OKRCFr/validation_run/agent_error_summary.json
+PATENTS_ANALYZER_OK

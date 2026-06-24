@@ -1,0 +1,9 @@
+{
+  "status": "patch_spec_valid",
+  "target_files": [
+    "adapters/feedback/dab_patents_checks.py",
+    "adapters/feedback/common_trace_checks.py"
+  ],
+  "edit_count": 2,
+  "validation_allowed": false
+}

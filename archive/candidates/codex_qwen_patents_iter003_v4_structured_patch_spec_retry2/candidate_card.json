@@ -1,0 +1,31 @@
+{
+  "candidate_id": "codex_qwen_patents_iter003_v4_structured_patch_spec_retry2",
+  "candidate_type": "feedback_analyzer_repair",
+  "parent_agent_id": "codex_qwen_meta_v4_structured_patch_spec",
+  "status": "ready_for_or_completed_branch_merge_validation",
+  "changed_files": [
+    "adapters/feedback/common_trace_checks.py",
+    "adapters/feedback/dab_patents_checks.py"
+  ],
+  "artifacts": {
+    "candidate_dir": "candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2",
+    "patch": "candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/patch.diff",
+    "manifest": "candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/manifest.json",
+    "validation_log": "candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/validation.log",
+    "child_eval_report": "candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/child_eval/child_eval_report.json",
+    "post_child_eval_review": "candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/post_child_eval_review/post_child_eval_review.json",
+    "merge_review_package": "candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/merge_review_package.md",
+    "next_repair_seed": "candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/next_data_agent_repair_seed.json"
+  },
+  "eval_summary": {
+    "manifest_status": "valid_candidate_pending_child_eval",
+    "child_eval": "candidate_child_eval_passed",
+    "post_child_eval_review": "post_child_eval_review_passed",
+    "total_changed_lines": 58,
+    "scope": "Feedback/error-analysis infrastructure repair only; not a PATENTS answer solver repair."
+  },
+  "promotion": {
+    "promoted_to_agent": true,
+    "merge_recommendation": "can_consider_merge_as_feedback_analyzer_repair"
+  }
+}

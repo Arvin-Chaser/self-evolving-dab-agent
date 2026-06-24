@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "selection_policy": "manual_score_mvp",
+  "scores": [
+    {
+      "arm_id": "codex_qwen_meta_v4_structured_patch_spec",
+      "arm_type": "meta_agent_protocol",
+      "score": 0.85,
+      "evidence": "Produced a post-child-eval-reviewed feedback analyzer repair after switching from free editor to structured patch_spec.",
+      "recommended_use": "Use as default protocol for iter004."
+    },
+    {
+      "arm_id": "dab_code_agent_v005_runtime_observer",
+      "arm_type": "data_agent",
+      "score": 0.55,
+      "evidence": "Produces stage_trace and runtime evidence but fails PATENTS_query1.",
+      "recommended_use": "Use as data-agent parent for PATENTS repair after analyzer repair is merged/applied."
+    },
+    {
+      "arm_id": "feedback_analyzer_parent_20260619",
+      "arm_type": "feedback_analyzer",
+      "score": 0.15,
+      "evidence": "Historical parent has analyzer ImportError/Traceback in child eval.",
+      "recommended_use": "Historical reference only."
+    }
+  ]
+}

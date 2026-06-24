@@ -1,0 +1,46 @@
+{
+  "agent_id": "codex_qwen_meta_v4_structured_patch_spec",
+  "agent_type": "meta_agent_protocol",
+  "status": "active_protocol",
+  "created_or_observed_at": "2026-06-23",
+  "source_refs": {
+    "prompt_template": "prompts/dab/meta_agent/codex_qwen_patents_iter003_minimal_feedback_fix_v4_structured_patch_spec.txt",
+    "runner": "experiments/run_codex_qwen_patents_iter003_minimal_feedback_fix_v4.sh",
+    "fixed_runner_wrapper": "experiments/run_codex_qwen_patents_iter003_minimal_feedback_fix_v4_fixed.sh",
+    "structured_patch_spec_executor": "experiments/structured_patch_spec_v4.py",
+    "fixed_executor_wrapper": "experiments/structured_patch_spec_v4_fixed.py"
+  },
+  "capabilities": [
+    "Qwen emits strict JSON patch_spec",
+    "runner validates patch_spec",
+    "deterministic apply",
+    "diff gate",
+    "validation gate",
+    "child eval and post-child regression compatible"
+  ],
+  "known_failures": [
+    {
+      "protocol": "free Codex-Qwen editor",
+      "symptom": "Qwen may read first or emit text patch without source diff"
+    },
+    {
+      "protocol": "v4 retry1",
+      "symptom": "deterministic executor ordering bug removed inserted errors initialization",
+      "resolution": "use fixed executor wrapper"
+    }
+  ],
+  "evals": {
+    "iter003_v4_retry2": {
+      "status": "post_child_eval_review_passed",
+      "candidate": "codex_qwen_patents_iter003_v4_structured_patch_spec_retry2"
+    }
+  },
+  "lineage": {
+    "parent_agent_id": null,
+    "derived_from_candidate": null
+  },
+  "evolve_policy": {
+    "can_use_as_parent": true,
+    "recommended_next_use": "Default protocol for iter004 data-agent repair; Qwen should propose patch_spec, not freely edit source."
+  }
+}

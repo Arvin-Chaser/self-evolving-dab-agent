@@ -1,0 +1,28 @@
+{
+  "candidate_id": "codex_qwen_patents_iter003_v4_structured_patch_spec_retry1",
+  "candidate_type": "feedback_analyzer_repair",
+  "parent_agent_id": "codex_qwen_meta_v4_structured_patch_spec",
+  "status": "failed_validation",
+  "created_or_observed_at": "2026-06-23",
+  "changed_files": [
+    "adapters/feedback/common_trace_checks.py",
+    "adapters/feedback/dab_patents_checks.py"
+  ],
+  "artifacts": {
+    "candidate_dir": "candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry1",
+    "manifest": "candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry1/manifest.json",
+    "patch": "candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry1/patch.diff",
+    "patch_spec": "candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry1/patch_spec_raw.txt",
+    "validation_log": "candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry1/validation.log"
+  },
+  "eval_summary": {
+    "patch_generated": true,
+    "patch_spec_valid": true,
+    "deterministic_apply_succeeded": true,
+    "reason": "Original v4 deterministic executor removed its own inserted errors initialization, causing UnboundLocalError in validation."
+  },
+  "promotion": {
+    "promoted_to_agent": false,
+    "merge_recommendation": "do_not_merge"
+  }
+}

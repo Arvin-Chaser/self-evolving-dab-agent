@@ -1,0 +1,30 @@
+{
+  "candidate_id": "codex_qwen_patents_iter001_child",
+  "candidate_type": "feedback_analyzer_repair",
+  "parent_agent_id": "feedback_analyzer_parent_20260619",
+  "status": "rejected_large_rewrite",
+  "created_or_observed_at": "2026-06-22",
+  "changed_files": [
+    "adapters/feedback/common_trace_checks.py"
+  ],
+  "artifacts": {
+    "candidate_dir": "candidates/dab/codex_qwen_patents_iter001_child",
+    "patch": "candidates/dab/codex_qwen_patents_iter001_child/patch.diff",
+    "manifest": "candidates/dab/codex_qwen_patents_iter001_child/manifest.json",
+    "decision": "candidates/dab/codex_qwen_patents_iter001_child/decision.json",
+    "validation_report": "candidates/dab/codex_qwen_patents_iter001_child/validation_report.md"
+  },
+  "eval_summary": {
+    "patch_generated": true,
+    "reason": "Large rewrite of common trace checker; deleted/changed public analyzer dependencies and failed validation.",
+    "known_failures": [
+      "UnboundLocalError",
+      "RecursionError",
+      "ImportError"
+    ]
+  },
+  "promotion": {
+    "promoted_to_agent": false,
+    "merge_recommendation": "do_not_merge"
+  }
+}

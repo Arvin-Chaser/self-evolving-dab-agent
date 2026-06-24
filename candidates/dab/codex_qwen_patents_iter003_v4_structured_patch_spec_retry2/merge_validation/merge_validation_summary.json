@@ -1,0 +1,40 @@
+{
+  "status": "passed",
+  "run_copy": "/tmp/merge_patents_analysis.897lu7bh",
+  "results": {
+    "py_compile": {
+      "exit_code": 0,
+      "result": "passed"
+    },
+    "module_import": {
+      "exit_code": 0,
+      "result": "passed"
+    },
+    "patents_feedback_analysis": {
+      "exit_code": 0,
+      "result": "passed"
+    },
+    "patents_primary_signal": {
+      "exit_code": 0,
+      "result": "passed"
+    },
+    "generic_operation_event": {
+      "exit_code": 0,
+      "result": "passed"
+    },
+    "non_patents_common_consumer": {
+      "exit_code": 0,
+      "result": "passed"
+    },
+    "public_api_preservation": {
+      "exit_code": 0,
+      "result": "passed"
+    },
+    "archive_validation": {
+      "exit_code": 0,
+      "result": "passed"
+    }
+  },
+  "selected_stage": "metadata_parser",
+  "selected_signal": "{\"event\": \"no_years_found\", \"trigger\": \"runtime_check_failed\", \"severity\": \"error\", \"status\": \"completed\", \"timestamp\": \"2026-06-19T12:04:47.180860+00:00\", \"context\": {\"task\": \"PATENTS_query1\", \"description\": \"Identify CPC level-5 group codes whose best year (by EMA of filings) is 2022\"}, \"purpose\": \"No years extracted from filing dates — cannot compute EMA\", \"inputs\": {}, \"outputs\": {\"all_years\": []}, \"checks\": [], \"evidence\": {}, \"assumptions\": [], \"warnings\": [], \"error\": null, \"hypothesis\": null, \"suggested_target\": null, \"tags\": []}"
+}

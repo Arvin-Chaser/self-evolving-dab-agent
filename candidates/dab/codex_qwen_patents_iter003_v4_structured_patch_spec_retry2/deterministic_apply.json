@@ -1,0 +1,13 @@
+{
+  "status": "patch_apply_succeeded",
+  "applied_edits": [
+    {
+      "file": "adapters/feedback/dab_patents_checks.py",
+      "operation": "move_errors_init_to_function_top"
+    },
+    {
+      "file": "adapters/feedback/common_trace_checks.py",
+      "operation": "add_extract_zero_mapping_and_year_errors"
+    }
+  ]
+}

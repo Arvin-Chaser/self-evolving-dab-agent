@@ -1,0 +1,33 @@
+{
+  "status": "patch_spec",
+  "target_files": [
+    "adapters/feedback/dab_patents_checks.py",
+    "adapters/feedback/common_trace_checks.py"
+  ],
+  "edits": [
+    {
+      "file": "adapters/feedback/dab_patents_checks.py",
+      "operation": "move_errors_init_to_function_top",
+      "anchor": "def extract_patents_trace_errors(stage_trace_info: dict[str, Any]) -> list[dict[str, Any]]:",
+      "intended_change": "Initialize errors once before any errors.append in extract_patents_trace_errors and preserve the existing early error return.",
+      "rationale": "The current function appends to errors before errors is initialized on the patent_aggregation_summary path."
+    },
+    {
+      "file": "adapters/feedback/common_trace_checks.py",
+      "operation": "add_extract_zero_mapping_and_year_errors",
+      "anchor": "def extract_validation_errors(passed: bool, reason: str, strict_info: dict[str, Any]) -> list[dict[str, Any]]:",
+      "intended_change": "Add a focused helper extract_zero_mapping_and_year_errors without modifying existing public helpers.",
+      "rationale": "dab_patents_checks imports this helper but common_trace_checks does not define it."
+    }
+  ],
+  "risk_scope": "minimal/local/common_api_preserved",
+  "public_functions_to_preserve": [
+    "extract_trace_based_errors",
+    "extract_operation_event_errors"
+  ],
+  "forbidden_actions_ack": {
+    "no_common_module_rewrite": true,
+    "no_delete_analyzer_dependencies": true,
+    "no_broad_refactor": true
+  }
+}

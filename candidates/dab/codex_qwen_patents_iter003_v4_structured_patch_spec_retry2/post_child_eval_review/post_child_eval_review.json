@@ -1,0 +1,91 @@
+{
+  "post_child_eval_review_status": "post_child_eval_review_passed",
+  "candidate_id": "codex_qwen_patents_iter003_v4_structured_patch_spec_retry2",
+  "patch_review": {
+    "diff_files": [
+      "adapters/feedback/common_trace_checks.py",
+      "adapters/feedback/dab_patents_checks.py"
+    ],
+    "manifest_project_changed_files": [
+      "adapters/feedback/common_trace_checks.py",
+      "adapters/feedback/dab_patents_checks.py"
+    ],
+    "allowed_files_only": true,
+    "total_changed_lines_from_numstat": 58,
+    "total_changed_lines_from_manifest": 58,
+    "total_changed_lines_consistent": true,
+    "control_files_in_project_diff": [],
+    "common_trace_checks_rewrite_risk": "low",
+    "common_trace_checks_deleted_lines": 0,
+    "child_eval_final_status": "candidate_child_eval_passed"
+  },
+  "regression_cases_run": [
+    "py_compile feedback modules",
+    "module import test",
+    "PATENTS feedback-analysis case",
+    "generic operation-event checker test",
+    "non-PATENTS common_trace_checks consumer/import test"
+  ],
+  "regression_results": {
+    "status": "passed",
+    "apply_patch_exit_code": 0,
+    "apply_patch_stderr": "",
+    "applied_files": [
+      "adapters/feedback/common_trace_checks.py",
+      "adapters/feedback/dab_patents_checks.py"
+    ],
+    "applied_numstat": [
+      "51\t0\tadapters/feedback/common_trace_checks.py",
+      "4\t3\tadapters/feedback/dab_patents_checks.py"
+    ],
+    "commands": [
+      {
+        "case": "py_compile feedback modules",
+        "command": "/home/m0st1ma/research/text2sql/.venv/bin/python -m py_compile adapters/feedback/common_trace_checks.py adapters/feedback/dab_patents_checks.py",
+        "exit_code": 0,
+        "result": "passed"
+      },
+      {
+        "case": "module import test",
+        "command": "/home/m0st1ma/research/text2sql/.venv/bin/python -c \nimport adapters.feedback.common_trace_checks as common\nimport adapters.feedback.dab_patents_checks as patents\nassert callable(common.extract_trace_based_errors)\nassert callable(common.extract_operation_event_errors)\nassert callable(common.extract_zero_mapping_and_year_errors)\nassert callable(patents.extract_patents_trace_errors)\nprint(\"MODULE_IMPORT_OK\")\n",
+        "exit_code": 0,
+        "result": "passed"
+      },
+      {
+        "case": "PATENTS feedback-analysis case",
+        "command": "/home/m0st1ma/research/text2sql/.venv/bin/python experiments/analyze_agent_error.py --run-dir /tmp/post_child_review_iter003_v4_58y46mv1/patents_run",
+        "exit_code": 0,
+        "result": "passed"
+      },
+      {
+        "case": "generic operation-event checker test",
+        "command": "/home/m0st1ma/research/text2sql/.venv/bin/python -c \nfrom adapters.feedback.common_trace_checks import extract_operation_event_errors, extract_trace_based_errors\ntrace = {\"error\": None, \"trace\": [{\"event\": \"operation_summary\", \"stage\": \"transformation_calculation\", \"operation\": \"mapping\", \"outputs\": {\"mapped_rows\": 0}}]}\nassert extract_operation_event_errors(trace)\nassert extract_trace_based_errors(trace)\nprint(\"GENERIC_OPERATION_EVENT_OK\")\n  # corrected input includes stage_trace_info.exists=True",
+        "exit_code": 0,
+        "result": "passed"
+      },
+      {
+        "case": "non-PATENTS common_trace_checks consumer/import test",
+        "command": "/home/m0st1ma/research/text2sql/.venv/bin/python -c \nfrom experiments.extract_primary_signal import extract_primary_signal\nfrom adapters.feedback.common_trace_checks import normalize_component\nassert normalize_component(\"S6_execution\") == \"runtime_execution\"\nprint(\"NON_PATENTS_COMMON_CONSUMER_IMPORT_OK\")\n",
+        "exit_code": 0,
+        "result": "passed"
+      }
+    ],
+    "exception_markers": [],
+    "new_importerror_unboundlocal_recursion": false,
+    "affects_non_patents_common_trace_checker": false,
+    "public_functions_preserved": true,
+    "patents_analyzer_passed": true,
+    "generic_operation_event_passed": true
+  },
+  "public_api_preservation_status": {
+    "status": "passed",
+    "required_public_functions": [
+      "extract_operation_event_errors",
+      "extract_trace_based_errors"
+    ],
+    "missing_public_functions": [],
+    "extract_zero_mapping_and_year_errors_present": true
+  },
+  "merge_recommendation": "can_consider_merge_as_feedback_analyzer_repair",
+  "next_recommended_action": "Candidate may be promoted for human merge review as a feedback/error-analysis repair only; do not count it as PATENTS answer solver progress."
+}

@@ -1,0 +1,23 @@
+{
+  "candidate_id": "codex_qwen_patents_iter002_minimal_feedback_fix",
+  "candidate_type": "feedback_analyzer_repair",
+  "parent_agent_id": "feedback_analyzer_parent_20260619",
+  "status": "no_op_failed",
+  "created_or_observed_at": "2026-06-22",
+  "changed_files": [],
+  "artifacts": {
+    "candidate_dir": "candidates/dab/codex_qwen_patents_iter002_minimal_feedback_fix",
+    "patch": "candidates/dab/codex_qwen_patents_iter002_minimal_feedback_fix/patch.diff",
+    "manifest": "candidates/dab/codex_qwen_patents_iter002_minimal_feedback_fix/manifest.json",
+    "decision": "candidates/dab/codex_qwen_patents_iter002_minimal_feedback_fix/decision.json",
+    "validation_report": "candidates/dab/codex_qwen_patents_iter002_minimal_feedback_fix/validation_report.md"
+  },
+  "eval_summary": {
+    "patch_generated": false,
+    "reason": "Qwen emitted apply_patch-like text rather than executing a real source modification; patch.diff was empty."
+  },
+  "promotion": {
+    "promoted_to_agent": false,
+    "merge_recommendation": "do_not_merge"
+  }
+}

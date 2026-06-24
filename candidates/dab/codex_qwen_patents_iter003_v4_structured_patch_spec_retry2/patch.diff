@@ -1,0 +1,87 @@
+diff --git a/adapters/feedback/common_trace_checks.py b/adapters/feedback/common_trace_checks.py
+index 5ce5956..7ba69b9 100644
+--- a/adapters/feedback/common_trace_checks.py
++++ b/adapters/feedback/common_trace_checks.py
+@@ -511,6 +511,57 @@ def extract_trace_based_errors(stage_trace_info: dict[str, Any]) -> list[dict[st
+     return errors
+ 
+ 
++
++
++def extract_zero_mapping_and_year_errors(stage_trace_info: dict[str, Any]) -> list[dict[str, Any]]:
++    """Extract focused zero-output signals used by PATENTS feedback adapters."""
++    errors: list[dict[str, Any]] = []
++    if stage_trace_info.get("error"):
++        return errors
++
++    for item in stage_trace_info.get("trace") or []:
++        event = str(item.get("event") or item.get("operation") or "").lower()
++        reason = str(item.get("reason") or item.get("status") or item.get("summary") or "").lower()
++        outputs = item.get("outputs") or {}
++        joined = json.dumps(
++            {
++                "event": item.get("event"),
++                "reason": item.get("reason"),
++                "summary": item.get("summary"),
++                "outputs": outputs,
++            },
++            ensure_ascii=False,
++            sort_keys=True,
++        ).lower()
++
++        if "no_years_found" in reason or "no_years_found" in joined:
++            errors.append(
++                {
++                    "stage": "metadata_parser",
++                    "type": "operation_zero_output_signal",
++                    "subtype": "no_years_found",
++                    "confidence": "high",
++                    "evidence": json.dumps(item, ensure_ascii=False)[:1000],
++                    "target_modules": ["metadata_parser", "year_extraction"],
++                }
++            )
++
++        if ("mapping" in event or "year" in event or "extraction" in event) and any(
++            value == 0 for _, value in numeric_values(outputs)
++        ):
++            errors.append(
++                {
++                    "stage": normalize_component(item.get("stage"), fallback="transformation_calculation"),
++                    "type": "operation_zero_output_signal",
++                    "subtype": "zero_mapping_or_year_extraction_output",
++                    "confidence": "medium",
++                    "evidence": json.dumps(item, ensure_ascii=False)[:1000],
++                    "target_modules": ["metadata_parser", "granularity_mapping", "transformation_logic"],
++                }
++            )
++
++    return errors
++
+ def extract_validation_errors(passed: bool, reason: str, strict_info: dict[str, Any]) -> list[dict[str, Any]]:
+     errors: list[dict[str, Any]] = []
+ 
+diff --git a/adapters/feedback/dab_patents_checks.py b/adapters/feedback/dab_patents_checks.py
+index dea1282..bc2fac9 100644
+--- a/adapters/feedback/dab_patents_checks.py
++++ b/adapters/feedback/dab_patents_checks.py
+@@ -42,6 +42,10 @@ def detects_string_shape_level_heuristic(code: str) -> bool:
+ 
+ 
+ def extract_patents_trace_errors(stage_trace_info: dict[str, Any]) -> list[dict[str, Any]]:
++    errors: list[dict[str, Any]] = []
++    if stage_trace_info.get("error"):
++        return errors
++
+     # Detect zero-parsed-patents signal from patent_aggregation_summary event
+     for item in stage_trace_info.get("trace") or []:
+         if item.get("event") == "patent_aggregation_summary":
+@@ -60,9 +64,6 @@ def extract_patents_trace_errors(stage_trace_info: dict[str, Any]) -> list[dict[
+                 )
+                 break
+ 
+-    errors: list[dict[str, Any]] = []
+-    if stage_trace_info.get("error"):
+-        return errors
+ 
+     # Detect zero-parsed-symbols signal from cpc_definition_parsed event
+     for item in stage_trace_info.get("trace") or []:

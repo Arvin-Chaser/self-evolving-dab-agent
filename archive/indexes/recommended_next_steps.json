@@ -1,0 +1,10 @@
+{
+  "remembered_sequence": [
+    "Review and optionally merge iter003_v4 feedback analyzer repair as a scoped feedback/error-analysis fix.",
+    "Rerun PATENTS parent analysis on the repaired analyzer baseline and confirm selected_signal is metadata_parser/no_years_found.",
+    "Freeze the repaired selected_signal as iter004 input.",
+    "Start iter004 data-agent repair using codex_qwen_meta_v4_structured_patch_spec protocol.",
+    "Run every future candidate through child eval and small regression before any merge."
+  ],
+  "current_next_step": "Human merge review for codex_qwen_patents_iter003_v4_structured_patch_spec_retry2, or apply it to a branch as feedback analyzer repair baseline."
+}

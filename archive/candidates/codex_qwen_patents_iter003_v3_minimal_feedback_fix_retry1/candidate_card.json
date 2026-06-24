@@ -1,0 +1,22 @@
+{
+  "candidate_id": "codex_qwen_patents_iter003_v3_minimal_feedback_fix_retry1",
+  "candidate_type": "feedback_analyzer_repair",
+  "parent_agent_id": "feedback_analyzer_parent_20260619",
+  "status": "protocol_failed_first_action_no_diff",
+  "created_or_observed_at": "2026-06-23",
+  "changed_files": [],
+  "artifacts": {
+    "candidate_dir": "candidates/dab/codex_qwen_patents_iter003_v3_minimal_feedback_fix_retry1",
+    "manifest": "candidates/dab/codex_qwen_patents_iter003_v3_minimal_feedback_fix_retry1/manifest.json",
+    "context_pack": "candidates/dab/codex_qwen_patents_iter003_v3_minimal_feedback_fix_retry1/minimal_source_context_pack.md",
+    "patch": "candidates/dab/codex_qwen_patents_iter003_v3_minimal_feedback_fix_retry1/patch.diff"
+  },
+  "eval_summary": {
+    "patch_generated": false,
+    "reason": "Context injection and v2 gate worked, but Qwen still chose a read/check command as first completed tool action; no allowed-source diff."
+  },
+  "promotion": {
+    "promoted_to_agent": false,
+    "merge_recommendation": "do_not_merge"
+  }
+}

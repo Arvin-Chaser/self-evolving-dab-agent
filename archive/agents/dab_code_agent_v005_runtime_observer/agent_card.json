@@ -1,0 +1,41 @@
+{
+  "agent_id": "dab_code_agent_v005_runtime_observer",
+  "agent_type": "data_agent",
+  "status": "active_baseline",
+  "created_or_observed_at": "2026-06-19",
+  "source_refs": {
+    "prompt": "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+    "runner": "experiments/run_dab_agent.py",
+    "runtime_observer": "adapters/runtime_observer.py",
+    "parent_run": "logs/dab_agent/run_demo_full_loop_20260619_200238_parent_query_PATENTS_query1_20260619_200238"
+  },
+  "capabilities": [
+    "DAB code generation",
+    "runtime observer instrumentation",
+    "stage_trace emission"
+  ],
+  "known_failures": [
+    {
+      "case": "PATENTS_query1",
+      "status": "failed",
+      "reason": "missing_final_answer_file_or_empty_answer",
+      "observed_signal_after_feedback_repair": "metadata_parser/no_years_found"
+    }
+  ],
+  "evals": {
+    "PATENTS_query1": {
+      "passed_original_dab_validation": false,
+      "execution_success": true,
+      "selected_stage_after_feedback_repair": "metadata_parser",
+      "selected_signal_after_feedback_repair": "no_years_found"
+    }
+  },
+  "lineage": {
+    "parent_agent_id": null,
+    "derived_from_candidate": null
+  },
+  "evolve_policy": {
+    "can_use_as_parent": true,
+    "recommended_next_use": "Use after feedback analyzer repair is merged or applied as baseline; target data-agent logic, not feedback checker."
+  }
+}

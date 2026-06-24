@@ -1,0 +1,20 @@
+{
+  "nodes": [
+    {"id": "feedback_analyzer_parent_20260619", "kind": "agent"},
+    {"id": "codex_qwen_meta_v4_structured_patch_spec", "kind": "agent"},
+    {"id": "dab_code_agent_v005_runtime_observer", "kind": "agent"},
+    {"id": "codex_qwen_patents_iter001_child", "kind": "candidate"},
+    {"id": "codex_qwen_patents_iter002_minimal_feedback_fix", "kind": "candidate"},
+    {"id": "codex_qwen_patents_iter003_v3_minimal_feedback_fix_retry1", "kind": "candidate"},
+    {"id": "codex_qwen_patents_iter003_v4_structured_patch_spec_retry1", "kind": "candidate"},
+    {"id": "codex_qwen_patents_iter003_v4_structured_patch_spec_retry2", "kind": "candidate"}
+  ],
+  "edges": [
+    {"from": "feedback_analyzer_parent_20260619", "to": "codex_qwen_patents_iter001_child", "relation": "parent_of"},
+    {"from": "feedback_analyzer_parent_20260619", "to": "codex_qwen_patents_iter002_minimal_feedback_fix", "relation": "parent_of"},
+    {"from": "feedback_analyzer_parent_20260619", "to": "codex_qwen_patents_iter003_v3_minimal_feedback_fix_retry1", "relation": "parent_of"},
+    {"from": "codex_qwen_meta_v4_structured_patch_spec", "to": "codex_qwen_patents_iter003_v4_structured_patch_spec_retry1", "relation": "generated"},
+    {"from": "codex_qwen_meta_v4_structured_patch_spec", "to": "codex_qwen_patents_iter003_v4_structured_patch_spec_retry2", "relation": "generated"},
+    {"from": "codex_qwen_patents_iter003_v4_structured_patch_spec_retry2", "to": "feedback_analyzer_parent_20260619", "relation": "promoted_repair_for"}
+  ]
+}

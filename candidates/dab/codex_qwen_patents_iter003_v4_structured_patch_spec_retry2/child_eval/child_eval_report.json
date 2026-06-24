@@ -1,0 +1,116 @@
+{
+  "candidate_id": "codex_qwen_patents_iter003_v4_structured_patch_spec_retry2",
+  "parent_run_id": "run_demo_full_loop_20260619_200238_parent_query_PATENTS_query1_20260619_200238",
+  "child_run_id": "child_eval_iter003_v4_retry2",
+  "eval_root": "/tmp/child_eval_iter003_v4_buftp95k",
+  "parent_run_copy": "/tmp/child_eval_iter003_v4_buftp95k/parent_run",
+  "child_run_copy": "/tmp/child_eval_iter003_v4_buftp95k/child_run",
+  "candidate_artifacts_used": [
+    "/home/m0st1ma/research/text2sql/candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/patch.diff",
+    "/home/m0st1ma/research/text2sql/candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/manifest.json",
+    "/home/m0st1ma/research/text2sql/candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/validation.log",
+    "/home/m0st1ma/research/text2sql/candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/patch_spec_raw.txt"
+  ],
+  "applied_patch_files": [
+    "adapters/feedback/common_trace_checks.py",
+    "adapters/feedback/dab_patents_checks.py"
+  ],
+  "applied_patch_numstat": [
+    "51\t0\tadapters/feedback/common_trace_checks.py",
+    "4\t3\tadapters/feedback/dab_patents_checks.py"
+  ],
+  "parent_status": {
+    "status": "analyzer_failed",
+    "analyze_exit_code": 1,
+    "primary_signal_exit_code": 0,
+    "exception_markers": [
+      "ImportError",
+      "Traceback"
+    ],
+    "validation_reason": "missing_final_answer_file_or_empty_answer",
+    "passed_original_dab_validation": false,
+    "selected_stage": "granularity_mapping",
+    "selected_signal": "Generated code appears to infer hierarchy level from string shape, for example slash/pattern matching, instead of grounding the level in metadata.",
+    "error_subtypes": []
+  },
+  "child_status": {
+    "status": "analyzer_passed",
+    "analyze_exit_code": 0,
+    "primary_signal_exit_code": 0,
+    "py_compile_exit_code": 0,
+    "focused_import_behavior_exit_code": 0,
+    "exception_markers": [],
+    "validation_reason": "missing_final_answer_file_or_empty_answer",
+    "passed_original_dab_validation": false,
+    "selected_stage": "metadata_parser",
+    "selected_signal": "{\"event\": \"no_years_found\", \"trigger\": \"runtime_check_failed\", \"severity\": \"error\", \"status\": \"completed\", \"timestamp\": \"2026-06-19T12:04:47.180860+00:00\", \"context\": {\"task\": \"PATENTS_query1\", \"description\": \"Identify CPC level-5 group codes whose best year (by EMA of filings) is 2022\"}, \"purpose\": \"No years extracted from filing dates — cannot compute EMA\", \"inputs\": {}, \"outputs\": {\"all_years\": []}, \"checks\": [], \"evidence\": {}, \"assumptions\": [], \"warnings\": [], \"error\": null, \"hypothesis\": null, \"suggested_target\": null, \"tags\": []}",
+    "error_count": 0,
+    "error_subtypes": []
+  },
+  "validation_commands_and_results": [
+    {
+      "command": "git apply candidate patch.diff in child workspace",
+      "exit_code": 0,
+      "result": "applied"
+    },
+    {
+      "command": "confirm applied files are allowed whitelist only",
+      "exit_code": 0,
+      "result": "passed"
+    },
+    {
+      "command": "python experiments/analyze_agent_error.py --run-dir parent_run",
+      "exit_code": 1,
+      "result": "analyzer_failed"
+    },
+    {
+      "command": "python experiments/analyze_agent_error.py --run-dir child_run",
+      "exit_code": 0,
+      "result": "analyzer_passed"
+    },
+    {
+      "command": "python experiments/extract_primary_signal.py --error-summary child_run/agent_error_summary.json",
+      "exit_code": 0,
+      "result": "passed"
+    },
+    {
+      "command": "python -m py_compile adapters/feedback/common_trace_checks.py adapters/feedback/dab_patents_checks.py",
+      "exit_code": 0,
+      "result": "passed"
+    },
+    {
+      "command": "child import + no_years_found + parsed_patents=0 + generic operation-event focused test",
+      "exit_code": 0,
+      "result": "passed"
+    }
+  ],
+  "parent_child_delta": {
+    "parent_original_failure_reason": "missing_final_answer_file_or_empty_answer",
+    "child_eliminated_import_unbound_recursion_errors": true,
+    "child_patents_analyzer_passed": true,
+    "child_introduced_new_stage_error": false,
+    "selected_stage_delta": {
+      "parent": "granularity_mapping",
+      "child": "metadata_parser"
+    },
+    "selected_signal_delta": {
+      "parent": "Generated code appears to infer hierarchy level from string shape, for example slash/pattern matching, instead of grounding the level in metadata.",
+      "child": "{\"event\": \"no_years_found\", \"trigger\": \"runtime_check_failed\", \"severity\": \"error\", \"status\": \"completed\", \"timestamp\": \"2026-06-19T12:04:47.180860+00:00\", \"context\": {\"task\": \"PATENTS_query1\", \"description\": \"Identify CPC level-5 group codes whose best year (by EMA of filings) is 2022\"}, \"purpose\": \"No years extracted from filing dates — cannot compute EMA\", \"inputs\": {}, \"outputs\": {\"all_years\": []}, \"checks\": [], \"evidence\": {}, \"assumptions\": [], \"warnings\": [], \"error\": null, \"hypothesis\": null, \"suggested_target\": null, \"tags\": []}"
+    },
+    "original_dab_validation_delta": {
+      "parent_passed": false,
+      "child_passed": false,
+      "interpretation": "unchanged failed PATENTS run; candidate improves feedback/error-analysis reliability, not generated_solve.py output"
+    }
+  },
+  "final_status": "candidate_child_eval_passed",
+  "next_recommended_action": "Promote to post-child-eval review for possible merge of the minimal feedback-checker patch; keep separate from solving the PATENTS generated-code failure.",
+  "raw_log_paths": {
+    "parent_analyze_stdout": "/home/m0st1ma/research/text2sql/candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/child_eval/parent_analyze.stdout",
+    "parent_analyze_stderr": "/home/m0st1ma/research/text2sql/candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/child_eval/parent_analyze.stderr",
+    "child_analyze_stdout": "/home/m0st1ma/research/text2sql/candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/child_eval/child_analyze.stdout",
+    "child_analyze_stderr": "/home/m0st1ma/research/text2sql/candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/child_eval/child_analyze.stderr",
+    "parent_primary_signal": "/home/m0st1ma/research/text2sql/candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/child_eval/parent_primary_signal.json",
+    "child_primary_signal": "/home/m0st1ma/research/text2sql/candidates/dab/codex_qwen_patents_iter003_v4_structured_patch_spec_retry2/child_eval/child_primary_signal.json"
+  }
+}

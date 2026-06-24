@@ -1,0 +1,44 @@
+{
+  "agent_id": "feedback_analyzer_parent_20260619",
+  "agent_type": "feedback_analyzer",
+  "status": "historical_parent",
+  "created_or_observed_at": "2026-06-19",
+  "source_refs": {
+    "common_trace_checks": "adapters/feedback/common_trace_checks.py",
+    "dab_patents_checks": "adapters/feedback/dab_patents_checks.py",
+    "analyzer": "experiments/analyze_agent_error.py",
+    "primary_signal_extractor": "experiments/extract_primary_signal.py"
+  },
+  "capabilities": [
+    "common trace checks",
+    "PATENTS-specific feedback checks",
+    "primary signal extraction"
+  ],
+  "known_failures": [
+    {
+      "case": "PATENTS_query1",
+      "status": "analyzer_failed",
+      "symptoms": [
+        "ImportError/Traceback in clean parent child-eval",
+        "broad granularity_mapping/string-shape signal before repair"
+      ]
+    }
+  ],
+  "evals": {
+    "child_eval_parent_side": {
+      "analyzer_exit_code": 1,
+      "exception_markers": [
+        "ImportError",
+        "Traceback"
+      ]
+    }
+  },
+  "lineage": {
+    "parent_agent_id": null,
+    "derived_from_candidate": null
+  },
+  "evolve_policy": {
+    "can_use_as_parent": false,
+    "recommended_next_use": "Keep as historical baseline only; prefer promoted feedback analyzer repair."
+  }
+}
