@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Unified Codex-Qwen repair launcher.
 
 This is the reusable candidate-generation step used by the higher-level
@@ -237,11 +237,23 @@ def build_context_pack(
         if prompt_path.exists():
             lines += ["## Parent data-agent prompt", f"Path: `{normalize_rel(parent_prompt)}`", "```text", read_text(prompt_path, 24000), "```", ""]
     if parent_run and parent_run.exists():
-        for name in ("agent_error_summary.json", "stage_trace.json", "generated_solve.py", "final_answer.txt"):
+        artifact_names = ["agent_error_summary.json", "stage_trace.json", "final_answer.txt"]
+        if profile.name != "data_agent_prompt_repair":
+            artifact_names.insert(2, "generated_solve.py")
+        for name in artifact_names:
             artifact = parent_run / name
             if artifact.exists():
                 fence = "json" if artifact.suffix == ".json" else "text"
-                lines += [f"## Parent run artifact: {name}", f"Path: `{artifact}`", f"```{fence}", read_text(artifact, 24000), "```", ""]
+                max_chars = 16000 if name == "agent_error_summary.json" else 12000
+                lines += [f"## Parent run artifact: {name}", f"Path: `{artifact}`", f"```{fence}", read_text(artifact, max_chars), "```", ""]
+        if profile.name == "data_agent_prompt_repair" and (parent_run / "generated_solve.py").exists():
+            lines += [
+                "## Generated code evidence policy",
+                f"Generated code exists at `{parent_run / 'generated_solve.py'}` but is intentionally not included as editable context.",
+                "For this profile, generated_solve.py is evidence only. Do not use generated code as a patch target, anchor, or intended_change.",
+                "Translate any code-level diagnosis into a durable instruction for the parent data-agent prompt.",
+                "",
+            ]
     if profile.name == "analyzer_infra_repair":
         for pattern in profile.allowed_patterns:
             if "*" in pattern:
@@ -254,10 +266,35 @@ def build_context_pack(
     return out
 
 
+def profile_prompt_instructions(profile: RepairProfile) -> str:
+    if profile.name == "data_agent_prompt_repair":
+        return """
+Profile-specific hard rules for data_agent_prompt_repair:
+
+1. You may modify ONLY the parent prompt file listed in target_files.
+2. The anchor MUST be exact text copied from the Parent data-agent prompt section of the context pack.
+3. Do NOT use generated_solve.py, runtime logs, stage_trace, or error-summary text as an anchor. They are evidence only.
+4. Do NOT write Python implementation code into the prompt. Translate code-level failures into concise prompt instructions that guide future generated code.
+5. Prefer insert_after_anchor or append_text with a short instruction paragraph. Avoid replacing large prompt blocks.
+6. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
+7. If the repair would require editing generated_solve.py or project source instead of the prompt, output no_op_failed.
+"""
+    return """
+Profile-specific hard rules:
+
+1. Use only files allowed by the selected profile.
+2. Anchors must be exact text from the allowed target file.
+3. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Escape quotes and newlines inside JSON strings.
+"""
+
+
 def build_prompt(profile: RepairProfile, context_path: Path, candidate_dir: Path) -> Path:
+    profile_rules = profile_prompt_instructions(profile)
     prompt = f"""You are Codex-Qwen acting as a structured meta-agent repair proposer.
 
-You are not allowed to run tools or emit free-form patches. Output exactly one JSON object.
+You are not allowed to run tools, read additional files, or emit free-form patches. Output exactly one strict JSON object.
+Do not wrap the JSON in markdown fences.
+{profile_rules}
 
 If no safe minimal repair is possible, output:
 {{"status": "no_op_failed", "reason": "..."}}
@@ -343,6 +380,11 @@ def validate_spec(spec: dict[str, Any] | None, profile: RepairProfile, candidate
             return False, "protocol_failed_invalid_patch_spec", f"edit {idx} unsupported operation: {edit['operation']}"
         if edit["operation"] not in ("append_text", "create_file") and not edit["anchor"]:
             return False, "protocol_failed_invalid_patch_spec", f"edit {idx} requires non-empty anchor"
+        if profile.name == "data_agent_prompt_repair":
+            code_markers = ("def ", "import ", "json.loads", "log_event(", "sqlite3", "FINAL_ANSWER_PATH", "STAGE_TRACE_PATH")
+            combined = (edit["anchor"] + "\n" + edit["intended_change"]).lower()
+            if any(marker.lower() in combined for marker in code_markers):
+                return False, "protocol_failed_invalid_patch_spec", f"edit {idx} appears to patch generated code instead of prompt instructions"
     if spec.get("risk_scope") != profile.risk_scope:
         return False, "protocol_failed_invalid_patch_spec", f"risk_scope must be {profile.risk_scope}"
     ack = spec.get("forbidden_actions_ack")
