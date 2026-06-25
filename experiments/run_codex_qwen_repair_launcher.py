@@ -362,8 +362,9 @@ Profile-specific hard rules for data_agent_prompt_repair:
 6. For insert_after_anchor or insert_before_anchor, intended_change must start with a newline so prompt bullets are not merged onto one line.
 7. Use the Runtime observer API contract from the context pack as authoritative. In particular, log_exception requires two positional arguments: log_exception("event_name", exc).
 8. If the parent prompt contains an older contradictory runtime signature such as log_exception(exc) or "one positional argument", prefer replace_text_once on that stale prompt sentence/block instead of appending a new conflicting instruction.
-9. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
-10. If the repair would require editing generated_solve.py or project source instead of the prompt, output no_op_failed.
+9. If the failure involves an unclear domain concept, hierarchy term, level, or granularity requirement, propose a generic local-grounding instruction. Do not name a dataset-specific concept unless it already appears in the target prompt/evidence; do not add web access or external search to generated code.
+10. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
+11. If the repair would require editing generated_solve.py or project source instead of the prompt, output no_op_failed.
 """
     return """
 Profile-specific hard rules:
