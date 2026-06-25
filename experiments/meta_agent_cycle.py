@@ -16,6 +16,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -69,6 +73,113 @@ def compact_signal(signal: Any) -> dict[str, Any]:
     except json.JSONDecodeError:
         pass
     return {"raw": text}
+
+def parse_code_list(text: str | None) -> list[str]:
+    if not text:
+        return []
+    return [item.strip() for item in text.split(",") if item.strip()]
+
+
+def compute_answer_metrics(validation_reason: str | None) -> dict[str, Any]:
+    reason = validation_reason or ""
+    metrics: dict[str, Any] = {
+        "status": "unavailable",
+        "expected_count": None,
+        "predicted_count": None,
+        "true_positive": None,
+        "false_positive": None,
+        "false_negative": None,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "jaccard": 0.0,
+    }
+    match = re.search(
+        r"expected\s+(\d+)\s+unique\s+CPC\s+codes,\s+got\s+(\d+)\s+unique\s+CPC\s+codes",
+        reason,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return metrics
+
+    expected_count = int(match.group(1))
+    predicted_count = int(match.group(2))
+    missing_match = re.search(r"Missing CPC codes \((\d+)\):\s*([^\n]*)", reason)
+    extra_match = re.search(r"Extra CPC codes \((\d+)\):\s*([^\n]*)", reason)
+    false_negative = int(missing_match.group(1)) if missing_match else 0
+    false_positive = int(extra_match.group(1)) if extra_match else max(predicted_count - expected_count, 0)
+    true_positive = max(expected_count - false_negative, 0)
+    precision = true_positive / predicted_count if predicted_count else 0.0
+    recall = true_positive / expected_count if expected_count else 0.0
+    f1 = (2 * precision * recall / (precision + recall)) if precision + recall else 0.0
+    denom = true_positive + false_positive + false_negative
+    jaccard = true_positive / denom if denom else 0.0
+    return {
+        "status": "computed",
+        "expected_count": expected_count,
+        "predicted_count": predicted_count,
+        "true_positive": true_positive,
+        "false_positive": false_positive,
+        "false_negative": false_negative,
+        "precision": round(precision, 6),
+        "recall": round(recall, 6),
+        "f1": round(f1, 6),
+        "jaccard": round(jaccard, 6),
+        "missing_codes": parse_code_list(missing_match.group(2) if missing_match else None),
+        "extra_codes": parse_code_list(extra_match.group(2) if extra_match else None),
+    }
+
+
+def compute_evolution_assessment(candidate_type: str, child_eval: dict[str, Any]) -> dict[str, Any]:
+    child_status = child_eval.get("child_status") or {}
+    validation_reason = child_status.get("validation_reason") or child_eval.get("child_validation_reason")
+    answer_metrics = compute_answer_metrics(validation_reason)
+    child_passed = bool(child_status.get("passed_original_dab_validation") or child_eval.get("child_passed"))
+    child_exit_code = child_eval.get("child_run_exit_code")
+    predicted_count = answer_metrics.get("predicted_count") or 0
+    execution_success = child_exit_code == 0
+    has_answer_like_output = predicted_count > 0
+    useful_new_signal = bool(child_status.get("selected_stage") or child_eval.get("child_selected_stage"))
+
+    if child_passed:
+        evolution_status = "passed"
+        eligible = True
+    elif candidate_type == "data_agent_repair" and answer_metrics.get("f1", 0.0) > 0:
+        evolution_status = "improved_but_failed"
+        eligible = True
+    else:
+        evolution_status = "failed_no_measured_answer_improvement"
+        eligible = False
+
+    answer_f1 = float(answer_metrics.get("f1") or 0.0)
+    reward = 1.0 if child_passed else 0.0
+    if evolution_status == "improved_but_failed":
+        reward = round(min(0.85, 0.20 + 0.70 * answer_f1 + (0.05 if execution_success else 0.0)), 6)
+
+    return {
+        "evolution_status": evolution_status,
+        "evolution_parent_eligible": eligible,
+        "reward": reward,
+        "answer_metrics": answer_metrics,
+        "execution_metrics": {
+            "child_exit_code": child_exit_code,
+            "child_execution_success": execution_success,
+            "child_has_answer_like_output": has_answer_like_output,
+        },
+        "signal_metrics": {
+            "useful_new_signal": useful_new_signal,
+            "child_selected_stage": child_status.get("selected_stage") or child_eval.get("child_selected_stage"),
+            "child_selected_signal": child_status.get("selected_signal") or child_eval.get("child_selected_signal"),
+        },
+        "merge_eligible": child_passed,
+        "selection_rationale": (
+            "Strict validation passed."
+            if child_passed
+            else "Candidate remains non-mergeable, but child answer has non-zero overlap with expected CPC set."
+            if eligible
+            else "Candidate did not produce measurable answer overlap."
+        ),
+    }
 
 
 def infer_state(candidate_dir: Path) -> dict[str, Any]:
@@ -294,6 +405,186 @@ def upsert_jsonl(path: Path, key: str, row: dict[str, Any]) -> None:
     path.write_text("\n".join(json.dumps(item, ensure_ascii=False, sort_keys=True) for item in rows) + "\n", encoding="utf-8")
 
 
+
+
+def load_jsonl(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def upsert_selection_score(archive_root: Path, row: dict[str, Any]) -> None:
+    path = archive_root / "indexes/selection_scores.json"
+    data = load_json(path) or {"version": 1, "selection_policy": "manual_score_mvp", "scores": []}
+    scores = data.setdefault("scores", [])
+    replaced = False
+    for index, existing in enumerate(scores):
+        if existing.get("arm_id") == row.get("arm_id"):
+            scores[index] = row
+            replaced = True
+            break
+    if not replaced:
+        scores.append(row)
+    scores.sort(key=lambda item: item.get("score", 0.0), reverse=True)
+    write_json(path, data)
+
+
+def find_agent_card(archive_root: Path, agent_id: str) -> dict[str, Any] | None:
+    for row in load_jsonl(archive_root / "indexes/agents.jsonl"):
+        if row.get("agent_id") == agent_id and row.get("card"):
+            card_path = ROOT / row["card"]
+            card = load_json(card_path)
+            return card if isinstance(card, dict) else None
+    card = load_json(archive_root / "agents" / agent_id / "agent_card.json")
+    return card if isinstance(card, dict) else None
+
+
+def resolve_parent_prompt_source(archive_root: Path, parent_agent_id: str, source_rel: str) -> tuple[Path, str]:
+    card = find_agent_card(archive_root, parent_agent_id)
+    prompt_ref = ((card or {}).get("source_refs") or {}).get("prompt")
+    if isinstance(prompt_ref, str) and prompt_ref:
+        prompt_path = Path(prompt_ref)
+        if not prompt_path.is_absolute():
+            prompt_path = ROOT / prompt_path
+        if prompt_path.exists():
+            return prompt_path, prompt_ref
+    return ROOT / source_rel, source_rel
+
+
+def materialize_prompt_patch(
+    candidate_dir: Path,
+    archive_root: Path,
+    agent_id: str,
+    parent_agent_id: str,
+    changed_files: list[str],
+) -> tuple[str | None, str | None]:
+    prompt_files = [path for path in changed_files if path.startswith("prompts/dab/") and path.endswith(".txt")]
+    if len(prompt_files) != 1:
+        return None, None
+    source_rel = prompt_files[0]
+    source_path, source_ref = resolve_parent_prompt_source(archive_root, parent_agent_id, source_rel)
+    patch_path = candidate_dir / "patch.diff"
+    if not source_path.exists() or not patch_path.exists():
+        return None, None
+
+    with tempfile.TemporaryDirectory(prefix="archive_shadow_parent.") as tmp:
+        temp_root = Path(tmp) / "repo"
+        temp_source = temp_root / source_rel
+        temp_source.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source_path, temp_source)
+        subprocess.run(["git", "init", "--quiet"], cwd=temp_root, check=True)
+        subprocess.run(["git", "config", "user.name", "archive-shadow-parent"], cwd=temp_root, check=True)
+        subprocess.run(["git", "config", "user.email", "archive-shadow-parent@localhost"], cwd=temp_root, check=True)
+        subprocess.run(["git", "add", "."], cwd=temp_root, check=True)
+        subprocess.run(["git", "commit", "--quiet", "-m", "baseline"], cwd=temp_root, check=True)
+        apply_proc = subprocess.run(["git", "apply", str(patch_path)], cwd=temp_root, text=True, capture_output=True, check=False)
+        if apply_proc.returncode != 0:
+            return None, None
+        out_rel = Path("archive/prompts") / agent_id / Path(source_rel).name
+        out_path = ROOT / out_rel
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(temp_source, out_path)
+        return str(out_rel), source_ref
+
+def create_shadow_parent_agent(
+    *,
+    candidate_dir: Path,
+    archive_root: Path,
+    parent_agent_id: str,
+    candidate_type: str,
+    patch_review: dict[str, Any],
+    assessment: dict[str, Any],
+) -> dict[str, Any] | None:
+    if candidate_type != "data_agent_repair":
+        return None
+    if not assessment.get("evolution_parent_eligible"):
+        return None
+    agent_id = f"data_agent_shadow_{candidate_dir.name}"
+    prompt_ref, base_prompt_ref = materialize_prompt_patch(
+        candidate_dir,
+        archive_root,
+        agent_id,
+        parent_agent_id,
+        patch_review["diff_files"],
+    )
+    if not prompt_ref:
+        return None
+
+    card = {
+        "agent_id": agent_id,
+        "agent_type": "data_agent",
+        "status": "shadow_parent_partial_improvement"
+        if assessment.get("evolution_status") == "improved_but_failed"
+        else "shadow_parent_validated_child",
+        "created_or_observed_at": candidate_dir.name.rsplit("_", 2)[-2] if "_" in candidate_dir.name else None,
+        "source_refs": {
+            "prompt": prompt_ref,
+            "base_prompt": base_prompt_ref,
+            "candidate_patch": str((candidate_dir / "patch.diff").relative_to(ROOT)),
+            "candidate_card": str((archive_root / "candidates" / candidate_dir.name / "candidate_card.json").relative_to(ROOT)),
+            "runner": "experiments/run_dab_agent.py",
+        },
+        "capabilities": [
+            "DAB code generation",
+            "runtime observer instrumentation",
+            "stage_trace emission",
+            "partial-improvement continuation parent",
+        ],
+        "known_failures": [
+            {
+                "case": "PATENTS_query1",
+                "status": "failed_strict_validation",
+                "reason": assessment.get("signal_metrics", {}).get("child_selected_stage"),
+                "merge_note": "Do not merge this shadow parent into main without a later strict-validation pass.",
+            }
+        ],
+        "evals": {
+            "PATENTS_query1": {
+                "passed_original_dab_validation": assessment.get("merge_eligible"),
+                "evolution_status": assessment.get("evolution_status"),
+                "answer_metrics": assessment.get("answer_metrics"),
+                "execution_metrics": assessment.get("execution_metrics"),
+                "selected_stage": assessment.get("signal_metrics", {}).get("child_selected_stage"),
+                "selected_signal": assessment.get("signal_metrics", {}).get("child_selected_signal"),
+            }
+        },
+        "lineage": {
+            "parent_agent_id": parent_agent_id,
+            "derived_from_candidate": candidate_dir.name,
+        },
+        "evolve_policy": {
+            "can_use_as_parent": True,
+            "merge_eligible": assessment.get("merge_eligible"),
+            "recommended_next_use": "Use only as an isolated evolution parent; continue repairing the child-selected signal before merge.",
+        },
+    }
+    card_path = archive_root / "agents" / agent_id / "agent_card.json"
+    write_json(card_path, card)
+    upsert_jsonl(
+        archive_root / "indexes/agents.jsonl",
+        "agent_id",
+        {
+            "agent_id": agent_id,
+            "agent_type": "data_agent",
+            "status": card["status"],
+            "card": str(card_path.relative_to(ROOT)),
+            "can_use_as_parent": True,
+        },
+    )
+    score = max(0.56, float(assessment.get("reward") or 0.0))
+    upsert_selection_score(
+        archive_root,
+        {
+            "arm_id": agent_id,
+            "arm_type": "data_agent",
+            "score": round(score, 6),
+            "evidence": assessment.get("selection_rationale"),
+            "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+            "source_candidate": candidate_dir.name,
+        },
+    )
+    return {"agent_id": agent_id, "card": str(card_path.relative_to(ROOT)), "prompt": prompt_ref, "selection_score": round(score, 6)}
+
 def archive_candidate(
     candidate_dir: Path,
     archive_root: Path,
@@ -307,6 +598,15 @@ def archive_candidate(
     manifest = load_json(candidate_dir / "manifest.json") or {}
     child_eval = load_json(candidate_dir / "child_eval/child_eval_report.json") or load_json(candidate_dir / "child_eval/generic_child_eval_report.json") or {}
     review = load_json(candidate_dir / "post_child_eval_review/post_child_eval_review.json") or {}
+    assessment = compute_evolution_assessment(candidate_type, child_eval)
+    derived_parent = create_shadow_parent_agent(
+        candidate_dir=candidate_dir,
+        archive_root=archive_root,
+        parent_agent_id=parent_agent_id,
+        candidate_type=candidate_type,
+        patch_review=patch_review,
+        assessment=assessment,
+    )
     card = {
         "candidate_id": candidate_id,
         "candidate_type": candidate_type,
@@ -334,10 +634,14 @@ def archive_candidate(
             "promoted_to_agent": state.get("post_child_eval_review_status") == "post_child_eval_review_passed",
             "merge_recommendation": state.get("merge_recommendation"),
         },
+        "evolution": {
+            **assessment,
+            "derived_parent_agent": derived_parent,
+        },
     }
     card_path = archive_root / "candidates" / candidate_id / "candidate_card.json"
     write_json(card_path, card)
-    reward = 1.0 if state.get("post_child_eval_review_status") == "post_child_eval_review_passed" else 0.0
+    reward = 1.0 if state.get("post_child_eval_review_status") == "post_child_eval_review_passed" else assessment.get("reward", 0.0)
     upsert_jsonl(
         archive_root / "indexes/candidates.jsonl",
         "candidate_id",
@@ -359,6 +663,12 @@ def postprocess_candidate(args: argparse.Namespace) -> int:
     if not candidate_dir.exists():
         raise SystemExit(f"candidate_dir not found: {candidate_dir}")
     state = infer_state(candidate_dir)
+    child_eval = load_json(candidate_dir / "child_eval/child_eval_report.json") or load_json(candidate_dir / "child_eval/generic_child_eval_report.json") or {}
+    assessment = compute_evolution_assessment(args.candidate_type, child_eval)
+    if state.get("status") == "candidate_child_eval_failed" and assessment.get("evolution_status") == "improved_but_failed":
+        state["status"] = "candidate_child_eval_improved_but_failed"
+    state["evolution_assessment"] = assessment
+    write_json(candidate_dir / "candidate_state.json", state)
     review_path = generate_merge_review(candidate_dir, state, args.scope_note)
     seed_json, seed_md = generate_next_seed(candidate_dir, args.case_id, args.recommended_goal)
     card_path = archive_candidate(

@@ -1,0 +1,28 @@
+{
+  "candidate_id": "codex_qwen_patents_iter005_data_agent_repair_iter001_20260625_030553",
+  "candidate_type": "data_agent_repair",
+  "parent_agent_id": "dab_code_agent_v005_runtime_observer",
+  "status": "protocol_failed_invalid_patch_spec",
+  "changed_files": [],
+  "artifacts": {
+    "candidate_dir": "candidates/dab/codex_qwen_patents_iter005_data_agent_repair_iter001_20260625_030553",
+    "patch": "candidates/dab/codex_qwen_patents_iter005_data_agent_repair_iter001_20260625_030553/patch.diff",
+    "manifest": "candidates/dab/codex_qwen_patents_iter005_data_agent_repair_iter001_20260625_030553/manifest.json",
+    "validation_log": null,
+    "child_eval_report": null,
+    "post_child_eval_review": null,
+    "merge_review_package": "candidates/dab/codex_qwen_patents_iter005_data_agent_repair_iter001_20260625_030553/merge_review_package.md",
+    "next_repair_seed": "candidates/dab/codex_qwen_patents_iter005_data_agent_repair_iter001_20260625_030553/next_data_agent_repair_seed.json"
+  },
+  "eval_summary": {
+    "manifest_status": "protocol_failed_invalid_patch_spec",
+    "child_eval": null,
+    "post_child_eval_review": null,
+    "total_changed_lines": 0,
+    "scope": "Data-agent prompt repair candidate; not feedback analyzer infrastructure repair."
+  },
+  "promotion": {
+    "promoted_to_agent": false,
+    "merge_recommendation": "unknown"
+  }
+}

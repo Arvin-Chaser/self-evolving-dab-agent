@@ -1,0 +1,30 @@
+{
+  "candidate_id": "codex_qwen_patents_iter004_data_agent_repair_iter001_20260625_023905",
+  "candidate_type": "data_agent_repair",
+  "parent_agent_id": "dab_code_agent_v005_runtime_observer",
+  "status": "candidate_child_eval_failed",
+  "changed_files": [
+    "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt"
+  ],
+  "artifacts": {
+    "candidate_dir": "candidates/dab/codex_qwen_patents_iter004_data_agent_repair_iter001_20260625_023905",
+    "patch": "candidates/dab/codex_qwen_patents_iter004_data_agent_repair_iter001_20260625_023905/patch.diff",
+    "manifest": "candidates/dab/codex_qwen_patents_iter004_data_agent_repair_iter001_20260625_023905/manifest.json",
+    "validation_log": null,
+    "child_eval_report": "candidates/dab/codex_qwen_patents_iter004_data_agent_repair_iter001_20260625_023905/child_eval/child_eval_report.json",
+    "post_child_eval_review": null,
+    "merge_review_package": "candidates/dab/codex_qwen_patents_iter004_data_agent_repair_iter001_20260625_023905/merge_review_package.md",
+    "next_repair_seed": "candidates/dab/codex_qwen_patents_iter004_data_agent_repair_iter001_20260625_023905/next_data_agent_repair_seed.json"
+  },
+  "eval_summary": {
+    "manifest_status": "valid_candidate_pending_child_eval",
+    "child_eval": "candidate_child_eval_failed",
+    "post_child_eval_review": null,
+    "total_changed_lines": 1,
+    "scope": "Data-agent prompt repair candidate; not feedback analyzer infrastructure repair."
+  },
+  "promotion": {
+    "promoted_to_agent": false,
+    "merge_recommendation": "unknown"
+  }
+}

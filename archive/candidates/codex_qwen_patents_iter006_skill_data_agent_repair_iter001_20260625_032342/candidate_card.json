@@ -1,0 +1,115 @@
+{
+  "candidate_id": "codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342",
+  "candidate_type": "data_agent_repair",
+  "parent_agent_id": "dab_code_agent_v005_runtime_observer",
+  "status": "candidate_child_eval_improved_but_failed",
+  "changed_files": [
+    "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt"
+  ],
+  "artifacts": {
+    "candidate_dir": "candidates/dab/codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342",
+    "patch": "candidates/dab/codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342/patch.diff",
+    "manifest": "candidates/dab/codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342/manifest.json",
+    "validation_log": null,
+    "child_eval_report": "candidates/dab/codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342/child_eval/child_eval_report.json",
+    "post_child_eval_review": null,
+    "merge_review_package": "candidates/dab/codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342/merge_review_package.md",
+    "next_repair_seed": "candidates/dab/codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342/next_data_agent_repair_seed.json"
+  },
+  "eval_summary": {
+    "manifest_status": "valid_candidate_pending_child_eval",
+    "child_eval": "candidate_child_eval_failed",
+    "post_child_eval_review": null,
+    "total_changed_lines": 2,
+    "scope": "Data-agent prompt repair candidate; not feedback analyzer infrastructure repair."
+  },
+  "promotion": {
+    "promoted_to_agent": false,
+    "merge_recommendation": "unknown"
+  },
+  "evolution": {
+    "evolution_status": "improved_but_failed",
+    "evolution_parent_eligible": true,
+    "reward": 0.657273,
+    "answer_metrics": {
+      "status": "computed",
+      "expected_count": 50,
+      "predicted_count": 60,
+      "true_positive": 32,
+      "false_positive": 28,
+      "false_negative": 18,
+      "precision": 0.533333,
+      "recall": 0.64,
+      "f1": 0.581818,
+      "jaccard": 0.410256,
+      "missing_codes": [
+        "A23P",
+        "A24D",
+        "A47F",
+        "A61P",
+        "A62D",
+        "B09B",
+        "B24B",
+        "B28D",
+        "B30B",
+        "F17B",
+        "F24D",
+        "F25J",
+        "G01L",
+        "G06T",
+        "G08G",
+        "G16B",
+        "G21F",
+        "H02G"
+      ],
+      "extra_codes": [
+        "A01P",
+        "A21C",
+        "A41H",
+        "A42C",
+        "A62C",
+        "A63D",
+        "B07B",
+        "B21C",
+        "B27M",
+        "B33Y",
+        "B65F",
+        "B66F",
+        "B67C",
+        "C12R",
+        "C21C",
+        "C22B",
+        "D01G",
+        "E01C",
+        "E01D",
+        "E02B",
+        "E03B",
+        "F04F",
+        "F42C",
+        "G16Y",
+        "H05F",
+        "Y02B",
+        "Y02E",
+        "Y02P"
+      ]
+    },
+    "execution_metrics": {
+      "child_exit_code": 0,
+      "child_execution_success": true,
+      "child_has_answer_like_output": true
+    },
+    "signal_metrics": {
+      "useful_new_signal": true,
+      "child_selected_stage": "cpc_definition_row_field_mismatch",
+      "child_selected_signal": "{\"checks\": {\"field_count_match\": false}, \"error\": null, \"event\": \"cpc_definition_row_field_mismatch\", \"evidence\": \"Line 36: ['    level double precision,']\", \"function\": null, \"hypothesis\": null, \"inputs\": {\"expected_fields\": 22, \"row_index\": 36, \"sql_path\": \"/home/m0st1ma/research/DataAgentBench/query_PATENTS/query_dataset/patent_CPCDefinition.sql\"}, \"operation\": \"cpc_definition_row_field_mismatch\", \"outputs\": {\"actual_fields\": 1, \"line_sample\": \"    level double precision,\"}, \"purpose\": \"Row field count mismatch — may indicate malformed tab-separated data\", \"severity\": \"warning\", \"stage\": \"cpc_definition_row_field_mismatch\", \"status\": \"completed\", \"suggested_target\": null, \"trigger\": \"runtime_check_failed\", \"warnings\": []}"
+    },
+    "merge_eligible": false,
+    "selection_rationale": "Candidate remains non-mergeable, but child answer has non-zero overlap with expected CPC set.",
+    "derived_parent_agent": {
+      "agent_id": "data_agent_shadow_codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342",
+      "card": "archive/agents/data_agent_shadow_codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342/agent_card.json",
+      "prompt": "archive/prompts/data_agent_shadow_codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342/dab_code_agent_prompt_v005_runtime_observer.txt",
+      "selection_score": 0.657273
+    }
+  }
+}

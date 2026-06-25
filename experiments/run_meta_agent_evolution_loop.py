@@ -43,6 +43,7 @@ from experiments.run_dab_agent import run_dab_agent
 DEFAULT_ARCHIVE = ROOT / "archive"
 DEFAULT_CASE_DIR = Path("/home/m0st1ma/research/DataAgentBench/query_PATENTS/query1")
 DEFAULT_DAB_ROOT = Path("/home/m0st1ma/research/DataAgentBench")
+DATA_AGENT_CANONICAL_PROMPT = Path("prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt")
 
 
 def utc_now_slug() -> str:
@@ -244,6 +245,7 @@ def run_candidate_launcher(
     seed_path: Path,
     parent_run: Path,
     parent_agent_id: str,
+    parent_prompt: Path,
     case_dir: Path,
     dab_root: Path,
     loop_dir: Path,
@@ -259,6 +261,7 @@ def run_candidate_launcher(
             "META_LOOP_REPAIR_SEED": str(seed_path),
             "META_LOOP_PARENT_RUN": str(parent_run),
             "META_LOOP_PARENT_AGENT_ID": parent_agent_id,
+            "META_LOOP_PARENT_PROMPT": str(parent_prompt),
             "META_LOOP_CASE_DIR": str(case_dir),
             "META_LOOP_DAB_ROOT": str(dab_root),
             "META_LOOP_DIR": str(loop_dir),
@@ -278,6 +281,26 @@ def ignore_workspace(_: str, names: list[str]) -> list[str]:
     ignored = {".git", ".venv", ".env", ".codex", "__pycache__", "logs", "candidates", "reports", "trajectories"}
     return [name for name in names if name in ignored]
 
+
+
+def resolve_prompt_source_for_child(prompt_path: Path, child_ws: Path) -> Path:
+    if prompt_path.is_absolute():
+        return prompt_path
+    root_candidate = ROOT / prompt_path
+    if root_candidate.exists():
+        return root_candidate
+    return child_ws / prompt_path
+
+
+def materialize_child_parent_prompt(child_ws: Path, prompt_path: Path) -> Path:
+    source = resolve_prompt_source_for_child(prompt_path, child_ws)
+    if not source.exists():
+        raise FileNotFoundError(f"selected parent prompt not found for child eval: {prompt_path}")
+    target = child_ws / DATA_AGENT_CANONICAL_PROMPT
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if source.resolve() != target.resolve():
+        shutil.copy2(source, target)
+    return target
 
 def run_generic_child_eval(
     *,
@@ -301,15 +324,20 @@ def run_generic_child_eval(
     run_cmd(["git", "config", "user.email", "meta-loop-child-eval@localhost"], cwd=child_ws)
     run_cmd(["git", "add", "."], cwd=child_ws)
     run_cmd(["git", "commit", "--quiet", "-m", "baseline"], cwd=child_ws)
+
+    try:
+        child_prompt = materialize_child_parent_prompt(child_ws, prompt_path)
+    except FileNotFoundError as exc:
+        return {"status": "child_prompt_materialization_failed", "reason": str(exc), "workspace": str(child_ws)}
+
+    # The candidate patch is defined against the canonical data-agent prompt path.
+    # Baseline must include the selected parent prompt before applying the candidate patch.
+    run_cmd(["git", "add", str(DATA_AGENT_CANONICAL_PROMPT)], cwd=child_ws)
+    run_cmd(["git", "commit", "--quiet", "--amend", "--no-edit"], cwd=child_ws)
     apply_proc = run_cmd(["git", "apply", str(patch_path)], cwd=child_ws)
     if apply_proc.returncode != 0:
         return {"status": "patch_apply_failed", "stderr": apply_proc.stderr}
-
-    try:
-        rel_prompt = prompt_path.resolve().relative_to(ROOT)
-        child_prompt = child_ws / rel_prompt
-    except ValueError:
-        child_prompt = prompt_path
+    child_prompt = child_ws / DATA_AGENT_CANONICAL_PROMPT
 
     child_version = f"meta_loop_child_iter{iteration:03d}_{utc_now_slug()}"
     env = os.environ.copy()
@@ -490,6 +518,7 @@ def run_loop(args: argparse.Namespace) -> int:
                 seed_path=seed_path,
                 parent_run=parent_run,
                 parent_agent_id=parent_agent_id,
+                parent_prompt=prompt_path,
                 case_dir=case_dir,
                 dab_root=dab_root,
                 loop_dir=iteration_dir,

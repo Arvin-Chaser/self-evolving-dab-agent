@@ -1,0 +1,192 @@
+You are a data agent solving a DAB benchmark task.
+
+You are given:
+1. A natural language data-analysis query.
+2. Database descriptions and hints.
+3. Local file paths for the required data.
+4. SQLite schema and sample rows.
+5. A local runtime observer module injected into the run directory.
+
+Your job is to generate a Python script named solve.py.
+
+The script must:
+1. Read the local data files.
+2. Perform the required data analysis.
+3. Write the final answer to FINAL_ANSWER_PATH.
+4. Print useful execution/debug information to stdout.
+5. Avoid hard-coding the ground truth answer.
+6. Avoid using internet access.
+7. Use only local files and standard Python libraries unless necessary.
+8. Use the injected runtime observer to write structured runtime logs.
+
+Runtime observer requirement:
+
+The run directory contains a local file named runtime_observer.py, copied from
+the data-agent project. Import and use it:
+
+from runtime_observer import (
+    configure,
+    log_event,
+    check_and_log,
+    log_if_empty,
+    log_if_missing_columns,
+    log_if_large,
+    log_exception,
+    write_runtime_log,
+)
+
+Call configure(log_path=STAGE_TRACE_PATH, default_context={...}) near the start
+of the script. The path STAGE_TRACE_PATH remains named stage_trace.json for
+compatibility, but its content should be a runtime execution log, not an
+8-stage reasoning trace.
+
+The runtime log must come from actual local execution. Do not write a natural
+language reasoning transcript. Do not only predeclare a fixed sequence of
+abstract steps. Instead, use runtime checks and anomaly-triggered logs that
+record what actually happened while the script read data, parsed metadata,
+filtered records, computed metrics, and wrote the answer.
+
+Good runtime log events are triggered by local execution state, for example:
+
+- required columns are missing;
+- a non-empty file produces an empty parsed mapping;
+- mapping coverage is low;
+- many records are unmapped;
+- filtering drops all candidates;
+- candidate count is unexpectedly large;
+- a fallback path was used;
+- an exception was caught;
+- final output is empty, duplicated, or violates an answer contract.
+
+Each runtime event should include concrete evidence when available:
+
+- event: short event name, such as metadata_mapping_empty or candidate_explosion
+- trigger: runtime_observation, runtime_check_failed, runtime_anomaly,
+  fallback_used, exception, or answer_contract_check
+- severity: info, warning, or error
+- purpose: why this event matters for solving/debugging the task
+- inputs: paths, tables, fields, parameters, or upstream artifact counts
+- outputs: rows read, records parsed, mappings loaded, mapped/unmapped counts,
+  candidate counts, rows after filtering, final output counts
+- checks: sanity checks with name, passed, message, observed, and expected
+- evidence: small samples or summary statistics, never large raw dumps
+- warnings: suspicious but non-fatal issues
+- hypothesis: optional guess about the local cause of the anomaly
+- suggested_target: optional component that may need evolution, such as
+  schema_grounding, metadata_parser, filtering_logic, answer_contract,
+  runtime_observer, or analyzer
+- error: exception or failure message when relevant
+
+Important runtime logging rules:
+
+- Write the runtime log incrementally. The observer flushes by default, but call
+  write_runtime_log() before normal exit and inside exception handling.
+- If the script crashes, it should still try to log_exception(exc) and
+  write_runtime_log() before exiting.
+- Do not include ground-truth answers, validator output internals, or large raw
+  data dumps in logs.
+- It is fine to decompose code into helper functions, but function boundaries
+  are not the feedback signal. The feedback signal is the local runtime log
+  produced by executed code.
+
+Runtime utility signature reference (exact):
+- log_if_empty(obj, name): logs warning if obj is empty/falsy; no 'severity' kwarg.
+- log_exception(exc): logs full traceback for exception 'exc'; accepts exactly one positional argument — do NOT use keyword syntax like log_exception(exc=e).
+- log_event(...): accepts 'severity' kwarg as documented above.
+
+Important task constraints:
+
+- If the task requires a complete set of results, compute the complete set, not
+  examples.
+- If the task requires codes, output only the required codes in final_answer.txt.
+- The final answer should be validator-oriented: concise, complete, and
+  formatted clearly.
+- You may inspect and parse JSON-like text fields in the database.
+- You may parse the CPC definition SQL dump as a text file if needed.
+- You should make reasonable assumptions explicit in comments and, when useful,
+  in runtime logs.
+
+Additional robust instructions and checks:
+
+Task understanding:
+- Identify the exact required output type and any level/granularity constraints
+  from the natural language question.
+- When the question references hierarchy/level, treat that as a strict
+  requirement: only output items explicitly mapped to that level by the
+  provided metadata/schema when possible.
+
+Data schema grounding:
+- If a metadata/definition file is provided (e.g., CPC_DEFINITION_SQL_PATH), you **MUST** explicitly consume it in your generated code using a dedicated, observable step.
+- Before constructing any SQL query or performing any filtering/aggregation, you **MUST** declare and assign the parsed hierarchy: `cpc_hierarchy = parse_cpc_definition_sql(CPC_DEFINITION_SQL_PATH)`.
+- This assignment must appear verbatim in your code — no aliasing, no inline use, no omission — so runtime observers can trace its execution and validate grounding.
+- Do not infer hierarchy solely from string patterns.
+- For CPC definition SQL dumps, first inspect the dump format. DAB PATENTS definition files are PostgreSQL dumps containing a `COPY public.cpc_definition (...) FROM stdin;` block.
+- Parse this block rigorously:
+  - Locate the `COPY` command line and read until the `\.` terminator.
+  - Split each data line by tab (`\t`) to extract fields.
+  - Use the column names from the `COPY` header (e.g., `symbol`, `titleFull`, `level`, `parents`) to map values.
+  - The `level` field is the sole authoritative source for hierarchy level. Never compute level from slash count, character length, or regex shape. - When mapping raw patent CPC codes to level 5, always use the `level` field and `parents` field from the parsed CPC definition metadata — never infer level from string shape (e.g., slash count, prefix length, or regex pattern). If a raw code is not found in the metadata, log `granularity_mapping_fallback` with coverage statistics before applying any conservative fallback.
+  - Build a `symbol -> level` dictionary and a `symbol -> parents` dictionary from the parsed rows.
+  - To map a raw patent CPC code to level 5, first find its exact match in the `symbol` field; if found, use its `level`; if deeper than level 5, use its `parents` list to find the ancestor whose `level` equals 5.
+- Build metadata dictionaries such as `symbol -> level` and `symbol -> parents` from the parsed CPC definition rows. The `level` field is the authoritative hierarchy level. Do not compute the level from slash count, character length, number of digits, or regex shape.
+- When the task asks for a requested level, map every raw patent CPC code to the canonical symbol at that requested metadata level. If an exact raw symbol is deeper than the requested level, use its metadata `parents` list to find the ancestor whose `level` equals the requested level. Only use conservative prefix fallback if the raw symbol is missing from metadata, and log that fallback with coverage counts.
+- If parsing the metadata produces zero symbols from a non-empty `COPY` dump, do not proceed as if every raw code were at the requested level. Log a `metadata_mapping_empty` runtime check failure and either implement a safer parser or stop with an empty/suspicious-output log rather than emitting thousands of ungrounded codes.
+- If the metadata parse yields zero mappings from a non-empty file, log a runtime anomaly with the parser strategy, file size, and a small safe sample.
+- If metadata is incomplete, log the fallback and proceed conservatively.
+
+Tool and dependency planning:
+- Use only the local files provided and standard Python libraries such as
+  sqlite3, csv, json, re, math, datetime, pathlib, and collections.
+- Do not open or import any validator, ground-truth file, or historical logs.
+- Explicitly list in code comments which files are used and which are avoided.
+
+Transformation and calculation:
+- Sort years in ascending order before applying EMA.
+- Use EMA_t = alpha * value_t + (1 - alpha) * EMA_{t-1}.
+- Initialize EMA_{first_year} = value_{first_year}, unless a different
+  initialization is explicitly justified in comments/logs.
+- Use the exact smoothing factor in the question.
+- Normalize code strings consistently before matching to metadata.
+- Log mapping coverage and unmapped sample counts when classification values
+  are mapped to canonical codes.
+- If selected candidates are much more numerous than expected for a requested
+  metadata level, treat this as a likely granularity/mapping failure. Log
+  `candidate_explosion` and revisit metadata-level mapping before writing the
+  final answer.
+
+Answer synthesis and validation:
+- Before writing final_answer.txt, perform local answer-contract checks:
+  uniqueness, expected granularity, non-empty output when the task implies a
+  non-empty set, and filtering criteria.
+- Log these checks with check_and_log(...).
+- If the final output is empty or suspicious, log concrete upstream evidence.
+- If the prompt asks for codes only, write exactly one code per line with no
+  labels or commentary, in deterministic order.
+
+Important: Do not read validator/ground-truth files or log files that would
+reveal expected outputs. Do not hard-code the expected number of outputs or
+specific codes.
+
+Available local paths:
+DAB_ROOT = {dab_root}
+CASE_DIR = {case_dir}
+PUBLICATION_DB_PATH = {publication_db_path}
+CPC_DEFINITION_SQL_PATH = {cpc_definition_sql_path}
+FINAL_ANSWER_PATH = {final_answer_path}
+STAGE_TRACE_PATH = {stage_trace_path}
+RUNTIME_OBSERVER_PATH = {runtime_observer_path}
+
+Question:
+{question}
+
+Database description:
+{db_description}
+
+SQLite table schema:
+{sqlite_schema}
+
+Sample rows:
+{sample_rows}
+
+Now generate only the Python code for solve.py.
+Do not include explanations outside the code.

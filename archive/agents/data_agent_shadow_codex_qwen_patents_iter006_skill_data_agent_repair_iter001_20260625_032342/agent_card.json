@@ -1,0 +1,111 @@
+{
+  "agent_id": "data_agent_shadow_codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342",
+  "agent_type": "data_agent",
+  "status": "shadow_parent_partial_improvement",
+  "created_or_observed_at": "20260625",
+  "source_refs": {
+    "prompt": "archive/prompts/data_agent_shadow_codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342/dab_code_agent_prompt_v005_runtime_observer.txt",
+    "base_prompt": "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+    "candidate_patch": "candidates/dab/codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342/patch.diff",
+    "candidate_card": "archive/candidates/codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342/candidate_card.json",
+    "runner": "experiments/run_dab_agent.py"
+  },
+  "capabilities": [
+    "DAB code generation",
+    "runtime observer instrumentation",
+    "stage_trace emission",
+    "partial-improvement continuation parent"
+  ],
+  "known_failures": [
+    {
+      "case": "PATENTS_query1",
+      "status": "failed_strict_validation",
+      "reason": "cpc_definition_row_field_mismatch",
+      "merge_note": "Do not merge this shadow parent into main without a later strict-validation pass."
+    }
+  ],
+  "evals": {
+    "PATENTS_query1": {
+      "passed_original_dab_validation": false,
+      "evolution_status": "improved_but_failed",
+      "answer_metrics": {
+        "status": "computed",
+        "expected_count": 50,
+        "predicted_count": 60,
+        "true_positive": 32,
+        "false_positive": 28,
+        "false_negative": 18,
+        "precision": 0.533333,
+        "recall": 0.64,
+        "f1": 0.581818,
+        "jaccard": 0.410256,
+        "missing_codes": [
+          "A23P",
+          "A24D",
+          "A47F",
+          "A61P",
+          "A62D",
+          "B09B",
+          "B24B",
+          "B28D",
+          "B30B",
+          "F17B",
+          "F24D",
+          "F25J",
+          "G01L",
+          "G06T",
+          "G08G",
+          "G16B",
+          "G21F",
+          "H02G"
+        ],
+        "extra_codes": [
+          "A01P",
+          "A21C",
+          "A41H",
+          "A42C",
+          "A62C",
+          "A63D",
+          "B07B",
+          "B21C",
+          "B27M",
+          "B33Y",
+          "B65F",
+          "B66F",
+          "B67C",
+          "C12R",
+          "C21C",
+          "C22B",
+          "D01G",
+          "E01C",
+          "E01D",
+          "E02B",
+          "E03B",
+          "F04F",
+          "F42C",
+          "G16Y",
+          "H05F",
+          "Y02B",
+          "Y02E",
+          "Y02P"
+        ]
+      },
+      "execution_metrics": {
+        "child_exit_code": 0,
+        "child_execution_success": true,
+        "child_has_answer_like_output": true
+      },
+      "selected_stage": "cpc_definition_row_field_mismatch",
+      "selected_signal": "{\"checks\": {\"field_count_match\": false}, \"error\": null, \"event\": \"cpc_definition_row_field_mismatch\", \"evidence\": \"Line 36: ['    level double precision,']\", \"function\": null, \"hypothesis\": null, \"inputs\": {\"expected_fields\": 22, \"row_index\": 36, \"sql_path\": \"/home/m0st1ma/research/DataAgentBench/query_PATENTS/query_dataset/patent_CPCDefinition.sql\"}, \"operation\": \"cpc_definition_row_field_mismatch\", \"outputs\": {\"actual_fields\": 1, \"line_sample\": \"    level double precision,\"}, \"purpose\": \"Row field count mismatch — may indicate malformed tab-separated data\", \"severity\": \"warning\", \"stage\": \"cpc_definition_row_field_mismatch\", \"status\": \"completed\", \"suggested_target\": null, \"trigger\": \"runtime_check_failed\", \"warnings\": []}"
+    }
+  },
+  "lineage": {
+    "parent_agent_id": "dab_code_agent_v005_runtime_observer",
+    "derived_from_candidate": "codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342"
+  },
+  "evolve_policy": {
+    "can_use_as_parent": true,
+    "merge_eligible": false,
+    "recommended_next_use": "Use only as an isolated evolution parent; continue repairing the child-selected signal before merge."
+  }
+}

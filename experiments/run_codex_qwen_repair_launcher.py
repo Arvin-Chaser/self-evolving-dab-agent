@@ -170,6 +170,50 @@ def ignore_workspace(_: str, names: list[str]) -> list[str]:
     return [name for name in names if name in ignored]
 
 
+DATA_AGENT_CANONICAL_PROMPT = Path("prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt")
+
+
+def resolve_prompt_source(prompt: Path, workspace: Path) -> Path:
+    if prompt.is_absolute():
+        return prompt
+    root_candidate = ROOT / prompt
+    if root_candidate.exists():
+        return root_candidate
+    return workspace / prompt
+
+
+def materialize_parent_prompt(
+    *,
+    profile: RepairProfile,
+    workspace: Path,
+    candidate_dir: Path,
+    parent_prompt: Path | None,
+) -> Path | None:
+    if profile.name != "data_agent_prompt_repair" or parent_prompt is None:
+        return parent_prompt
+    source = resolve_prompt_source(parent_prompt, workspace)
+    if not source.exists():
+        raise FileNotFoundError(f"parent prompt not found: {parent_prompt}")
+    target = workspace / DATA_AGENT_CANONICAL_PROMPT
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if source.resolve() != target.resolve():
+        shutil.copy2(source, target)
+    write_json(
+        candidate_dir / "materialized_parent_prompt.json",
+        {
+            "status": "materialized_parent_prompt",
+            "source_prompt": str(source),
+            "canonical_target": str(DATA_AGENT_CANONICAL_PROMPT),
+        },
+    )
+    amend = run_cmd(["git", "add", str(DATA_AGENT_CANONICAL_PROMPT)], cwd=workspace)
+    if amend.returncode != 0:
+        raise RuntimeError(f"failed to stage materialized parent prompt: {amend.stderr}")
+    amend = run_cmd(["git", "commit", "--quiet", "--amend", "--no-edit"], cwd=workspace)
+    if amend.returncode != 0:
+        raise RuntimeError(f"failed to amend materialized parent prompt into baseline: {amend.stderr}")
+    return DATA_AGENT_CANONICAL_PROMPT
+
 def make_workspace(candidate_dir: Path) -> Path:
     root = Path(tempfile.mkdtemp(prefix="codex_qwen_repair."))
     workspace = root / "workspace"
@@ -245,6 +289,30 @@ def build_context_pack(
             "```",
             "",
         ]
+    if profile.name == "data_agent_prompt_repair":
+        lines += [
+            "## Runtime observer API contract",
+            "These signatures are authoritative for generated DAB code. Do not infer alternate signatures from stack traces.",
+            "```python",
+            "def log_exception(event: str, exc: BaseException, *, evidence: dict | None = None, suggested_target: str | None = None) -> None: ...",
+            "def log_event(event: str, *, trigger: str = 'runtime_observation', severity: str = 'info', status: str | None = None, purpose: str | None = None, inputs: dict | None = None, outputs: dict | None = None, checks: list | dict | None = None, evidence: dict | None = None, error: object = None, suggested_target: str | None = None, **extra) -> dict: ...",
+            "def check_and_log(name: str, passed: bool, *, observed=None, expected=None, message: str | None = None, event: str | None = None, severity: str | None = None, evidence: dict | None = None, suggested_target: str | None = None) -> bool: ...",
+            "def write_runtime_log() -> None: ...",
+            "```",
+            "Correct exception logging examples:",
+            "- `log_exception(\"task_failed_with_exception\", exc)`",
+            "- `log_exception(\"cpc_definition_parsing_failed\", e, suggested_target=\"metadata_parser\")`",
+            "Incorrect examples that must not appear in prompt repair instructions:",
+            "- `log_exception(e)`",
+            "- `log_exception(exc)`",
+            "- `log_exception(exc=e)`",
+            "- text claiming log_exception takes exactly one positional argument",
+            "",
+            "## PATENTS mapping failure priority hints",
+            "If evidence shows `cpc_mapping_summary` with `mapped_to_level5 = 0` or all publication CPC entries unmapped, prioritize prompt instructions for CPC symbol normalization and metadata lookup before EMA/year logic.",
+            "Future generated code should normalize raw publication CPC codes to the CPC definition `symbol` format before lookup, and should log coverage/sample unmatched codes when mapping coverage is zero.",
+            "",
+        ]
     if repair_seed and repair_seed.exists():
         lines += ["## Repair seed", "```json", read_text(repair_seed, 16000).strip(), "```", ""]
     if parent_prompt:
@@ -291,8 +359,10 @@ Profile-specific hard rules for data_agent_prompt_repair:
 3. Do NOT use generated_solve.py, runtime logs, stage_trace, or error-summary text as an anchor. They are evidence only.
 4. Do NOT write Python implementation code into the prompt. Translate code-level failures into concise prompt instructions that guide future generated code.
 5. Prefer insert_after_anchor or append_text with a short instruction paragraph. Avoid replacing large prompt blocks.
-6. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
-7. If the repair would require editing generated_solve.py or project source instead of the prompt, output no_op_failed.
+6. For insert_after_anchor or insert_before_anchor, intended_change must start with a newline so prompt bullets are not merged onto one line.
+7. Use the Runtime observer API contract from the context pack as authoritative. In particular, log_exception requires two positional arguments: log_exception("event_name", exc).
+8. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
+9. If the repair would require editing generated_solve.py or project source instead of the prompt, output no_op_failed.
 """
     return """
 Profile-specific hard rules:
@@ -362,6 +432,32 @@ def load_or_call_patch_spec(args: argparse.Namespace, prompt_path: Path, candida
     return extract_first_json(raw), raw
 
 
+
+def validate_data_agent_prompt_change(edit: dict[str, str], idx: int) -> tuple[bool, str]:
+    intended = edit["intended_change"]
+    low = intended.lower()
+    if edit["operation"] in ("insert_after_anchor", "insert_before_anchor") and not intended.startswith("\n"):
+        return False, f"edit {idx} intended_change must start with newline for prompt formatting"
+    bad_runtime_api_patterns = [
+        r"log_exception\s*\(\s*(?:e|exc)\s*\)",
+        r"log_exception\s*\(\s*exc\s*=",
+    ]
+    for pattern in bad_runtime_api_patterns:
+        if re.search(pattern, intended):
+            return False, f"edit {idx} contains invalid runtime_observer log_exception API usage"
+    if "log_exception" in low and any(
+        phrase in low
+        for phrase in (
+            "exactly one positional argument",
+            "one positional argument",
+            "single positional argument",
+            "only one positional argument",
+            "takes one argument",
+        )
+    ):
+        return False, f"edit {idx} gives incorrect log_exception signature guidance"
+    return True, "ok"
+
 def validate_spec(spec: dict[str, Any] | None, profile: RepairProfile, candidate_dir: Path) -> tuple[bool, str, str]:
     if spec is None:
         return False, "protocol_failed_invalid_patch_spec", "patch_spec JSON could not be parsed"
@@ -400,6 +496,9 @@ def validate_spec(spec: dict[str, Any] | None, profile: RepairProfile, candidate
             combined = (edit["anchor"] + "\n" + edit["intended_change"]).lower()
             if any(marker.lower() in combined for marker in code_markers):
                 return False, "protocol_failed_invalid_patch_spec", f"edit {idx} appears to patch generated code instead of prompt instructions"
+            change_ok, change_reason = validate_data_agent_prompt_change(edit, idx)
+            if not change_ok:
+                return False, "protocol_failed_invalid_patch_spec", change_reason
     if spec.get("risk_scope") != profile.risk_scope:
         return False, "protocol_failed_invalid_patch_spec", f"risk_scope must be {profile.risk_scope}"
     ack = spec.get("forbidden_actions_ack")
@@ -575,11 +674,12 @@ def run_launcher(args: argparse.Namespace) -> int:
 
     repair_seed = Path(args.repair_seed or os.environ.get("META_LOOP_REPAIR_SEED", "")) if (args.repair_seed or os.environ.get("META_LOOP_REPAIR_SEED")) else None
     parent_run = Path(args.parent_run or os.environ.get("META_LOOP_PARENT_RUN", "")) if (args.parent_run or os.environ.get("META_LOOP_PARENT_RUN")) else None
-    parent_prompt = Path(args.parent_prompt) if args.parent_prompt else None
+    parent_prompt = Path(args.parent_prompt or os.environ.get("META_LOOP_PARENT_PROMPT", "")) if (args.parent_prompt or os.environ.get("META_LOOP_PARENT_PROMPT")) else None
     if parent_prompt is None and profile.name == "data_agent_prompt_repair":
         parent_prompt = Path("prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt")
 
     workspace = make_workspace(candidate_dir)
+    parent_prompt = materialize_parent_prompt(profile=profile, workspace=workspace, candidate_dir=candidate_dir, parent_prompt=parent_prompt)
     context = build_context_pack(
         profile=profile,
         workspace=workspace,

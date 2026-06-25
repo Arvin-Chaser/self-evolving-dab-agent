@@ -10,6 +10,14 @@
       "recommended_use": "Use as default protocol for iter004."
     },
     {
+      "arm_id": "data_agent_shadow_codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342",
+      "arm_type": "data_agent",
+      "score": 0.657273,
+      "evidence": "Candidate remains non-mergeable, but child answer has non-zero overlap with expected CPC set.",
+      "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+      "source_candidate": "codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342"
+    },
+    {
       "arm_id": "dab_code_agent_v005_runtime_observer",
       "arm_type": "data_agent",
       "score": 0.55,
