@@ -34,6 +34,10 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+PROFILE_SKILLS = {
+    "data_agent_prompt_repair": ROOT / "skills/dab-data-agent-prompt-repair/SKILL.md",
+}
+
 try:
     from llm_client import call_meta_llm, describe_llm_config
 except Exception:  # pragma: no cover
@@ -230,6 +234,17 @@ def build_context_pack(
         *[f"  - `{item}`" for item in profile.operations],
         "",
     ]
+    skill_path = PROFILE_SKILLS.get(profile.name)
+    if skill_path and skill_path.exists():
+        lines += [
+            "## Active repair skill",
+            f"Path: `{skill_path.relative_to(ROOT)}`",
+            "Follow this skill before proposing a patch_spec.",
+            "```markdown",
+            read_text(skill_path, 12000),
+            "```",
+            "",
+        ]
     if repair_seed and repair_seed.exists():
         lines += ["## Repair seed", "```json", read_text(repair_seed, 16000).strip(), "```", ""]
     if parent_prompt:
