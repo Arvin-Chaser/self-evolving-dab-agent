@@ -361,8 +361,9 @@ Profile-specific hard rules for data_agent_prompt_repair:
 5. Prefer insert_after_anchor or append_text with a short instruction paragraph. Avoid replacing large prompt blocks.
 6. For insert_after_anchor or insert_before_anchor, intended_change must start with a newline so prompt bullets are not merged onto one line.
 7. Use the Runtime observer API contract from the context pack as authoritative. In particular, log_exception requires two positional arguments: log_exception("event_name", exc).
-8. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
-9. If the repair would require editing generated_solve.py or project source instead of the prompt, output no_op_failed.
+8. If the parent prompt contains an older contradictory runtime signature such as log_exception(exc) or "one positional argument", prefer replace_text_once on that stale prompt sentence/block instead of appending a new conflicting instruction.
+9. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
+10. If the repair would require editing generated_solve.py or project source instead of the prompt, output no_op_failed.
 """
     return """
 Profile-specific hard rules:
@@ -436,6 +437,10 @@ def load_or_call_patch_spec(args: argparse.Namespace, prompt_path: Path, candida
 def validate_data_agent_prompt_change(edit: dict[str, str], idx: int) -> tuple[bool, str]:
     intended = edit["intended_change"]
     low = intended.lower()
+    anchor_low = edit["anchor"].lower()
+    stale_log_exception_anchor = "log_exception(exc)" in anchor_low or "one positional argument" in anchor_low
+    if stale_log_exception_anchor and "log_exception" in low and edit["operation"] != "replace_text_once":
+        return False, f"edit {idx} must use replace_text_once to replace stale log_exception signature guidance instead of appending a conflicting instruction"
     if edit["operation"] in ("insert_after_anchor", "insert_before_anchor") and not intended.startswith("\n"):
         return False, f"edit {idx} intended_change must start with newline for prompt formatting"
     bad_runtime_api_patterns = [
@@ -443,7 +448,10 @@ def validate_data_agent_prompt_change(edit: dict[str, str], idx: int) -> tuple[b
         r"log_exception\s*\(\s*exc\s*=",
     ]
     for pattern in bad_runtime_api_patterns:
-        if re.search(pattern, intended):
+        for match in re.finditer(pattern, intended):
+            prefix = intended[max(0, match.start() - 48):match.start()].lower()
+            if any(marker in prefix for marker in ("do not", "don't", "never", "avoid", "instead of")):
+                continue
             return False, f"edit {idx} contains invalid runtime_observer log_exception API usage"
     if "log_exception" in low and any(
         phrase in low
@@ -492,9 +500,9 @@ def validate_spec(spec: dict[str, Any] | None, profile: RepairProfile, candidate
         if edit["operation"] not in ("append_text", "create_file") and not edit["anchor"]:
             return False, "protocol_failed_invalid_patch_spec", f"edit {idx} requires non-empty anchor"
         if profile.name == "data_agent_prompt_repair":
-            code_markers = ("def ", "import ", "json.loads", "log_event(", "sqlite3", "FINAL_ANSWER_PATH", "STAGE_TRACE_PATH")
-            combined = (edit["anchor"] + "\n" + edit["intended_change"]).lower()
-            if any(marker.lower() in combined for marker in code_markers):
+            code_markers = ("def ", "import ", "json.loads", "sqlite3", "FINAL_ANSWER_PATH", "STAGE_TRACE_PATH")
+            intended_only = edit["intended_change"].lower()
+            if any(marker.lower() in intended_only for marker in code_markers):
                 return False, "protocol_failed_invalid_patch_spec", f"edit {idx} appears to patch generated code instead of prompt instructions"
             change_ok, change_reason = validate_data_agent_prompt_change(edit, idx)
             if not change_ok:

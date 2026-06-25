@@ -1,0 +1,58 @@
+{
+  "candidate_id": "codex_qwen_patents_iter010_shadow_parent_materialized_repair_iter001_20260625_105727",
+  "candidate_type": "data_agent_repair",
+  "parent_agent_id": "data_agent_shadow_codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342",
+  "status": "protocol_failed_invalid_patch_spec",
+  "changed_files": [],
+  "artifacts": {
+    "candidate_dir": "candidates/dab/codex_qwen_patents_iter010_shadow_parent_materialized_repair_iter001_20260625_105727",
+    "patch": null,
+    "manifest": "candidates/dab/codex_qwen_patents_iter010_shadow_parent_materialized_repair_iter001_20260625_105727/manifest.json",
+    "validation_log": null,
+    "child_eval_report": null,
+    "post_child_eval_review": null,
+    "merge_review_package": "candidates/dab/codex_qwen_patents_iter010_shadow_parent_materialized_repair_iter001_20260625_105727/merge_review_package.md",
+    "next_repair_seed": "candidates/dab/codex_qwen_patents_iter010_shadow_parent_materialized_repair_iter001_20260625_105727/next_data_agent_repair_seed.json"
+  },
+  "eval_summary": {
+    "manifest_status": "protocol_failed_invalid_patch_spec",
+    "child_eval": null,
+    "post_child_eval_review": null,
+    "total_changed_lines": 0,
+    "scope": "Data-agent prompt repair candidate; not feedback analyzer infrastructure repair."
+  },
+  "promotion": {
+    "promoted_to_agent": false,
+    "merge_recommendation": "unknown"
+  },
+  "evolution": {
+    "evolution_status": "failed_no_measured_answer_improvement",
+    "evolution_parent_eligible": false,
+    "reward": 0.0,
+    "answer_metrics": {
+      "status": "unavailable",
+      "expected_count": null,
+      "predicted_count": null,
+      "true_positive": null,
+      "false_positive": null,
+      "false_negative": null,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "jaccard": 0.0
+    },
+    "execution_metrics": {
+      "child_exit_code": null,
+      "child_execution_success": false,
+      "child_has_answer_like_output": false
+    },
+    "signal_metrics": {
+      "useful_new_signal": false,
+      "child_selected_stage": null,
+      "child_selected_signal": null
+    },
+    "merge_eligible": false,
+    "selection_rationale": "Candidate did not produce measurable answer overlap.",
+    "derived_parent_agent": null
+  }
+}

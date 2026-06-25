@@ -607,6 +607,9 @@ def archive_candidate(
         patch_review=patch_review,
         assessment=assessment,
     )
+    patch_path = candidate_dir / "patch.diff"
+    patch_artifact = str(patch_path.relative_to(ROOT)) if patch_path.exists() and patch_path.is_relative_to(ROOT) else str(patch_path) if patch_path.exists() else None
+
     card = {
         "candidate_id": candidate_id,
         "candidate_type": candidate_type,
@@ -615,7 +618,7 @@ def archive_candidate(
         "changed_files": patch_review["diff_files"],
         "artifacts": {
             "candidate_dir": str(candidate_dir.relative_to(ROOT) if candidate_dir.is_relative_to(ROOT) else candidate_dir),
-            "patch": str((candidate_dir / "patch.diff").relative_to(ROOT)),
+            "patch": patch_artifact,
             "manifest": str((candidate_dir / "manifest.json").relative_to(ROOT)),
             "validation_log": str((candidate_dir / "validation.log").relative_to(ROOT)) if (candidate_dir / "validation.log").exists() else None,
             "child_eval_report": str((candidate_dir / "child_eval/child_eval_report.json").relative_to(ROOT)) if (candidate_dir / "child_eval/child_eval_report.json").exists() else None,
