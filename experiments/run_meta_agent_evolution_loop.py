@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Run the high-level meta-agent evolution loop.
 
 This is the loop orchestrator, not a single candidate launcher.
@@ -19,6 +19,8 @@ Human merge approval remains outside this script.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
 import os
 import shutil
@@ -187,13 +189,28 @@ def run_parent_case(
     return Path(result["run_dir"])
 
 
+def analyze_run_quiet(run_dir: Path, stdout_path: Path, stderr_path: Path) -> dict[str, Any]:
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            return analyze_run(run_dir)
+    finally:
+        stdout_path.write_text(stdout.getvalue(), encoding="utf-8")
+        stderr_path.write_text(stderr.getvalue(), encoding="utf-8")
+
+
 def analyze_and_seed(
     *,
     run_dir: Path,
     loop_dir: Path,
     candidate_context: dict[str, Any],
 ) -> tuple[dict[str, Any], Path]:
-    analysis = analyze_run(run_dir)
+    analysis = analyze_run_quiet(
+        run_dir,
+        loop_dir / "parent_analyze.stdout",
+        loop_dir / "parent_analyze.stderr",
+    )
     signal = extract_primary_signal(run_dir / "agent_error_summary.json")
     signal_path = loop_dir / "parent_primary_signal.json"
     write_json(signal_path, signal)
@@ -322,12 +339,17 @@ def run_generic_child_eval(
     if not run_dirs:
         return {"status": "child_run_failed_no_run_dir", "exit_code": proc.returncode, "workspace": str(child_ws)}
     child_run_dir = run_dirs[-1]
-    child_analysis = analyze_run(child_run_dir)
+    child_analysis = analyze_run_quiet(
+        child_run_dir,
+        loop_dir / "child_analyze.stdout",
+        loop_dir / "child_analyze.stderr",
+    )
     child_signal = extract_primary_signal(child_run_dir / "agent_error_summary.json")
     child_eval_dir = candidate_dir / "child_eval"
     child_eval_dir.mkdir(parents=True, exist_ok=True)
     report = {
         "status": "completed",
+        "final_status": "candidate_child_eval_passed" if child_analysis.get("passed") else "candidate_child_eval_failed",
         "workspace": str(child_ws),
         "child_run_dir": str(child_run_dir),
         "child_run_exit_code": proc.returncode,
@@ -335,9 +357,25 @@ def run_generic_child_eval(
         "child_validation_reason": child_analysis.get("validation_reason"),
         "child_selected_stage": child_signal.get("selected_component"),
         "child_selected_signal": child_signal.get("selected_signal"),
+        "child_status": {
+            "status": "completed",
+            "passed_original_dab_validation": child_analysis.get("passed"),
+            "validation_reason": child_analysis.get("validation_reason"),
+            "selected_stage": child_signal.get("selected_component"),
+            "selected_signal": child_signal.get("selected_signal"),
+        },
     }
     write_json(child_eval_dir / "generic_child_eval_report.json", report)
+    write_json(child_eval_dir / "child_eval_report.json", report)
     return report
+
+
+def scope_note_for_candidate_type(candidate_type: str) -> str:
+    if candidate_type == "data_agent_repair":
+        return "Data-agent prompt repair candidate; not feedback analyzer infrastructure repair."
+    if candidate_type == "feedback_analyzer_repair":
+        return "Feedback/error-analysis infrastructure repair only; not a PATENTS answer solver repair."
+    return f"Candidate type: {candidate_type}."
 
 
 def postprocess_candidate(
@@ -361,6 +399,8 @@ def postprocess_candidate(
             parent_agent_id,
             "--candidate-type",
             candidate_type,
+            "--scope-note",
+            scope_note_for_candidate_type(candidate_type),
             "--case-id",
             case_id,
         ],
@@ -472,6 +512,7 @@ def run_loop(args: argparse.Namespace) -> int:
                     "parent_run": str(parent_run),
                     "seed_path": str(seed_path),
                     "candidate_id": candidate_id,
+                    "candidate_dir": str(candidate_dir),
                 }
             )
             break
@@ -526,8 +567,38 @@ def run_loop(args: argparse.Namespace) -> int:
         "selected_meta_agent_protocol": meta_agent_id,
         "results": results,
     }
-    write_json(loop_dir / "loop_summary.json", summary)
-    print(json.dumps(summary, indent=2, ensure_ascii=False))
+    summary_path = loop_dir / "loop_summary.json"
+    write_json(summary_path, summary)
+    terminal_summary = {
+        "status": summary["status"],
+        "loop_dir": str(loop_dir),
+        "loop_summary": str(summary_path),
+        "selected_initial_parent_agent": initial_parent_agent_id,
+        "selected_next_parent_agent": parent_agent_id,
+        "selected_meta_agent_protocol": meta_agent_id,
+        "iterations": [
+            {
+                "iteration": item.get("iteration"),
+                "candidate_id": item.get("candidate_id"),
+                "candidate_dir": item.get("candidate_dir"),
+                "parent_run": item.get("parent_run"),
+                "seed_path": item.get("seed_path") or str(loop_dir / f"iteration_{item.get('iteration', 0):03d}" / "repair_seed.json"),
+                "launcher_exit_code": item.get("launcher_exit_code"),
+                "child_eval_status": (item.get("child_eval") or {}).get("final_status") or (item.get("child_eval") or {}).get("status"),
+                "child_selected_stage": (item.get("child_eval") or {}).get("child_selected_stage"),
+                "postprocess_exit_code": item.get("postprocess_exit_code"),
+                "logs": {
+                    "candidate_launcher_stdout": str(loop_dir / f"iteration_{item.get('iteration', 0):03d}" / "candidate_launcher.stdout"),
+                    "candidate_launcher_stderr": str(loop_dir / f"iteration_{item.get('iteration', 0):03d}" / "candidate_launcher.stderr"),
+                    "parent_analyze_stdout": str(loop_dir / f"iteration_{item.get('iteration', 0):03d}" / "parent_analyze.stdout"),
+                    "child_run_stdout": str(loop_dir / f"iteration_{item.get('iteration', 0):03d}" / "child_run.stdout"),
+                    "child_analyze_stdout": str(loop_dir / f"iteration_{item.get('iteration', 0):03d}" / "child_analyze.stdout"),
+                },
+            }
+            for item in results
+        ],
+    }
+    print(json.dumps(terminal_summary, indent=2, ensure_ascii=False))
     return 0
 
 

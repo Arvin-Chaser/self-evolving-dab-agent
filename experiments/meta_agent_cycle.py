@@ -73,7 +73,7 @@ def compact_signal(signal: Any) -> dict[str, Any]:
 
 def infer_state(candidate_dir: Path) -> dict[str, Any]:
     manifest = load_json(candidate_dir / "manifest.json") or {}
-    child_eval = load_json(candidate_dir / "child_eval/child_eval_report.json") or {}
+    child_eval = load_json(candidate_dir / "child_eval/child_eval_report.json") or load_json(candidate_dir / "child_eval/generic_child_eval_report.json") or {}
     review = load_json(candidate_dir / "post_child_eval_review/post_child_eval_review.json") or {}
     promotion = load_json(candidate_dir / "promotion_decision.json") or {}
     merge_validation = load_json(candidate_dir / "merge_validation/merge_validation_summary.json") or {}
@@ -143,7 +143,7 @@ def build_patch_review(candidate_dir: Path) -> dict[str, Any]:
 def generate_merge_review(candidate_dir: Path, state: dict[str, Any], scope_note: str) -> Path:
     patch_review = build_patch_review(candidate_dir)
     manifest = load_json(candidate_dir / "manifest.json") or {}
-    child_eval = load_json(candidate_dir / "child_eval/child_eval_report.json") or {}
+    child_eval = load_json(candidate_dir / "child_eval/child_eval_report.json") or load_json(candidate_dir / "child_eval/generic_child_eval_report.json") or {}
     review = load_json(candidate_dir / "post_child_eval_review/post_child_eval_review.json") or {}
     merge_validation = load_json(candidate_dir / "merge_validation/merge_validation_summary.json") or {}
     child_status = child_eval.get("child_status") or {}
@@ -213,7 +213,7 @@ def generate_merge_review(candidate_dir: Path, state: dict[str, Any], scope_note
 
 
 def generate_next_seed(candidate_dir: Path, case_id: str, recommended_goal: str) -> tuple[Path, Path]:
-    child_eval = load_json(candidate_dir / "child_eval/child_eval_report.json") or {}
+    child_eval = load_json(candidate_dir / "child_eval/child_eval_report.json") or load_json(candidate_dir / "child_eval/generic_child_eval_report.json") or {}
     child_status = child_eval.get("child_status") or {}
     parent_run_id = child_eval.get("parent_run_id")
     selected_signal = compact_signal(child_status.get("selected_signal"))
@@ -305,7 +305,7 @@ def archive_candidate(
     candidate_id = candidate_dir.name
     patch_review = build_patch_review(candidate_dir)
     manifest = load_json(candidate_dir / "manifest.json") or {}
-    child_eval = load_json(candidate_dir / "child_eval/child_eval_report.json") or {}
+    child_eval = load_json(candidate_dir / "child_eval/child_eval_report.json") or load_json(candidate_dir / "child_eval/generic_child_eval_report.json") or {}
     review = load_json(candidate_dir / "post_child_eval_review/post_child_eval_review.json") or {}
     card = {
         "candidate_id": candidate_id,
