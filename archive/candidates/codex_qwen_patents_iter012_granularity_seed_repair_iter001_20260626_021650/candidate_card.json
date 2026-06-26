@@ -1,0 +1,60 @@
+{
+  "candidate_id": "codex_qwen_patents_iter012_granularity_seed_repair_iter001_20260626_021650",
+  "candidate_type": "data_agent_repair",
+  "parent_agent_id": "data_agent_shadow_codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342",
+  "status": "candidate_child_eval_failed",
+  "changed_files": [
+    "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt"
+  ],
+  "artifacts": {
+    "candidate_dir": "candidates/dab/codex_qwen_patents_iter012_granularity_seed_repair_iter001_20260626_021650",
+    "patch": "candidates/dab/codex_qwen_patents_iter012_granularity_seed_repair_iter001_20260626_021650/patch.diff",
+    "manifest": "candidates/dab/codex_qwen_patents_iter012_granularity_seed_repair_iter001_20260626_021650/manifest.json",
+    "validation_log": null,
+    "child_eval_report": "candidates/dab/codex_qwen_patents_iter012_granularity_seed_repair_iter001_20260626_021650/child_eval/child_eval_report.json",
+    "post_child_eval_review": null,
+    "merge_review_package": "candidates/dab/codex_qwen_patents_iter012_granularity_seed_repair_iter001_20260626_021650/merge_review_package.md",
+    "next_repair_seed": "candidates/dab/codex_qwen_patents_iter012_granularity_seed_repair_iter001_20260626_021650/next_data_agent_repair_seed.json"
+  },
+  "eval_summary": {
+    "manifest_status": "valid_candidate_pending_child_eval",
+    "child_eval": "candidate_child_eval_failed",
+    "post_child_eval_review": null,
+    "total_changed_lines": 2,
+    "scope": "Data-agent prompt repair candidate; not feedback analyzer infrastructure repair."
+  },
+  "promotion": {
+    "promoted_to_agent": false,
+    "merge_recommendation": "unknown"
+  },
+  "evolution": {
+    "evolution_status": "failed_no_measured_answer_improvement",
+    "evolution_parent_eligible": false,
+    "reward": 0.0,
+    "answer_metrics": {
+      "status": "unavailable",
+      "expected_count": null,
+      "predicted_count": null,
+      "true_positive": null,
+      "false_positive": null,
+      "false_negative": null,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "jaccard": 0.0
+    },
+    "execution_metrics": {
+      "child_exit_code": 0,
+      "child_execution_success": true,
+      "child_has_answer_like_output": false
+    },
+    "signal_metrics": {
+      "useful_new_signal": true,
+      "child_selected_stage": "granularity_mapping",
+      "child_selected_signal": "Generated code appears to infer hierarchy level from string shape, for example slash/pattern matching, instead of grounding the level in metadata."
+    },
+    "merge_eligible": false,
+    "selection_rationale": "Candidate did not produce measurable answer overlap.",
+    "derived_parent_agent": null
+  }
+}

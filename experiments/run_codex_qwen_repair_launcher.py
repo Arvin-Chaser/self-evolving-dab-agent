@@ -106,6 +106,7 @@ FINAL_STATUSES = {
     "valid_candidate_pending_child_eval",
     "no_op_failed",
     "protocol_failed_invalid_patch_spec",
+    "protocol_failed_seed_mismatch",
     "patch_apply_failed",
     "protocol_failed_empty_patch",
     "rejected_large_rewrite",
@@ -261,6 +262,7 @@ def build_context_pack(
     repair_seed: Path | None,
     parent_run: Path | None,
     parent_prompt: Path | None,
+    repair_seed_override: bool = False,
 ) -> Path:
     lines: list[str] = [
         f"# Minimal source context pack: {profile.name}",
@@ -278,6 +280,15 @@ def build_context_pack(
         *[f"  - `{item}`" for item in profile.operations],
         "",
     ]
+    if repair_seed_override:
+        lines += [
+            "## Repair seed override policy",
+            "The Repair seed below is the PRIMARY objective for this candidate.",
+            "Parent run artifacts are background context only; do not repair an unrelated parent traceback or runtime API issue unless it directly supports the override seed.",
+            "The patch_spec rationale and intended_change must explicitly address the override seed selected_stage/selected_signal.",
+            "If no minimal prompt repair can address the override seed, output no_op_failed instead of repairing a different issue.",
+            "",
+        ]
     skill_path = PROFILE_SKILLS.get(profile.name)
     if skill_path and skill_path.exists():
         lines += [
@@ -467,7 +478,58 @@ def validate_data_agent_prompt_change(edit: dict[str, str], idx: int) -> tuple[b
         return False, f"edit {idx} gives incorrect log_exception signature guidance"
     return True, "ok"
 
-def validate_spec(spec: dict[str, Any] | None, profile: RepairProfile, candidate_dir: Path) -> tuple[bool, str, str]:
+
+def _seed_focus_terms(repair_seed: Path | None) -> tuple[str | None, list[str]]:
+    if not repair_seed or not repair_seed.exists():
+        return None, []
+    try:
+        seed = json.loads(repair_seed.read_text(encoding="utf-8"))
+    except Exception:
+        return None, []
+    stage = seed.get("selected_stage")
+    signal = seed.get("selected_signal")
+    raw = " ".join(str(item or "") for item in (stage, signal, (seed.get("selected_signal_evidence") or {}).get("raw")))
+    stop = {
+        "generated", "appears", "example", "instead", "repair", "failure", "selected",
+        "signal", "stage", "code", "codes", "from", "with", "that", "this", "have",
+        "into", "only", "using", "used", "must", "should", "would", "could",
+    }
+    terms = []
+    for token in re.findall(r"[a-zA-Z][a-zA-Z0-9_]{4,}", raw.lower()):
+        if token not in stop and token not in terms:
+            terms.append(token)
+    return str(stage) if stage else None, terms[:16]
+
+
+def validate_seed_alignment(
+    spec: dict[str, Any],
+    *,
+    profile: RepairProfile,
+    repair_seed: Path | None,
+    repair_seed_override: bool,
+) -> tuple[bool, str]:
+    if not repair_seed_override or profile.name != "data_agent_prompt_repair":
+        return True, "ok"
+    stage, terms = _seed_focus_terms(repair_seed)
+    if not stage and not terms:
+        return True, "ok"
+    combined = "\n".join(
+        "\n".join(str(edit.get(key, "")) for key in ("anchor", "intended_change", "rationale"))
+        for edit in spec.get("edits") or []
+        if isinstance(edit, dict)
+    ).lower()
+    stage_variants = []
+    if stage:
+        stage_low = stage.lower()
+        stage_variants = [stage_low, stage_low.replace("_", " "), stage_low.replace("_", "-")]
+    matched_terms = [term for term in terms if term in combined]
+    if any(variant in combined for variant in stage_variants) or len(matched_terms) >= 3:
+        return True, "ok"
+    focus = stage or ", ".join(terms[:5])
+    return False, f"patch_spec does not address override repair seed focus: {focus}"
+
+
+def validate_spec(spec: dict[str, Any] | None, profile: RepairProfile, candidate_dir: Path, repair_seed: Path | None = None, repair_seed_override: bool = False) -> tuple[bool, str, str]:
     if spec is None:
         return False, "protocol_failed_invalid_patch_spec", "patch_spec JSON could not be parsed"
     if spec.get("status") == "no_op_failed":
@@ -520,6 +582,9 @@ def validate_spec(spec: dict[str, Any] | None, profile: RepairProfile, candidate
     for name in profile.required_public_functions:
         if name not in preserve:
             return False, "protocol_failed_invalid_patch_spec", f"public_functions_to_preserve missing {name}"
+    aligned, align_reason = validate_seed_alignment(spec, profile=profile, repair_seed=repair_seed, repair_seed_override=repair_seed_override)
+    if not aligned:
+        return False, "protocol_failed_seed_mismatch", align_reason
     write_json(candidate_dir / "validated_patch_spec.json", spec)
     return True, "patch_spec_valid", "ok"
 
@@ -682,6 +747,7 @@ def run_launcher(args: argparse.Namespace) -> int:
     candidate_dir.mkdir(parents=True, exist_ok=True)
 
     repair_seed = Path(args.repair_seed or os.environ.get("META_LOOP_REPAIR_SEED", "")) if (args.repair_seed or os.environ.get("META_LOOP_REPAIR_SEED")) else None
+    repair_seed_override = os.environ.get("META_LOOP_REPAIR_SEED_OVERRIDE") == "1"
     parent_run = Path(args.parent_run or os.environ.get("META_LOOP_PARENT_RUN", "")) if (args.parent_run or os.environ.get("META_LOOP_PARENT_RUN")) else None
     parent_prompt = Path(args.parent_prompt or os.environ.get("META_LOOP_PARENT_PROMPT", "")) if (args.parent_prompt or os.environ.get("META_LOOP_PARENT_PROMPT")) else None
     if parent_prompt is None and profile.name == "data_agent_prompt_repair":
@@ -696,11 +762,12 @@ def run_launcher(args: argparse.Namespace) -> int:
         repair_seed=repair_seed,
         parent_run=parent_run,
         parent_prompt=parent_prompt,
+        repair_seed_override=repair_seed_override,
     )
     prompt = build_prompt(profile, context, candidate_dir)
     spec, _ = load_or_call_patch_spec(args, prompt, candidate_dir)
 
-    spec_ok, spec_status, spec_reason = validate_spec(spec, profile, candidate_dir)
+    spec_ok, spec_status, spec_reason = validate_spec(spec, profile, candidate_dir, repair_seed=repair_seed, repair_seed_override=repair_seed_override)
     if not spec_ok:
         write_manifest(
             candidate_dir,

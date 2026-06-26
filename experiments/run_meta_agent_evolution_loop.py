@@ -250,6 +250,7 @@ def run_candidate_launcher(
     dab_root: Path,
     loop_dir: Path,
     env_candidate_id_name: str,
+    repair_seed_override: bool = False,
 ) -> int:
     env = os.environ.copy()
     env.update(
@@ -259,6 +260,7 @@ def run_candidate_launcher(
             "META_LOOP_CANDIDATE_ID": candidate_id,
             "META_LOOP_CANDIDATE_DIR": str(candidate_dir),
             "META_LOOP_REPAIR_SEED": str(seed_path),
+            "META_LOOP_REPAIR_SEED_OVERRIDE": "1" if repair_seed_override else "0",
             "META_LOOP_PARENT_RUN": str(parent_run),
             "META_LOOP_PARENT_AGENT_ID": parent_agent_id,
             "META_LOOP_PARENT_PROMPT": str(parent_prompt),
@@ -507,6 +509,20 @@ def run_loop(args: argparse.Namespace) -> int:
             loop_dir=iteration_dir,
             candidate_context={"parent_agent_id": parent_agent_id, "iteration": iteration},
         )
+        if args.repair_seed:
+            seed_path = Path(args.repair_seed).resolve()
+            if not seed_path.exists():
+                raise SystemExit(f"repair_seed not found: {seed_path}")
+            seed = load_json(seed_path) or {}
+            write_json(
+                iteration_dir / "repair_seed_override.json",
+                {
+                    "status": "using_repair_seed_override",
+                    "override_seed_path": str(seed_path),
+                    "override_seed": seed,
+                    "parent_analysis_seed_path": str(iteration_dir / "repair_seed.json"),
+                },
+            )
         candidate_id = candidate_id_for(args.candidate_id_prefix, iteration)
         candidate_dir = ROOT / "candidates/dab" / candidate_id
         launcher_exit = None
@@ -523,6 +539,7 @@ def run_loop(args: argparse.Namespace) -> int:
                 dab_root=dab_root,
                 loop_dir=iteration_dir,
                 env_candidate_id_name=args.candidate_id_env,
+                repair_seed_override=bool(args.repair_seed),
             )
         else:
             write_json(
@@ -644,6 +661,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--case-dir", default=str(DEFAULT_CASE_DIR))
     parser.add_argument("--dab-root", default=str(DEFAULT_DAB_ROOT))
     parser.add_argument("--parent-run", help="Reuse an existing parent run instead of running the data agent.")
+    parser.add_argument("--repair-seed", help="Use an existing repair seed for candidate generation instead of the parent-selected signal.")
     parser.add_argument("--rerun-parent-each-iteration", action="store_true")
     parser.add_argument("--timeout-sec", type=int, default=300)
     parser.add_argument("--candidate-launcher", help="Single-candidate launcher invoked by the loop.")
