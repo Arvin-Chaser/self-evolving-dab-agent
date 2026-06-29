@@ -727,30 +727,44 @@ def run_loop(args: argparse.Namespace) -> int:
         )
 
         parent_history.append(parent_agent_id)
-        next_parent = select_parent_agent(
-            archive_root,
-            None,
-            max_age_hours=args.archive_max_parent_age_hours,
-            repeated_parent_ids=parent_history,
-            repeated_parent_penalty=args.repeated_parent_penalty,
-        )
-        write_json(
-            iteration_dir / "next_parent_selection.json",
-            {
-                "status": "selected_from_archive_top_ranked_recent_with_repeated_penalty",
-                "previous_parent_agent_id": parent_agent_id,
-                "next_parent_agent_id": next_parent["card"]["agent_id"],
-                "selection_score": next_parent.get("selection_score"),
-                "parent_history": parent_history,
-                "policy": "archive_top_ranked_recent_after_candidate_postprocess_with_repeated_parent_penalty",
-                "archive_max_parent_age_hours": args.archive_max_parent_age_hours,
-                "repeated_parent_penalty": args.repeated_parent_penalty,
-            },
-        )
-        parent = next_parent
-        parent_agent_id = parent["card"]["agent_id"]
-        prompt_path = prompt_for_parent(parent, Path(args.prompt) if args.prompt else None)
-        parent_run = None
+        if iteration < args.iterations:
+            next_parent = select_parent_agent(
+                archive_root,
+                None,
+                max_age_hours=args.archive_max_parent_age_hours,
+                repeated_parent_ids=parent_history,
+                repeated_parent_penalty=args.repeated_parent_penalty,
+            )
+            write_json(
+                iteration_dir / "next_parent_selection.json",
+                {
+                    "status": "selected_from_archive_top_ranked_recent_with_repeated_penalty",
+                    "previous_parent_agent_id": parent_agent_id,
+                    "next_parent_agent_id": next_parent["card"]["agent_id"],
+                    "selection_score": next_parent.get("selection_score"),
+                    "parent_history": parent_history,
+                    "policy": "archive_top_ranked_recent_after_candidate_postprocess_with_repeated_parent_penalty",
+                    "archive_max_parent_age_hours": args.archive_max_parent_age_hours,
+                    "repeated_parent_penalty": args.repeated_parent_penalty,
+                },
+            )
+            parent = next_parent
+            parent_agent_id = parent["card"]["agent_id"]
+            prompt_path = prompt_for_parent(parent, Path(args.prompt) if args.prompt else None)
+            parent_run = None
+        else:
+            write_json(
+                iteration_dir / "next_parent_selection.json",
+                {
+                    "status": "skipped_final_iteration",
+                    "previous_parent_agent_id": parent_agent_id,
+                    "next_parent_agent_id": None,
+                    "parent_history": parent_history,
+                    "policy": "next_parent_selection_only_required_before_a_following_iteration",
+                    "archive_max_parent_age_hours": args.archive_max_parent_age_hours,
+                    "repeated_parent_penalty": args.repeated_parent_penalty,
+                },
+            )
 
     summary = {
         "status": "completed",
