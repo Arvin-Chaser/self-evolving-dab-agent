@@ -1,0 +1,8 @@
+model = "qwen-plus"
+model_provider = "qwen_proxy"
+
+[model_providers.qwen_proxy]
+name = "Local Qwen Responses Proxy"
+base_url = "http://127.0.0.1:8787/v1"
+env_key = "CODEX_QWEN_PROXY_TOKEN"
+wire_api = "responses"

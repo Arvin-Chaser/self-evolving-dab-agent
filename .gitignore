@@ -18,3 +18,15 @@ DataAgentBench/
 # OS / editor
 .DS_Store
 .vscode/
+candidates/
+trajectories/
+reports/
+.codex/
+
+# local meta-agent/codex-qwen runtime artifacts
+*.stdout
+*.stderr
+qwen_call.log
+patch_spec_raw.txt
+patch_spec_prompt.txt
+minimal_source_context_pack.md

@@ -323,12 +323,162 @@ def generate_merge_review(candidate_dir: Path, state: dict[str, Any], scope_note
     return out
 
 
+def extract_child_runtime_repair_evidence(child_eval: dict[str, Any]) -> dict[str, Any]:
+    """Extract compact, actionable evidence from the child run.
+
+    The primary-signal text is intentionally small and sometimes too abstract
+    for the next meta-agent round.  This helper keeps the loop autonomous by
+    carrying forward concrete runtime facts from the child trace/code without
+    hand-editing the next candidate patch.
+    """
+    child_run_dir_raw = child_eval.get("child_run_dir")
+    if not child_run_dir_raw:
+        return {}
+    child_run_dir = Path(child_run_dir_raw)
+    evidence: dict[str, Any] = {"child_run_dir": str(child_run_dir)}
+    child_status = child_eval.get("child_status") or {}
+    persisted_signal_raw = str(child_status.get("selected_signal") or child_eval.get("child_selected_signal") or "")
+    persisted_reason = str(child_status.get("validation_reason") or child_eval.get("child_validation_reason") or "")
+    persisted_text = "\n".join(part for part in (persisted_signal_raw, persisted_reason) if part)
+    if persisted_text:
+        evidence["persisted_child_signal_excerpt"] = persisted_text[:2000]
+        if "Data block not found in CPC definition SQL" in persisted_text or "data_block_not_found" in persisted_text:
+            evidence.setdefault("generated_code_findings", []).append(
+                {
+                    "finding": "generated parser failed to locate COPY data block terminator",
+                    "risk": "searching for a fragile literal terminator can fail; generated code should scan lines after the COPY header until a line whose stripped content is exactly backslash-dot",
+                }
+            )
+        if "Malformed header line in CPC definition SQL" in persisted_text or "cpc_definition_header_malformed" in persisted_text:
+            evidence.setdefault("generated_code_findings", []).append(
+                {
+                    "finding": "generated parser treated a CPCDefinition data row as the COPY header",
+                    "risk": "COPY header columns are in parentheses on the same COPY command line; the first following line is data, not header metadata",
+                }
+            )
+        if "Failed to parse column names from COPY command" in persisted_text or "Missing required columns" in persisted_text:
+            evidence.setdefault("generated_code_findings", []).append(
+                {
+                    "finding": "generated parser failed to handle CPCDefinition COPY header column names",
+                    "risk": "quoted column names such as titleFull with surrounding double quotes may not be stripped before required-column checks, so metadata parsing stops before CPC mapping",
+                }
+            )
+
+    trace_path = child_run_dir / "stage_trace.json"
+    if trace_path.exists():
+        trace = load_json(trace_path) or []
+        if isinstance(trace, list):
+            selected_events: list[dict[str, Any]] = []
+            for event in trace:
+                if not isinstance(event, dict):
+                    continue
+                name = event.get("event")
+                if name in {
+                    "cpc_definition_data_block_not_found",
+                    "cpc_definition_header_malformed",
+                    "cpc_hierarchy_built",
+                    "cpc_level5_symbol_count",
+                    "cpc_level5_mapping_summary",
+                    "cpc_mapping_summary",
+                    "unmapped_cpc_codes_sample",
+                    "granularity_mapping_fallback_used",
+                    "no_years_with_level5_data",
+                    "no_yearly_data_for_ema",
+                    "no_years_found",
+                    "final_answer_written",
+                }:
+                    selected_events.append(
+                        {
+                            "event": name,
+                            "trigger": event.get("trigger"),
+                            "severity": event.get("severity"),
+                            "purpose": event.get("purpose"),
+                            "outputs": event.get("outputs"),
+                            "inputs": event.get("inputs"),
+                        }
+                    )
+            if selected_events:
+                evidence["runtime_trace_events"] = selected_events[:8]
+
+    generated_path = child_run_dir / "generated_solve.py"
+    if generated_path.exists():
+        text = generated_path.read_text(encoding="utf-8", errors="replace")
+        findings: list[dict[str, Any]] = []
+        if re.search(r"re\.sub\([^\n]*0\+\$", text) or "Strip trailing zeros" in text:
+            findings.append(
+                {
+                    "finding": "generated normalizer strips trailing zeros from CPC codes",
+                    "risk": "can corrupt valid metadata symbols such as C01B33/00 into C01B33 before lookup",
+                }
+            )
+        if "code.replace('.', '/')" in text:
+            findings.append(
+                {
+                    "finding": "generated normalizer rewrites dot separators to slashes without metadata confirmation",
+                    "risk": "can create symbols not present in CPCDefinition metadata",
+                }
+            )
+        if "all_years = sorted(level5_to_years.keys())" in text:
+            findings.append(
+                {
+                    "finding": "generated EMA loop uses CPC-code keys as the year axis",
+                    "risk": "after mapping is repaired, EMA may still be computed over codes rather than years",
+                }
+            )
+        if "json.loads(parents_str)" in text and "replace('\\n'" not in text and 'replace("\\n"' not in text:
+            findings.append(
+                {
+                    "finding": "generated parser attempts json.loads(parents_str) without decoding escaped COPY newlines",
+                    "risk": "CPCDefinition parents may parse as empty for all symbols, preventing traversal from deeper CPC codes to level 5 ancestors",
+                }
+            )
+        if findings:
+            evidence["generated_code_findings"] = findings
+
+    result_path = child_run_dir / "result.json"
+    if result_path.exists():
+        result = load_json(result_path) or {}
+        reason = str(result.get("validation_reason") or "")
+        if reason:
+            evidence["validation_reason_excerpt"] = reason[:2000]
+        if "Failed to parse column names from COPY command" in reason or "Missing required columns" in reason:
+            evidence.setdefault("generated_code_findings", []).append(
+                {
+                    "finding": "generated parser failed to handle CPCDefinition COPY header column names",
+                    "risk": "quoted column names such as titleFull with surrounding double quotes may not be stripped before required-column checks, so metadata parsing stops before CPC mapping",
+                }
+            )
+        if "Data block not found in CPC definition SQL" in reason:
+            evidence.setdefault("generated_code_findings", []).append(
+                {
+                    "finding": "generated parser failed to locate COPY data block terminator",
+                    "risk": "searching for a fragile literal terminator can fail; generated code should scan lines after the COPY header until a line whose stripped content is exactly backslash-dot",
+                }
+            )
+
+    if evidence.get("runtime_trace_events") or evidence.get("generated_code_findings") or evidence.get("validation_reason_excerpt"):
+        evidence["next_prompt_requirements"] = [
+            "Generated code should extract CPCDefinition COPY header columns from the same COPY command line inside parentheses; the line after the COPY command is the first data row, not the header.",
+            "Generated code should locate the CPCDefinition COPY data block by scanning lines after the COPY header until line.strip() equals backslash-dot, rather than relying on one fragile whole-file substring.",
+            "Generated code should strip surrounding double quotes from CPCDefinition COPY header column names before required-column checks, so quoted titleFull matches titleFull.",
+            "Generated code should parse CPCDefinition `parents` robustly; if the field contains escaped COPY newlines such as `\\n`, decode them before JSON/list parsing and verify `symbols_with_parents > 0`.",
+            "Generated code should try exact raw CPC code lookup in CPCDefinition `symbol` before any normalization.",
+            "Do not strip trailing classification zeros or slash groups unless the transformed symbol is confirmed in metadata.",
+            "If normalization is attempted, compare coverage before/after and log sample raw->matched mappings.",
+            "Map target level through CPCDefinition `level` and `parents`; do not infer level from slash count or string shape.",
+            "Build the EMA year axis from publication filing years, not from CPC-code dictionary keys.",
+            "Treat zero mapped CPC coverage as a hard runtime error with evidence rather than silently writing an empty answer.",
+        ]
+    return evidence
+
+
 def generate_next_seed(candidate_dir: Path, case_id: str, recommended_goal: str) -> tuple[Path, Path]:
     child_eval = load_json(candidate_dir / "child_eval/child_eval_report.json") or load_json(candidate_dir / "child_eval/generic_child_eval_report.json") or {}
     child_status = child_eval.get("child_status") or {}
     parent_run_id = child_eval.get("parent_run_id")
     selected_signal = compact_signal(child_status.get("selected_signal"))
     selected_stage = child_status.get("selected_stage")
+    runtime_repair_evidence = extract_child_runtime_repair_evidence(child_eval)
     seed = {
         "seed_id": f"next_data_agent_repair_seed_from_{candidate_dir.name}",
         "created_for": "iter004_data_agent_repair",
@@ -342,6 +492,7 @@ def generate_next_seed(candidate_dir: Path, case_id: str, recommended_goal: str)
         "selected_stage": selected_stage,
         "selected_signal": "no_years_found" if selected_signal.get("event") == "no_years_found" else child_status.get("selected_signal"),
         "selected_signal_evidence": selected_signal,
+        "runtime_repair_evidence": runtime_repair_evidence,
         "original_dab_validation": {
             "passed": child_status.get("passed_original_dab_validation"),
             "validation_reason": child_status.get("validation_reason"),
@@ -383,6 +534,17 @@ def generate_next_seed(candidate_dir: Path, case_id: str, recommended_goal: str)
         "",
     ]
     md.extend(f"- {item}" for item in seed["recommended_focus_areas"])
+    if runtime_repair_evidence:
+        md.extend(
+            [
+                "",
+                "## Runtime repair evidence",
+                "",
+                "```json",
+                json.dumps(runtime_repair_evidence, indent=2, ensure_ascii=False),
+                "```",
+            ]
+        )
     md_path.write_text("\n".join(md) + "\n", encoding="utf-8")
     return json_path, md_path
 

@@ -36,6 +36,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from experiments.analyze_agent_error import analyze_run
+from experiments.build_meta_agent_evidence_pack import build_fine_grained_feedback_pack, write_pack
 from experiments.extract_primary_signal import extract_primary_signal
 from experiments.run_dab_agent import run_dab_agent
 
@@ -95,19 +96,59 @@ def run_cmd(
             stderr.close()
 
 
+def archive_card_path(row: dict[str, Any]) -> Path:
+    card_ref = Path(row["card"])
+    return card_ref if card_ref.is_absolute() else ROOT / card_ref
+
+
+def archive_card_age_hours(card_path: Path) -> float | None:
+    if not card_path.exists():
+        return None
+    now_ts = datetime.now(timezone.utc).timestamp()
+    return max(0.0, (now_ts - card_path.stat().st_mtime) / 3600.0)
+
+
+def archive_card_is_recent(card_path: Path, max_age_hours: float | None) -> bool:
+    if max_age_hours is None or max_age_hours <= 0:
+        return True
+    age_hours = archive_card_age_hours(card_path)
+    return age_hours is not None and age_hours <= max_age_hours
+
+
+def selection_score_with_penalty(
+    item: dict[str, Any],
+    *,
+    repeated_parent_ids: list[str] | None,
+    repeated_parent_penalty: float,
+) -> dict[str, Any]:
+    arm_id = item.get("arm_id")
+    base_score = float(item.get("score") or 0.0)
+    repeated_count = (repeated_parent_ids or []).count(arm_id)
+    adjusted_score = base_score - max(0.0, repeated_parent_penalty) * repeated_count
+    out = dict(item)
+    out["base_score"] = round(base_score, 6)
+    out["repeated_parent_count"] = repeated_count
+    out["repeated_parent_penalty"] = round(max(0.0, repeated_parent_penalty) * repeated_count, 6)
+    out["adjusted_score"] = round(adjusted_score, 6)
+    return out
+
+
 def select_archive_agent(
     archive_root: Path,
     *,
     requested: str | None = None,
     agent_type: str | None = None,
     require_prompt: bool = False,
+    max_age_hours: float | None = None,
+    repeated_parent_ids: list[str] | None = None,
+    repeated_parent_penalty: float = 0.0,
 ) -> dict[str, Any]:
     agents = {row["agent_id"]: row for row in load_jsonl(archive_root / "indexes/agents.jsonl")}
     if requested:
         row = agents.get(requested)
         if not row:
             raise SystemExit(f"agent not found in archive index: {requested}")
-        card = load_json(ROOT / row["card"])
+        card = load_json(archive_card_path(row))
         if agent_type and card.get("agent_type") != agent_type:
             raise SystemExit(f"requested agent {requested} is {card.get('agent_type')}, not {agent_type}")
         if require_prompt and not card.get("source_refs", {}).get("prompt"):
@@ -117,35 +158,77 @@ def select_archive_agent(
     scores_path = archive_root / "indexes/selection_scores.json"
     if scores_path.exists():
         scores = load_json(scores_path).get("scores") or []
-        for item in sorted(scores, key=lambda x: x.get("score", 0), reverse=True):
+        adjusted_scores: list[dict[str, Any]] = []
+        for item in scores:
+            adjusted_scores.append(
+                selection_score_with_penalty(
+                    item,
+                    repeated_parent_ids=repeated_parent_ids,
+                    repeated_parent_penalty=repeated_parent_penalty,
+                )
+            )
+        for item in sorted(adjusted_scores, key=lambda x: x.get("adjusted_score", x.get("score", 0)), reverse=True):
             arm_id = item.get("arm_id")
             if arm_id in agents:
-                card = load_json(ROOT / agents[arm_id]["card"])
+                row = agents[arm_id]
+                card_path = archive_card_path(row)
+                if not archive_card_is_recent(card_path, max_age_hours):
+                    continue
+                card = load_json(card_path)
                 if agent_type and card.get("agent_type") != agent_type:
                     continue
                 if require_prompt and not card.get("source_refs", {}).get("prompt"):
                     continue
                 if card.get("evolve_policy", {}).get("can_use_as_parent"):
-                    return {"index": agents[arm_id], "card": card, "selection_score": item}
+                    item["card_mtime_age_hours"] = archive_card_age_hours(card_path)
+                    return {"index": row, "card": card, "selection_score": item}
 
+    fallback_rows: list[tuple[float, dict[str, Any], dict[str, Any], Path]] = []
     for row in agents.values():
-        card = load_json(ROOT / row["card"])
+        card_path = archive_card_path(row)
+        if not archive_card_is_recent(card_path, max_age_hours):
+            continue
+        card = load_json(card_path)
         if agent_type and card.get("agent_type") != agent_type:
             continue
         if require_prompt and not card.get("source_refs", {}).get("prompt"):
             continue
         if card.get("evolve_policy", {}).get("can_use_as_parent"):
-            return {"index": row, "card": card}
+            fallback_rows.append((card_path.stat().st_mtime if card_path.exists() else 0.0, row, card, card_path))
+    if fallback_rows:
+        _, row, card, card_path = sorted(fallback_rows, key=lambda x: x[0], reverse=True)[0]
+        return {
+            "index": row,
+            "card": card,
+            "selection_score": {
+                "arm_id": row.get("agent_id"),
+                "score": None,
+                "adjusted_score": None,
+                "card_mtime_age_hours": archive_card_age_hours(card_path),
+                "selection_note": "fallback_most_recent_recent_agent_without_score",
+            },
+        }
     suffix = f" type={agent_type}" if agent_type else ""
-    raise SystemExit(f"no selectable archive agent found{suffix}")
+    recent_suffix = f" within {max_age_hours}h" if max_age_hours and max_age_hours > 0 else ""
+    raise SystemExit(f"no selectable archive agent found{suffix}{recent_suffix}")
 
 
-def select_parent_agent(archive_root: Path, requested: str | None = None) -> dict[str, Any]:
+def select_parent_agent(
+    archive_root: Path,
+    requested: str | None = None,
+    *,
+    max_age_hours: float | None = None,
+    repeated_parent_ids: list[str] | None = None,
+    repeated_parent_penalty: float = 0.0,
+) -> dict[str, Any]:
     return select_archive_agent(
         archive_root,
         requested=requested,
         agent_type="data_agent",
         require_prompt=True,
+        max_age_hours=max_age_hours,
+        repeated_parent_ids=repeated_parent_ids,
+        repeated_parent_penalty=repeated_parent_penalty,
     )
 
 
@@ -215,6 +298,31 @@ def analyze_and_seed(
     signal = extract_primary_signal(run_dir / "agent_error_summary.json")
     signal_path = loop_dir / "parent_primary_signal.json"
     write_json(signal_path, signal)
+    fine_grained_feedback = build_fine_grained_feedback_pack(
+        run_dir,
+        primary_signal=signal,
+        max_trace_events=12,
+    )
+    fine_grained_json_path = loop_dir / "fine_grained_evidence_pack.json"
+    fine_grained_md_path = loop_dir / "fine_grained_evidence_pack.md"
+    write_pack(fine_grained_feedback, fine_grained_json_path, fine_grained_md_path)
+    compact_feedback = {
+        "feedback_type": fine_grained_feedback.get("feedback_type"),
+        "source_run_dir": fine_grained_feedback.get("source_run_dir"),
+        "selected_stage": fine_grained_feedback.get("selected_stage"),
+        "selected_signal": fine_grained_feedback.get("selected_signal"),
+        "repair_routing": fine_grained_feedback.get("repair_routing"),
+        "parent_capabilities": fine_grained_feedback.get("parent_capabilities"),
+        "answer_delta": fine_grained_feedback.get("answer_delta"),
+        "runtime_trace_evidence": (fine_grained_feedback.get("runtime_trace_evidence") or [])[:8],
+        "ranked_feedback_signals": (fine_grained_feedback.get("ranked_feedback_signals") or [])[:5],
+        "repair_constraints": fine_grained_feedback.get("repair_constraints"),
+        "next_repair_focus": fine_grained_feedback.get("next_repair_focus"),
+        "full_evidence_pack_paths": {
+            "json": str(fine_grained_json_path),
+            "markdown": str(fine_grained_md_path),
+        },
+    }
     seed = {
         "seed_id": f"repair_seed_{loop_dir.name}",
         "created_at": datetime.now(timezone.utc).isoformat(),
@@ -226,6 +334,7 @@ def analyze_and_seed(
             "passed": analysis.get("passed"),
             "validation_reason": analysis.get("validation_reason"),
         },
+        "fine_grained_feedback": compact_feedback,
         "candidate_context": candidate_context,
     }
     seed_path = loop_dir / "repair_seed.json"
@@ -250,6 +359,7 @@ def run_candidate_launcher(
     dab_root: Path,
     loop_dir: Path,
     env_candidate_id_name: str,
+    repair_profile: str = "data_agent_prompt_repair",
     repair_seed_override: bool = False,
 ) -> int:
     env = os.environ.copy()
@@ -267,6 +377,7 @@ def run_candidate_launcher(
             "META_LOOP_CASE_DIR": str(case_dir),
             "META_LOOP_DAB_ROOT": str(dab_root),
             "META_LOOP_DIR": str(loop_dir),
+            "REPAIR_PROFILE": repair_profile,
         }
     )
     proc = run_cmd(
@@ -446,7 +557,14 @@ def run_loop(args: argparse.Namespace) -> int:
     loop_dir = loop_root / f"meta_agent_loop_{utc_now_slug()}"
     loop_dir.mkdir(parents=True, exist_ok=False)
 
-    parent = select_parent_agent(archive_root, args.parent_agent_id)
+    parent_history: list[str] = []
+    parent = select_parent_agent(
+        archive_root,
+        args.parent_agent_id,
+        max_age_hours=args.archive_max_parent_age_hours,
+        repeated_parent_ids=parent_history,
+        repeated_parent_penalty=args.repeated_parent_penalty,
+    )
     parent_agent_id = parent["card"]["agent_id"]
     initial_parent_agent_id = parent_agent_id
     meta_agent = select_meta_agent(archive_root, args.meta_agent_id)
@@ -466,6 +584,13 @@ def run_loop(args: argparse.Namespace) -> int:
         "dab_root": str(dab_root),
         "candidate_launcher": args.candidate_launcher,
         "candidate_id_prefix": args.candidate_id_prefix,
+        "repair_profile": args.repair_profile,
+        "parent_selection_policy": {
+            "initial_parent_override": args.parent_agent_id,
+            "subsequent_iterations": "select current top-ranked recent data_agent from archive after candidate postprocess",
+            "archive_max_parent_age_hours": args.archive_max_parent_age_hours,
+            "repeated_parent_penalty": args.repeated_parent_penalty,
+        },
         "stages": [
             "select_parent_from_archive",
             "select_meta_agent_protocol_from_archive",
@@ -474,7 +599,7 @@ def run_loop(args: argparse.Namespace) -> int:
             "invoke_candidate_launcher",
             "optional_generic_child_eval",
             "postprocess_candidate_archive",
-            "select_next_parent",
+            "select_next_parent_from_archive_top_ranked",
         ],
     }
     write_json(loop_dir / "loop_plan.json", plan)
@@ -539,6 +664,7 @@ def run_loop(args: argparse.Namespace) -> int:
                 dab_root=dab_root,
                 loop_dir=iteration_dir,
                 env_candidate_id_name=args.candidate_id_env,
+                repair_profile=args.repair_profile,
                 repair_seed_override=bool(args.repair_seed),
             )
         else:
@@ -600,7 +726,28 @@ def run_loop(args: argparse.Namespace) -> int:
             }
         )
 
-        parent = select_parent_agent(archive_root, args.parent_agent_id)
+        parent_history.append(parent_agent_id)
+        next_parent = select_parent_agent(
+            archive_root,
+            None,
+            max_age_hours=args.archive_max_parent_age_hours,
+            repeated_parent_ids=parent_history,
+            repeated_parent_penalty=args.repeated_parent_penalty,
+        )
+        write_json(
+            iteration_dir / "next_parent_selection.json",
+            {
+                "status": "selected_from_archive_top_ranked_recent_with_repeated_penalty",
+                "previous_parent_agent_id": parent_agent_id,
+                "next_parent_agent_id": next_parent["card"]["agent_id"],
+                "selection_score": next_parent.get("selection_score"),
+                "parent_history": parent_history,
+                "policy": "archive_top_ranked_recent_after_candidate_postprocess_with_repeated_parent_penalty",
+                "archive_max_parent_age_hours": args.archive_max_parent_age_hours,
+                "repeated_parent_penalty": args.repeated_parent_penalty,
+            },
+        )
+        parent = next_parent
         parent_agent_id = parent["card"]["agent_id"]
         prompt_path = prompt_for_parent(parent, Path(args.prompt) if args.prompt else None)
         parent_run = None
@@ -654,7 +801,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--iterations", type=int, default=1)
     parser.add_argument("--archive-root", default=str(DEFAULT_ARCHIVE))
     parser.add_argument("--loop-root", default=str(ROOT / "trajectories/meta_agent_loops"))
-    parser.add_argument("--parent-agent-id")
+    parser.add_argument("--parent-agent-id", help="Initial parent override for the first iteration only; later iterations reselect the current top-ranked archive parent.")
+    parser.add_argument("--archive-max-parent-age-hours", type=float, default=24.0, help="Only auto-select data-agent parents whose archive agent_card was modified within this many hours; <=0 disables the freshness filter. Explicit --parent-agent-id bypasses this for the first iteration.")
+    parser.add_argument("--repeated-parent-penalty", type=float, default=0.15, help="Subtract this score per prior use of the same parent inside the current loop when selecting the next parent.")
     parser.add_argument("--meta-agent-id")
     parser.add_argument("--prompt")
     parser.add_argument("--case-id", default="PATENTS_query1")
@@ -668,6 +817,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--candidate-id-prefix", default="codex_qwen_patents_iter004_data_agent_repair")
     parser.add_argument("--candidate-id-env", default="ITER004_CANDIDATE_ID")
     parser.add_argument("--candidate-type", default="data_agent_repair")
+    parser.add_argument("--repair-profile", default="data_agent_prompt_repair", choices=["data_agent_prompt_repair", "data_agent_project_repair", "data_agent_tool_repair", "analyzer_infra_repair"], help="Repair profile passed to the candidate launcher. Use data_agent_tool_repair to prefer reusable adapters/patents helper scripts, or data_agent_project_repair for broader safe project-source edits.")
     parser.add_argument("--run-generic-child-eval", action="store_true")
     parser.set_defaults(func=run_loop)
     return parser

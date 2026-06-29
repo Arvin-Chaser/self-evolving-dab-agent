@@ -34,8 +34,12 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+META_AGENT_PROJECT_MEMORY_SKILL = ROOT / "skills/dab-meta-agent-project-memory/SKILL.md"
+
 PROFILE_SKILLS = {
     "data_agent_prompt_repair": ROOT / "skills/dab-data-agent-prompt-repair/SKILL.md",
+    "data_agent_project_repair": ROOT / "skills/dab-patents-project-repair/SKILL.md",
+    "data_agent_tool_repair": ROOT / "skills/dab-patents-project-repair/SKILL.md",
 }
 
 try:
@@ -99,6 +103,67 @@ PROFILES: dict[str, RepairProfile] = {
         risk_scope="minimal/local/data_agent_prompt_only",
         required_ack=("no_feedback_analyzer_changes", "no_hardcoded_answer", "no_broad_refactor"),
         max_changed_lines=140,
+    ),
+    "data_agent_tool_repair": RepairProfile(
+        name="data_agent_tool_repair",
+        allowed_patterns=(
+            "adapters/patents/**/*.py",
+            "adapters/patents/*.py",
+            "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+            "experiments/run_dab_agent.py",
+            "adapters/runtime_observer.py",
+            "experiments/build_meta_agent_evidence_pack.py",
+        ),
+        forbidden_patterns=(
+            "logs/**",
+            "candidates/**",
+            "archive/**",
+            "trajectories/**",
+            "reports/**",
+            "benchmarks/**",
+            "legacy/**",
+            "data/**",
+            "adapters/feedback/**",
+            "**/__pycache__/**",
+            "*.pyc",
+            ".git/**",
+            ".venv/**",
+            ".codex/**",
+        ),
+        operations=("replace_text_once", "insert_after_anchor", "insert_before_anchor", "append_text", "create_file"),
+        risk_scope="minimal/local/data_agent_tool_repair",
+        required_ack=("no_control_artifact_changes", "no_benchmark_data_changes", "no_hardcoded_answer", "no_broad_refactor"),
+        max_changed_lines=220,
+    ),
+    "data_agent_project_repair": RepairProfile(
+        name="data_agent_project_repair",
+        allowed_patterns=(
+            "prompts/dab/**/*.txt",
+            "prompts/dab/*.txt",
+            "adapters/**/*.py",
+            "adapters/*.py",
+            "experiments/*.py",
+            "llm_client.py",
+        ),
+        forbidden_patterns=(
+            "logs/**",
+            "candidates/**",
+            "archive/**",
+            "trajectories/**",
+            "reports/**",
+            "benchmarks/**",
+            "legacy/**",
+            "data/**",
+            "**/__pycache__/**",
+            "*.pyc",
+            ".git/**",
+            ".venv/**",
+            ".codex/**",
+        ),
+        operations=("replace_text_once", "insert_after_anchor", "insert_before_anchor", "append_text"),
+        risk_scope="minimal/local/project_repair",
+        required_ack=("no_control_artifact_changes", "no_benchmark_data_changes", "no_hardcoded_answer", "no_broad_refactor"),
+        max_changed_lines=180,
     ),
 }
 
@@ -190,7 +255,7 @@ def materialize_parent_prompt(
     candidate_dir: Path,
     parent_prompt: Path | None,
 ) -> Path | None:
-    if profile.name != "data_agent_prompt_repair" or parent_prompt is None:
+    if profile.name not in {"data_agent_prompt_repair", "data_agent_project_repair", "data_agent_tool_repair"} or parent_prompt is None:
         return parent_prompt
     source = resolve_prompt_source(parent_prompt, workspace)
     if not source.exists():
@@ -254,6 +319,82 @@ def extract_first_json(text: str) -> dict[str, Any] | None:
     return value if isinstance(value, dict) else None
 
 
+
+def load_repair_seed_json(repair_seed: Path | None) -> dict[str, Any]:
+    if repair_seed is None or not repair_seed.exists():
+        return {}
+    try:
+        value = json.loads(repair_seed.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def load_repair_routing(repair_seed: Path | None) -> dict[str, Any]:
+    seed = load_repair_seed_json(repair_seed)
+    routing = seed.get("repair_routing")
+    if not isinstance(routing, dict):
+        fine = seed.get("fine_grained_feedback") if isinstance(seed.get("fine_grained_feedback"), dict) else {}
+        routing = fine.get("repair_routing") if isinstance(fine, dict) else None
+    return routing if isinstance(routing, dict) else {}
+
+
+def is_prompt_path(path: str) -> bool:
+    rel = normalize_rel(path)
+    return rel.startswith("prompts/") and rel.endswith(".txt")
+
+
+def validate_project_repair_routing(
+    spec: dict[str, Any],
+    *,
+    profile: RepairProfile,
+    repair_seed: Path | None,
+    candidate_dir: Path,
+) -> tuple[bool, str]:
+    if profile.name != "data_agent_project_repair":
+        return True, "ok"
+    routing = load_repair_routing(repair_seed)
+    if not routing:
+        return True, "ok"
+
+    target_files = [str(path) for path in spec.get("target_files") or []]
+    prompt_only = bool(target_files) and all(is_prompt_path(path) for path in target_files)
+    policy = routing.get("prompt_only_policy") if isinstance(routing.get("prompt_only_policy"), dict) else {}
+    policy_status = str(policy.get("status") or "")
+    source_required = bool(policy.get("source_change_required")) or policy_status == "reject"
+
+    write_json(
+        candidate_dir / "repair_routing_used.json",
+        {
+            "status": "loaded",
+            "routing": routing,
+            "target_files": target_files,
+            "prompt_only": prompt_only,
+        },
+    )
+
+    if prompt_only and source_required:
+        return False, f"repair_routing rejects prompt-only patch for layer {routing.get('recommended_repair_layer')}"
+
+    combined = "\n".join(
+        "\n".join(str(edit.get(key, "")) for key in ("intended_change", "rationale"))
+        for edit in spec.get("edits") or []
+        if isinstance(edit, dict)
+    ).lower()
+    routing_text = "\n".join(
+        str(routing.get(key) or "")
+        for key in ("recommended_repair_layer", "routing_reason")
+    ).lower()
+    concrete_terms = []
+    for token in re.findall(r"[a-zA-Z][a-zA-Z0-9_]{4,}", routing_text):
+        if token not in {"repair", "layer", "target", "failure", "active", "generated", "source", "prompt", "files"} and token not in concrete_terms:
+            concrete_terms.append(token)
+    matched = [term for term in concrete_terms[:12] if term in combined]
+
+    if prompt_only and policy_status in {"weak_allowed", "allowed_if_specific"} and len(matched) == 0:
+        return False, "prompt-only project repair does not mention the repair_routing layer/reason in rationale"
+    return True, "ok"
+
 def build_context_pack(
     *,
     profile: RepairProfile,
@@ -289,12 +430,22 @@ def build_context_pack(
             "If no minimal prompt repair can address the override seed, output no_op_failed instead of repairing a different issue.",
             "",
         ]
+    if META_AGENT_PROJECT_MEMORY_SKILL.exists():
+        lines += [
+            "## Active project memory skill",
+            f"Path: `{META_AGENT_PROJECT_MEMORY_SKILL.relative_to(ROOT)}`",
+            "This project memory skill has priority over generic repair heuristics when they conflict.",
+            "```markdown",
+            read_text(META_AGENT_PROJECT_MEMORY_SKILL, 12000),
+            "```",
+            "",
+        ]
     skill_path = PROFILE_SKILLS.get(profile.name)
     if skill_path and skill_path.exists():
         lines += [
             "## Active repair skill",
             f"Path: `{skill_path.relative_to(ROOT)}`",
-            "Follow this skill before proposing a patch_spec.",
+            "Follow this skill before proposing a patch_spec, subject to the project memory skill above.",
             "```markdown",
             read_text(skill_path, 12000),
             "```",
@@ -320,34 +471,62 @@ def build_context_pack(
             "- text claiming log_exception takes exactly one positional argument",
             "",
             "## PATENTS mapping failure priority hints",
-            "If evidence shows `cpc_mapping_summary` with `mapped_to_level5 = 0` or all publication CPC entries unmapped, prioritize prompt instructions for CPC symbol normalization and metadata lookup before EMA/year logic.",
-            "Future generated code should normalize raw publication CPC codes to the CPC definition `symbol` format before lookup, and should log coverage/sample unmatched codes when mapping coverage is zero.",
+            "If evidence shows `cpc_mapping_summary` with `mapped_to_level5 = 0` or all publication CPC entries unmapped, prioritize prompt instructions for metadata-grounded CPC lookup before EMA/year logic.",
+            "Observed PATENTS CPCDefinition COPY headers mix quoted and unquoted column names, for example quoted applicationReferences/titleFull plus unquoted level/parents/symbol; generated code must strip surrounding double quotes from header column names before required-column checks.",
+            "The CPCDefinition COPY header columns are inside parentheses on the same `COPY public.cpc_definition (...) FROM stdin;` line; generated code must not treat the next data row as the header.",
+            "For CPCDefinition COPY data blocks, generated code should scan line-by-line after the COPY header until a line whose stripped content is exactly backslash-dot; do not rely on one fragile whole-file substring for the terminator.",
+            "Future generated code should parse CPCDefinition `parents` robustly; if the COPY field contains escaped newlines such as `\\n`, decode them before JSON/list parsing and verify that symbols_with_parents is non-zero.",
+            "Future generated code should try exact raw publication CPC code lookup against CPCDefinition `symbol` first, then apply only metadata-confirmed normalization/aliasing.",
+            "Do not blindly strip trailing classification zeros, slash groups, or decimal-like parts from CPC symbols; transformations such as `C01B33/00 -> C01B33` can destroy valid metadata keys unless the transformed symbol is proven present.",
+            "If normalization is used, generated code should compare mapping coverage before/after, log sample raw->matched mappings, and treat zero mapped coverage as a hard evidence event instead of silently writing an empty answer.",
+            "Do not repair mapped_to_level5=0 by merely ensuring FINAL_ANSWER_PATH is an empty file; the repair target is CPCDefinition parsing / symbol-parent mapping coverage.",
+            "For EMA, generated code must build the year axis from filing years, not from CPC-code dictionary keys.",
+            "If the parent evidence already has a non-empty partially correct answer, do not propose a broad parser rewrite or generic stricter-filtering instruction. Preserve the working parser path and target the observed missing/extra set, EMA best-year calculation, and fallback/filtering logic.",
+            "When validation shows the expected and generated counts are close but items differ, prefer instructions for comparing candidate best-year decisions and avoiding fallback-derived extras, not instructions that change COPY parsing mechanics.",
+            "",
+        ]
+    routing = load_repair_routing(repair_seed)
+    if routing:
+        lines += [
+            "## Repair routing",
+            "Use this routing before selecting target_files. If it conflicts with generic instincts, follow the routing.",
+            "```json",
+            json.dumps(routing, indent=2, ensure_ascii=False),
+            "```",
             "",
         ]
     if repair_seed and repair_seed.exists():
-        lines += ["## Repair seed", "```json", read_text(repair_seed, 16000).strip(), "```", ""]
+        lines += ["## Repair seed", "```json", read_text(repair_seed, 32000).strip(), "```", ""]
     if parent_prompt:
         prompt_path = parent_prompt if parent_prompt.is_absolute() else workspace / parent_prompt
         if prompt_path.exists():
             lines += ["## Parent data-agent prompt", f"Path: `{normalize_rel(parent_prompt)}`", "```text", read_text(prompt_path, 24000), "```", ""]
     if parent_run and parent_run.exists():
-        artifact_names = ["agent_error_summary.json", "stage_trace.json", "final_answer.txt"]
-        if profile.name != "data_agent_prompt_repair":
-            artifact_names.insert(2, "generated_solve.py")
-        for name in artifact_names:
-            artifact = parent_run / name
-            if artifact.exists():
-                fence = "json" if artifact.suffix == ".json" else "text"
-                max_chars = 16000 if name == "agent_error_summary.json" else 12000
-                lines += [f"## Parent run artifact: {name}", f"Path: `{artifact}`", f"```{fence}", read_text(artifact, max_chars), "```", ""]
-        if profile.name == "data_agent_prompt_repair" and (parent_run / "generated_solve.py").exists():
+        if profile.name == "data_agent_prompt_repair" and repair_seed_override:
             lines += [
-                "## Generated code evidence policy",
-                f"Generated code exists at `{parent_run / 'generated_solve.py'}` but is intentionally not included as editable context.",
-                "For this profile, generated_solve.py is evidence only. Do not use generated code as a patch target, anchor, or intended_change.",
-                "Translate any code-level diagnosis into a durable instruction for the parent data-agent prompt.",
+                "## Parent run artifact policy for repair-seed override",
+                f"Parent run artifacts exist at `{parent_run}` but are intentionally omitted because the override Repair seed is the primary objective.",
+                "Do not repair unrelated parent-run tracebacks or runtime API issues unless they directly support the override seed evidence.",
                 "",
             ]
+        else:
+            artifact_names = ["agent_error_summary.json", "stage_trace.json", "final_answer.txt"]
+            if profile.name != "data_agent_prompt_repair":
+                artifact_names.insert(2, "generated_solve.py")
+            for name in artifact_names:
+                artifact = parent_run / name
+                if artifact.exists():
+                    fence = "json" if artifact.suffix == ".json" else "text"
+                    max_chars = 16000 if name == "agent_error_summary.json" else 12000
+                    lines += [f"## Parent run artifact: {name}", f"Path: `{artifact}`", f"```{fence}", read_text(artifact, max_chars), "```", ""]
+            if profile.name == "data_agent_prompt_repair" and (parent_run / "generated_solve.py").exists():
+                lines += [
+                    "## Generated code evidence policy",
+                    f"Generated code exists at `{parent_run / 'generated_solve.py'}` but is intentionally not included as editable context.",
+                    "For this profile, generated_solve.py is evidence only. Do not use generated code as a patch target, anchor, or intended_change.",
+                    "Translate any code-level diagnosis into a durable instruction for the parent data-agent prompt.",
+                    "",
+                ]
     if profile.name == "analyzer_infra_repair":
         for pattern in profile.allowed_patterns:
             if "*" in pattern:
@@ -355,12 +534,65 @@ def build_context_pack(
             source = workspace / pattern
             if source.exists():
                 lines += [f"## Source excerpt: {pattern}", "```python", read_text(source, 24000), "```", ""]
+    if profile.name in {"data_agent_project_repair", "data_agent_tool_repair"}:
+        source_excerpts = [
+            "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+            "adapters/patents/__init__.py",
+            "adapters/patents/cpc_definition.py",
+            "adapters/patents/cpc_mapping.py",
+            "adapters/patents/ema.py",
+            "adapters/patents/patent_query_utils.py",
+            "adapters/runtime_observer.py",
+            "adapters/dab_validator.py",
+            "adapters/feedback/common_trace_checks.py",
+            "adapters/feedback/dab_patents_checks.py",
+            "experiments/run_dab_agent.py",
+            "experiments/analyze_agent_error.py",
+            "experiments/extract_primary_signal.py",
+            "experiments/build_meta_agent_evidence_pack.py",
+        ]
+        for rel in source_excerpts:
+            source = workspace / rel
+            if source.exists():
+                fence = "python" if source.suffix == ".py" else "text"
+                lines += [f"## Project source excerpt: {rel}", f"```{fence}", read_text(source, 12000), "```", ""]
     out = candidate_dir / "minimal_source_context_pack.md"
     out.write_text("\n".join(lines), encoding="utf-8")
     return out
 
 
 def profile_prompt_instructions(profile: RepairProfile) -> str:
+    if profile.name == "data_agent_tool_repair":
+        return """
+Profile-specific hard rules for data_agent_tool_repair:
+
+1. Prefer creating or updating reusable Python helper modules under adapters/patents/*.py instead of adding more prompt text.
+2. The helper must be general and benchmark-safe: no hardcoded expected CPC answers, exact answer counts, or case-specific output lists.
+3. Good helper targets include CPCDefinition COPY parsing, symbol/level/parents mapping, raw CPC to target-level ancestor mapping, filing-year extraction, EMA calculation, and answer diagnostics.
+4. Prompt edits are allowed only as thin glue that instructs future generated_solve.py to import/use the helper. Keep prompt edits small and avoid duplicating existing bullets.
+5. If no safe reusable helper can be created, output no_op_failed or explicitly justify a prompt-only fallback in the rationale using the phrase `prompt-only fallback` and the evidence reason.
+6. generated_solve.py is evidence, not a patch target. Translate repeated generated-code failures into reusable helpers or minimal prompt glue.
+7. Include at least one adapters/patents/*.py target unless using the explicit prompt-only fallback described above.
+8. If creating a new helper module, use operation create_file and include import-safe, py_compile-clean Python.
+9. Do not modify feedback analyzer code, logs, candidates, archive, trajectories, reports, benchmarks, legacy code, data files, virtualenvs, pycache, or generated run artifacts.
+10. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
+"""
+    if profile.name == "data_agent_project_repair":
+        return """
+Profile-specific hard rules for data_agent_project_repair:
+
+1. You may modify project source files in the isolated candidate workspace only, within allowed_patterns.
+2. You may target prompts/dab, adapters, experiments, and llm_client.py when the repair seed proves that layer is causal.
+3. Do NOT modify logs, candidates, archive, trajectories, reports, benchmarks, legacy code, data files, virtualenvs, pycache, or generated run artifacts.
+4. Prefer at most 1-3 files and a small diff. If a fix requires broad refactor, output no_op_failed.
+5. generated_solve.py is evidence, not a patch target; translate its failure into a durable project-source or prompt repair.
+6. Read `repair_routing` before choosing target_files. Prefer its recommended_target_files and avoid anti_targets.
+7. If `repair_routing.prompt_only_policy.status` is `reject`, do not output a prompt-only patch.
+8. If `repair_routing.prompt_only_policy.status` is `weak_allowed`, a prompt-only patch must explicitly explain why it prevents the concrete traceback/signal; otherwise prefer a project-source guardrail.
+9. Do not hardcode expected CPC answers, exact expected counts, or benchmark ground-truth lists.
+10. If editing Python, preserve public APIs used by existing callers and keep imports coherent.
+11. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
+"""
     if profile.name == "data_agent_prompt_repair":
         return """
 Profile-specific hard rules for data_agent_prompt_repair:
@@ -372,7 +604,7 @@ Profile-specific hard rules for data_agent_prompt_repair:
 5. Prefer insert_after_anchor or append_text with a short instruction paragraph. Avoid replacing large prompt blocks.
 6. For insert_after_anchor or insert_before_anchor, intended_change must start with a newline so prompt bullets are not merged onto one line.
 7. Use the Runtime observer API contract from the context pack as authoritative. In particular, log_exception requires two positional arguments: log_exception("event_name", exc).
-8. If the parent prompt contains an older contradictory runtime signature such as log_exception(exc) or "one positional argument", prefer replace_text_once on that stale prompt sentence/block instead of appending a new conflicting instruction.
+8. Repair an older contradictory runtime signature such as log_exception(exc) only when the active repair seed/runtime evidence is about the runtime observer API; otherwise do not prioritize it over the seed focus.
 9. If the failure involves an unclear domain concept, hierarchy term, level, or granularity requirement, propose a generic local-grounding instruction. Do not name a dataset-specific concept unless it already appears in the target prompt/evidence; do not add web access or external search to generated code.
 10. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
 11. If the repair would require editing generated_solve.py or project source instead of the prompt, output no_op_failed.
@@ -427,14 +659,89 @@ Context pack:
     return out
 
 
+def call_codex_cli_patch_spec(prompt_path: Path, candidate_dir: Path) -> str:
+    """Generate patch_spec text through Codex CLI using the configured Qwen proxy."""
+    profile = os.environ.get("CODEX_QWEN_PROFILE", "qwen-proxy")
+    model = os.environ.get("CODEX_QWEN_MODEL", os.environ.get("META_AGENT_MODEL", "qwen-plus"))
+    sandbox = os.environ.get("CODEX_QWEN_SANDBOX", "read-only")
+    timeout = int(os.environ.get("CODEX_QWEN_EXEC_TIMEOUT_SEC", "300"))
+    raw_path = candidate_dir / "patch_spec_raw.txt"
+    stdout_path = candidate_dir / "codex_patch_spec.stdout"
+    stderr_path = candidate_dir / "codex_patch_spec.stderr"
+    prompt = read_text(prompt_path)
+    command = [
+        "codex",
+        "--profile",
+        profile,
+        "--model",
+        model,
+        "--sandbox",
+        sandbox,
+        "-a",
+        "never",
+        "exec",
+        "--skip-git-repo-check",
+        "--output-last-message",
+        str(raw_path),
+        "-",
+    ]
+    started = datetime.now(timezone.utc).isoformat()
+    try:
+        proc = subprocess.run(
+            command,
+            cwd=candidate_dir,
+            input=prompt,
+            text=True,
+            capture_output=True,
+            timeout=timeout,
+            check=False,
+        )
+        stdout_path.write_text(proc.stdout or "", encoding="utf-8")
+        stderr_path.write_text(proc.stderr or "", encoding="utf-8")
+        raw = raw_path.read_text(encoding="utf-8", errors="replace") if raw_path.exists() else ""
+        write_json(
+            candidate_dir / "codex_patch_spec_run.json",
+            {
+                "backend": "codex_cli",
+                "profile": profile,
+                "model": model,
+                "sandbox": sandbox,
+                "started_at": started,
+                "exit_code": proc.returncode,
+                "stdout_path": str(stdout_path),
+                "stderr_path": str(stderr_path),
+                "raw_path": str(raw_path),
+            },
+        )
+        if proc.returncode != 0 and not raw.strip():
+            return json.dumps(
+                {
+                    "status": "no_op_failed",
+                    "reason": f"codex cli patch_spec generation failed with exit code {proc.returncode}",
+                },
+                ensure_ascii=False,
+            )
+        return raw
+    except subprocess.TimeoutExpired as exc:
+        stdout_path.write_text(exc.stdout or "", encoding="utf-8", errors="replace")
+        stderr_path.write_text(exc.stderr or "", encoding="utf-8", errors="replace")
+        return json.dumps(
+            {"status": "no_op_failed", "reason": f"codex cli patch_spec generation timed out after {timeout}s"},
+            ensure_ascii=False,
+        )
+
+
 def load_or_call_patch_spec(args: argparse.Namespace, prompt_path: Path, candidate_dir: Path) -> tuple[dict[str, Any] | None, str]:
     raw_path = candidate_dir / "patch_spec_raw.txt"
     patch_spec_file = args.patch_spec_file or os.environ.get("PATCH_SPEC_FILE")
     no_call_meta_llm = args.no_call_meta_llm or os.environ.get("NO_CALL_META_LLM") == "1"
+    backend = os.environ.get("META_AGENT_PATCH_SPEC_BACKEND", "direct_qwen")
     if patch_spec_file:
         raw = read_text(Path(patch_spec_file))
     elif no_call_meta_llm:
         raw = json.dumps({"status": "no_op_failed", "reason": "--no-call-meta-llm set and no --patch-spec-file provided"}, ensure_ascii=False)
+    elif backend == "codex_cli":
+        raw = call_codex_cli_patch_spec(prompt_path, candidate_dir)
     elif call_meta_llm is None:
         raw = json.dumps({"status": "no_op_failed", "reason": "llm_client.call_meta_llm unavailable"}, ensure_ascii=False)
     else:
@@ -444,6 +751,67 @@ def load_or_call_patch_spec(args: argparse.Namespace, prompt_path: Path, candida
     raw_path.write_text(raw, encoding="utf-8")
     return extract_first_json(raw), raw
 
+
+
+def active_seed_supports_strict_granularity_filter(repair_seed: Path | None) -> bool:
+    if repair_seed is None or not repair_seed.exists():
+        return False
+    raw = read_text(repair_seed, max_chars=60000).lower()
+    required_problem_markers = (
+        "non-level-5",
+        "not level 5",
+        "fallback-derived",
+        "fallback derived",
+        "deep cpc",
+        "extra deep",
+        "invalid level",
+        "wrong level",
+        "granularity_mapping_fallback_used",
+    )
+    return any(marker in raw for marker in required_problem_markers)
+
+
+def validate_anti_regression_project_memory(
+    spec: dict[str, Any],
+    *,
+    profile: RepairProfile,
+    repair_seed: Path | None,
+) -> tuple[bool, str]:
+    if profile.name != "data_agent_prompt_repair":
+        return True, "ok"
+    combined = "\n".join(
+        str(edit.get("intended_change", "")) + "\n" + str(edit.get("rationale", ""))
+        for edit in spec.get("edits") or []
+        if isinstance(edit, dict)
+    ).lower()
+    vague_strict_markers = (
+        "only symbols explicitly present",
+        "explicitly present in the cpc definition metadata with `level == 5`",
+        "level == 5",
+        "strictly filter",
+        "strict filter",
+        "fallback-derived",
+        "fallback derived",
+        "do not include symbols derived solely from string-based fallbacks",
+        "do not treat fallback-derived symbols as canonical",
+    )
+    if not any(marker in combined for marker in vague_strict_markers):
+        return True, "ok"
+    if active_seed_supports_strict_granularity_filter(repair_seed):
+        preserve_markers = (
+            "preserve",
+            "already parses",
+            "parent already",
+            "non-empty",
+            "partial answer",
+            "current parent",
+        )
+        if any(marker in combined for marker in preserve_markers):
+            return True, "ok"
+    return (
+        False,
+        "project memory gate rejected vague strict level/filtering patch without active evidence that parent outputs non-level-5 or fallback-derived extras",
+    )
 
 
 def validate_data_agent_prompt_change(edit: dict[str, str], idx: int) -> tuple[bool, str]:
@@ -476,19 +844,23 @@ def validate_data_agent_prompt_change(edit: dict[str, str], idx: int) -> tuple[b
         )
     ):
         return False, f"edit {idx} gives incorrect log_exception signature guidance"
+    if any(phrase in low for phrase in ("write final_answer_path with an empty", "empty final answer", "empty answer file", "write an empty file")):
+        return False, f"edit {idx} proposes an empty-answer contract instead of repairing parser/mapping coverage"
     return True, "ok"
 
 
-def _seed_focus_terms(repair_seed: Path | None) -> tuple[str | None, list[str]]:
+def _seed_focus_terms(repair_seed: Path | None) -> tuple[str | None, list[str], list[str], dict[str, Any]]:
     if not repair_seed or not repair_seed.exists():
-        return None, []
+        return None, [], [], {}
     try:
         seed = json.loads(repair_seed.read_text(encoding="utf-8"))
     except Exception:
-        return None, []
+        return None, [], [], {}
     stage = seed.get("selected_stage")
     signal = seed.get("selected_signal")
+    runtime_evidence = seed.get("runtime_repair_evidence") or {}
     raw = " ".join(str(item or "") for item in (stage, signal, (seed.get("selected_signal_evidence") or {}).get("raw")))
+    runtime_raw = json.dumps(runtime_evidence, ensure_ascii=False) if runtime_evidence else ""
     stop = {
         "generated", "appears", "example", "instead", "repair", "failure", "selected",
         "signal", "stage", "code", "codes", "from", "with", "that", "this", "have",
@@ -498,7 +870,11 @@ def _seed_focus_terms(repair_seed: Path | None) -> tuple[str | None, list[str]]:
     for token in re.findall(r"[a-zA-Z][a-zA-Z0-9_]{4,}", raw.lower()):
         if token not in stop and token not in terms:
             terms.append(token)
-    return str(stage) if stage else None, terms[:16]
+    runtime_terms = []
+    for token in re.findall(r"[a-zA-Z][a-zA-Z0-9_]{4,}", runtime_raw.lower()):
+        if token not in stop and token not in runtime_terms:
+            runtime_terms.append(token)
+    return str(stage) if stage else None, terms[:16], runtime_terms[:24], runtime_evidence
 
 
 def validate_seed_alignment(
@@ -510,8 +886,8 @@ def validate_seed_alignment(
 ) -> tuple[bool, str]:
     if not repair_seed_override or profile.name != "data_agent_prompt_repair":
         return True, "ok"
-    stage, terms = _seed_focus_terms(repair_seed)
-    if not stage and not terms:
+    stage, terms, runtime_terms, runtime_evidence = _seed_focus_terms(repair_seed)
+    if not stage and not terms and not runtime_terms:
         return True, "ok"
     combined = "\n".join(
         "\n".join(str(edit.get(key, "")) for key in ("anchor", "intended_change", "rationale"))
@@ -523,11 +899,67 @@ def validate_seed_alignment(
         stage_low = stage.lower()
         stage_variants = [stage_low, stage_low.replace("_", " "), stage_low.replace("_", "-")]
     matched_terms = [term for term in terms if term in combined]
+    matched_runtime_terms = [term for term in runtime_terms if term in combined]
+    runtime_raw = json.dumps(runtime_evidence, ensure_ascii=False).lower() if runtime_evidence else ""
+    if ("symbols_with_parents" in runtime_raw or "parents may parse as empty" in runtime_raw) and not any(
+        marker in combined
+        for marker in (
+            "symbols_with_parents",
+            "escaped",
+            "decode",
+            "decoded",
+            "parents parsing",
+            "parse parents",
+            "parse `parents`",
+            "empty parents",
+            "usable parents",
+        )
+    ):
+        return False, "patch_spec does not address runtime evidence: CPCDefinition parents parsing produced zero usable parents"
+    if ("failed to parse column names" in runtime_raw or "quoted column names" in runtime_raw or "missing required columns" in runtime_raw) and not any(
+        marker in combined
+        for marker in (
+            "strip surrounding double quotes",
+            "strip quotes",
+            "quoted column",
+            "copy header",
+            "header column",
+            "titlefull",
+        )
+    ):
+        return False, "patch_spec does not address runtime evidence: CPCDefinition COPY header has quoted column names"
+    if runtime_terms and len(matched_runtime_terms) >= 2:
+        return True, "ok"
     if any(variant in combined for variant in stage_variants) or len(matched_terms) >= 3:
         return True, "ok"
-    focus = stage or ", ".join(terms[:5])
+    focus = stage or ", ".join((runtime_terms or terms)[:5])
     return False, f"patch_spec does not address override repair seed focus: {focus}"
 
+
+
+
+def validate_tool_repair_policy(spec: dict[str, Any], profile: RepairProfile) -> tuple[bool, str]:
+    if profile.name != "data_agent_tool_repair":
+        return True, "ok"
+    targets = [normalize_rel(str(path)) for path in spec.get("target_files") or []]
+    has_patents_helper = any(path.startswith("adapters/patents/") and path.endswith(".py") for path in targets)
+    if has_patents_helper:
+        return True, "ok"
+    prompt_only = bool(targets) and all(is_prompt_path(path) for path in targets)
+    combined = "\n".join(
+        "\n".join(str(edit.get(key, "")) for key in ("intended_change", "rationale"))
+        for edit in spec.get("edits") or []
+        if isinstance(edit, dict)
+    ).lower()
+    fallback_markers = (
+        "prompt-only fallback",
+        "no safe reusable helper",
+        "existing helper already",
+        "existing project source already",
+    )
+    if prompt_only and any(marker in combined for marker in fallback_markers):
+        return True, "ok"
+    return False, "data_agent_tool_repair must include at least one adapters/patents/*.py helper target or explicitly justify a prompt-only fallback"
 
 def validate_spec(spec: dict[str, Any] | None, profile: RepairProfile, candidate_dir: Path, repair_seed: Path | None = None, repair_seed_override: bool = False) -> tuple[bool, str, str]:
     if spec is None:
@@ -562,8 +994,9 @@ def validate_spec(spec: dict[str, Any] | None, profile: RepairProfile, candidate
             return False, "protocol_failed_invalid_patch_spec", f"edit {idx} unsupported operation: {edit['operation']}"
         if edit["operation"] not in ("append_text", "create_file") and not edit["anchor"]:
             return False, "protocol_failed_invalid_patch_spec", f"edit {idx} requires non-empty anchor"
-        if profile.name == "data_agent_prompt_repair":
-            code_markers = ("def ", "import ", "json.loads", "sqlite3", "FINAL_ANSWER_PATH", "STAGE_TRACE_PATH")
+        prompt_edit = profile.name == "data_agent_prompt_repair" or (profile.name in {"data_agent_project_repair", "data_agent_tool_repair"} and is_prompt_path(edit["file"]))
+        if prompt_edit:
+            code_markers = ("def ", "import ", "json.loads", "sqlite3")
             intended_only = edit["intended_change"].lower()
             if any(marker.lower() in intended_only for marker in code_markers):
                 return False, "protocol_failed_invalid_patch_spec", f"edit {idx} appears to patch generated code instead of prompt instructions"
@@ -582,9 +1015,23 @@ def validate_spec(spec: dict[str, Any] | None, profile: RepairProfile, candidate
     for name in profile.required_public_functions:
         if name not in preserve:
             return False, "protocol_failed_invalid_patch_spec", f"public_functions_to_preserve missing {name}"
+    project_memory_ok, project_memory_reason = validate_anti_regression_project_memory(spec, profile=profile, repair_seed=repair_seed)
+    if not project_memory_ok:
+        return False, "protocol_failed_seed_mismatch", project_memory_reason
     aligned, align_reason = validate_seed_alignment(spec, profile=profile, repair_seed=repair_seed, repair_seed_override=repair_seed_override)
     if not aligned:
         return False, "protocol_failed_seed_mismatch", align_reason
+    routed, route_reason = validate_project_repair_routing(
+        spec,
+        profile=profile,
+        repair_seed=repair_seed,
+        candidate_dir=candidate_dir,
+    )
+    if not routed:
+        return False, "protocol_failed_seed_mismatch", route_reason
+    tool_ok, tool_reason = validate_tool_repair_policy(spec, profile)
+    if not tool_ok:
+        return False, "protocol_failed_seed_mismatch", tool_reason
     write_json(candidate_dir / "validated_patch_spec.json", spec)
     return True, "patch_spec_valid", "ok"
 
@@ -654,6 +1101,8 @@ def numstat(text: str) -> tuple[int, list[dict[str, Any]]]:
 
 
 def diff_artifacts(workspace: Path, candidate_dir: Path) -> dict[str, Any]:
+    # Include newly created helper files in git diff without staging content.
+    run_cmd(["git", "add", "-N", "."], cwd=workspace)
     diff = run_cmd(["git", "diff", "--binary"], cwd=workspace)
     status = run_cmd(["git", "status", "--short"], cwd=workspace)
     stat = run_cmd(["git", "diff", "--numstat"], cwd=workspace)
@@ -667,6 +1116,89 @@ def diff_artifacts(workspace: Path, candidate_dir: Path) -> dict[str, Any]:
 def public_functions(path: Path) -> set[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"))
     return {node.name for node in tree.body if isinstance(node, ast.FunctionDef)}
+
+
+def normalized_prompt_instruction(text: str) -> str:
+    text = text.strip()
+    text = re.sub(r"^[-*]\s+", "", text)
+    text = re.sub(r"^\d+[.)]\s+", "", text)
+    text = text.replace("`", "")
+    text = re.sub(r"\s+", " ", text)
+    return text.strip().lower()
+
+
+def baseline_file_text(workspace: Path, rel: str) -> str:
+    proc = run_cmd(["git", "show", f"HEAD:{normalize_rel(rel)}"], cwd=workspace)
+    if proc.returncode == 0:
+        return proc.stdout or ""
+    path = workspace / rel
+    return path.read_text(encoding="utf-8", errors="replace") if path.exists() else ""
+
+
+def anchor_line_indent(baseline: str, anchor: str) -> str | None:
+    if not anchor:
+        return None
+    for line in baseline.splitlines():
+        if anchor in line:
+            stripped = line.lstrip(" ")
+            if stripped.startswith("- "):
+                return line[: len(line) - len(stripped)]
+            return ""
+    return None
+
+
+def prompt_static_post_apply_gate(profile: RepairProfile, workspace: Path, candidate_dir: Path) -> tuple[bool, str]:
+    if profile.name not in {"data_agent_prompt_repair", "data_agent_project_repair", "data_agent_tool_repair"}:
+        return True, "ok"
+    spec_path = candidate_dir / "validated_patch_spec.json"
+    if not spec_path.exists():
+        return True, "ok"
+    spec = json.loads(spec_path.read_text(encoding="utf-8"))
+    failures: list[dict[str, Any]] = []
+    for edit_index, edit in enumerate(spec.get("edits") or []):
+        if not isinstance(edit, dict):
+            continue
+        rel = str(edit.get("file") or "")
+        if not rel:
+            continue
+        baseline = baseline_file_text(workspace, rel)
+        normalized_baseline = normalized_prompt_instruction(baseline)
+        intended = str(edit.get("intended_change") or "")
+        for line in intended.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            normalized_line = normalized_prompt_instruction(stripped)
+            if len(normalized_line) >= 80 and normalized_line in normalized_baseline:
+                failures.append(
+                    {
+                        "edit_index": edit_index,
+                        "file": rel,
+                        "reason": "duplicate_prompt_instruction",
+                        "line": stripped[:240],
+                    }
+                )
+        if edit.get("operation") in {"insert_after_anchor", "insert_before_anchor"}:
+            indent = anchor_line_indent(baseline, str(edit.get("anchor") or ""))
+            if indent is not None and indent:
+                for line in intended.splitlines():
+                    if line.strip().startswith("- ") and not line.startswith(f"{indent}- "):
+                        failures.append(
+                            {
+                                "edit_index": edit_index,
+                                "file": rel,
+                                "reason": "malformed_prompt_bullet_indentation",
+                                "expected_prefix": f"{indent}- ",
+                                "line": line[:240],
+                            }
+                        )
+    out = candidate_dir / "validation" / "prompt_static_post_apply_gate.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    write_json(out, {"status": "failed" if failures else "passed", "failures": failures})
+    if failures:
+        reasons = sorted({str(item.get("reason")) for item in failures})
+        return False, f"prompt static post-apply gate failed: {', '.join(reasons)}"
+    return True, "ok"
 
 
 def post_apply_gate(profile: RepairProfile, workspace: Path, candidate_dir: Path, info: dict[str, Any]) -> tuple[bool, str, str]:
@@ -688,13 +1220,67 @@ def post_apply_gate(profile: RepairProfile, workspace: Path, candidate_dir: Path
                 missing = [name for name in profile.required_public_functions if name not in funcs]
                 if missing:
                     return False, "rejected_large_rewrite", f"required public functions missing: {missing}"
+    prompt_gate_ok, prompt_gate_reason = prompt_static_post_apply_gate(profile, workspace, candidate_dir)
+    if not prompt_gate_ok:
+        return False, "failed_validation", prompt_gate_reason
     return True, "post_apply_gate_passed", "ok"
+
+
+def changed_project_files_from_numstat(candidate_dir: Path) -> list[str]:
+    rows: list[str] = []
+    path = candidate_dir / "patch_numstat.txt"
+    if not path.exists():
+        return rows
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if not line.strip():
+            continue
+        parts = line.split("\t", 2)
+        if len(parts) == 3:
+            rows.append(parts[2])
+    return rows
+
+
+def no_hardcoded_answer_check(spec: dict[str, Any]) -> tuple[bool, str]:
+    suspicious = ("final answer is", "answer:", "hardcode", "expected output", "ground truth", "expected cpc")
+    for edit in spec.get("edits") or []:
+        if not isinstance(edit, dict):
+            continue
+        low = (str(edit.get("intended_change") or "") + "\n" + str(edit.get("rationale") or "")).lower()
+        if any(marker in low for marker in suspicious):
+            return False, "obvious answer hardcoding marker found in patch_spec"
+    return True, "ok"
 
 
 def run_validation(profile: RepairProfile, workspace: Path, candidate_dir: Path) -> tuple[bool, list[dict[str, Any]]]:
     out = candidate_dir / "validation"
     out.mkdir(parents=True, exist_ok=True)
     results: list[dict[str, Any]] = []
+    spec = json.loads((candidate_dir / "validated_patch_spec.json").read_text(encoding="utf-8"))
+
+    if profile.name in {"data_agent_prompt_repair", "data_agent_project_repair", "data_agent_tool_repair"}:
+        hardcode_ok, hardcode_reason = no_hardcoded_answer_check(spec)
+        results.append({"name": "no_obvious_answer_hardcoding", "exit_code": 0 if hardcode_ok else 1, "reason": hardcode_reason})
+        if not hardcode_ok:
+            return False, results
+
+    if profile.name in {"data_agent_project_repair", "data_agent_tool_repair"}:
+        for rel in changed_project_files_from_numstat(candidate_dir):
+            if not rel.endswith(".py"):
+                continue
+            path = workspace / rel
+            if not path.exists():
+                continue
+            name = f"py_compile_changed_{Path(rel).name}"
+            proc = run_cmd(
+                [str(ROOT / ".venv/bin/python"), "-m", "py_compile", str(path)],
+                cwd=workspace,
+                stdout_path=out / f"{name}.stdout",
+                stderr_path=out / f"{name}.stderr",
+            )
+            results.append({"name": name, "file": rel, "exit_code": proc.returncode})
+            if proc.returncode != 0:
+                return False, results
+
     for rel in profile.py_compile_files:
         path = workspace / rel
         if not path.exists():
@@ -722,14 +1308,11 @@ def run_validation(profile: RepairProfile, workspace: Path, candidate_dir: Path)
         if proc.returncode != 0:
             return False, results
     if profile.name == "data_agent_prompt_repair":
-        spec = json.loads((candidate_dir / "validated_patch_spec.json").read_text(encoding="utf-8"))
-        suspicious = ("final answer is", "answer:", "hardcode", "expected output")
-        for edit in spec["edits"]:
-            low = edit["intended_change"].lower()
-            if any(marker in low for marker in suspicious):
-                results.append({"name": "no_obvious_answer_hardcoding", "exit_code": 1})
-                return False, results
         results.append({"name": "static_prompt_repair_checks", "exit_code": 0})
+    if profile.name == "data_agent_project_repair":
+        results.append({"name": "static_project_repair_checks", "exit_code": 0})
+    if profile.name == "data_agent_tool_repair":
+        results.append({"name": "static_data_agent_tool_repair_checks", "exit_code": 0})
     return True, results
 
 
@@ -750,7 +1333,7 @@ def run_launcher(args: argparse.Namespace) -> int:
     repair_seed_override = os.environ.get("META_LOOP_REPAIR_SEED_OVERRIDE") == "1"
     parent_run = Path(args.parent_run or os.environ.get("META_LOOP_PARENT_RUN", "")) if (args.parent_run or os.environ.get("META_LOOP_PARENT_RUN")) else None
     parent_prompt = Path(args.parent_prompt or os.environ.get("META_LOOP_PARENT_PROMPT", "")) if (args.parent_prompt or os.environ.get("META_LOOP_PARENT_PROMPT")) else None
-    if parent_prompt is None and profile.name == "data_agent_prompt_repair":
+    if parent_prompt is None and profile.name in {"data_agent_prompt_repair", "data_agent_project_repair"}:
         parent_prompt = Path("prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt")
 
     workspace = make_workspace(candidate_dir)
@@ -807,7 +1390,7 @@ def run_launcher(args: argparse.Namespace) -> int:
             "patch_numstat": diff_info["patch_numstat"],
             "post_apply_gate_status": gate_status,
             "validation_results": validation_results,
-            "scope_note": "feedback/error-analysis infrastructure repair" if profile.name == "analyzer_infra_repair" else "data-agent prompt repair; not feedback analyzer repair",
+            "scope_note": ("feedback/error-analysis infrastructure repair" if profile.name == "analyzer_infra_repair" else "data-agent tool repair; prefer reusable adapters/patents helpers with minimal prompt glue" if profile.name == "data_agent_tool_repair" else "data-agent project repair; may modify project source in isolated candidate workspace" if profile.name == "data_agent_project_repair" else "data-agent prompt repair; not feedback analyzer repair"),
         },
     )
     return 0 if validation_ok else 80
