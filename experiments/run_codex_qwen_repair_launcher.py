@@ -575,9 +575,10 @@ Profile-specific hard rules for data_agent_tool_repair:
 7. Include at least one adapters/patents/*.py target unless using the explicit prompt-only fallback described above.
 8. If repair_routing recommends adapters/patents/*.py helper targets, select one of those helper targets before adding any prompt glue.
 9. A helper-only patch is not enough: also add minimal prompt glue or run_dab_agent integration so future generated_solve.py can discover and use the helper.
-10. If creating a new helper module, use operation create_file and include import-safe, py_compile-clean Python.
-11. Do not modify feedback analyzer code, logs, candidates, archive, trajectories, reports, benchmarks, legacy code, data files, virtualenvs, pycache, or generated run artifacts.
-12. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
+10. Prompt glue must be mandatory, not advisory: use wording such as `MUST import/use from adapters.patents.<module>` and `do not reimplement this helper logic inline`; avoid weak wording such as `prefer` or `when available`.
+11. If creating a new helper module, use operation create_file and include import-safe, py_compile-clean Python.
+12. Do not modify feedback analyzer code, logs, candidates, archive, trajectories, reports, benchmarks, legacy code, data files, virtualenvs, pycache, or generated run artifacts.
+13. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
 """
     if profile.name == "data_agent_project_repair":
         return """
@@ -1291,25 +1292,48 @@ def data_agent_tool_helper_integration_check(spec: dict[str, Any]) -> tuple[bool
         "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
         "experiments/run_dab_agent.py",
     }
-    if any(path in integration_targets for path in targets):
-        return True, "ok"
-    combined = "\n".join(
+    if not any(path in integration_targets for path in targets):
+        combined = "\n".join(
+            "\n".join(str(edit.get(key, "")) for key in ("intended_change", "rationale"))
+            for edit in spec.get("edits") or []
+            if isinstance(edit, dict)
+        ).lower()
+        explicit_existing_integration = (
+            "existing prompt already imports" in combined
+            or "existing generated_solve already imports" in combined
+            or "existing runner already injects" in combined
+            or "existing integration already" in combined
+        )
+        if explicit_existing_integration:
+            return True, "ok"
+        return (
+            False,
+            "helper_not_integrated: adapters/patents helper changes require prompt glue or run_dab_agent integration so future generated_solve.py can use the helper",
+        )
+
+    prompt_glue = "\n".join(
         "\n".join(str(edit.get(key, "")) for key in ("intended_change", "rationale"))
         for edit in spec.get("edits") or []
-        if isinstance(edit, dict)
+        if isinstance(edit, dict) and normalize_rel(str(edit.get("file") or "")) == "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt"
     ).lower()
-    explicit_existing_integration = (
-        "existing prompt already imports" in combined
-        or "existing generated_solve already imports" in combined
-        or "existing runner already injects" in combined
-        or "existing integration already" in combined
-    )
-    if explicit_existing_integration:
+    if "experiments/run_dab_agent.py" in targets and not prompt_glue:
         return True, "ok"
-    return (
-        False,
-        "helper_not_integrated: adapters/patents helper changes require prompt glue or run_dab_agent integration so future generated_solve.py can use the helper",
-    )
+    helper_modules = [Path(path).stem for path in helper_targets]
+    mentions_helper = "adapters.patents" in prompt_glue or any(module in prompt_glue for module in helper_modules)
+    mandatory = any(marker in prompt_glue for marker in ("must import", "must use", "must call", "always import", "always use", "required to import", "required to use"))
+    weak_only = any(marker in prompt_glue for marker in ("prefer importing", "prefer using", "when available", "may import", "can import")) and not mandatory
+    anti_inline = any(marker in prompt_glue for marker in ("do not reimplement", "do not duplicate", "instead of duplicating", "instead of reimplementing"))
+    if not mentions_helper or not mandatory or weak_only:
+        return (
+            False,
+            "helper_glue_too_weak: prompt glue for adapters/patents helpers must require generated_solve.py to import/use the helper, not merely prefer it",
+        )
+    if not anti_inline:
+        return (
+            False,
+            "helper_glue_missing_no_inline_rule: prompt glue should tell generated_solve.py not to reimplement helper logic inline",
+        )
+    return True, "ok"
 
 def run_validation(profile: RepairProfile, workspace: Path, candidate_dir: Path) -> tuple[bool, list[dict[str, Any]]]:
     out = candidate_dir / "validation"

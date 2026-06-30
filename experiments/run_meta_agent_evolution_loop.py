@@ -56,6 +56,54 @@ def write_json(path: Path, data: dict[str, Any]) -> None:
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def candidate_patents_helper_modules(candidate_dir: Path) -> list[dict[str, str]]:
+    modules: list[dict[str, str]] = []
+    numstat = candidate_dir / "patch_numstat.txt"
+    if not numstat.exists():
+        return modules
+    for line in numstat.read_text(encoding="utf-8", errors="replace").splitlines():
+        parts = line.split("	", 2)
+        if len(parts) != 3:
+            continue
+        rel = parts[2].strip()
+        if rel.startswith("adapters/patents/") and rel.endswith(".py"):
+            stem = Path(rel).stem
+            modules.append({"path": rel, "module": f"adapters.patents.{stem}", "stem": stem})
+    return modules
+
+
+def generated_code_uses_helper(generated_code_path: Path, helpers: list[dict[str, str]]) -> dict[str, Any]:
+    if not helpers:
+        return {"required": False, "status": "not_required", "helpers": []}
+    code = generated_code_path.read_text(encoding="utf-8", errors="replace") if generated_code_path.exists() else ""
+    code_low = code.lower()
+    observed: list[str] = []
+    missing: list[str] = []
+    for helper in helpers:
+        full = helper["module"].lower()
+        stem = helper["stem"].lower()
+        used = (
+            full in code_low
+            or f"from adapters.patents import {stem}" in code_low
+            or f"import adapters.patents.{stem}" in code_low
+            or f"from {stem} import" in code_low
+            or f"import {stem}" in code_low
+        )
+        if used:
+            observed.append(helper["module"])
+        else:
+            missing.append(helper["module"])
+    status = "helper_used_by_child_generated_code" if observed else "helper_not_used_by_child_generated_code"
+    return {
+        "required": True,
+        "status": status,
+        "helpers": helpers,
+        "observed_modules": observed,
+        "missing_modules": missing,
+        "generated_solve_path": str(generated_code_path),
+    }
+
+
 def load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -613,6 +661,13 @@ def run_generic_child_eval(
         loop_dir / "child_analyze.stderr",
     )
     child_signal = extract_primary_signal(child_run_dir / "agent_error_summary.json")
+    helper_usage = generated_code_uses_helper(
+        child_run_dir / "generated_solve.py",
+        candidate_patents_helper_modules(candidate_dir),
+    )
+    child_failure_gate = None
+    if helper_usage.get("status") == "helper_not_used_by_child_generated_code":
+        child_failure_gate = "helper_not_used_by_child_generated_code"
     child_eval_dir = candidate_dir / "child_eval"
     child_eval_dir.mkdir(parents=True, exist_ok=True)
     report = {
@@ -625,12 +680,16 @@ def run_generic_child_eval(
         "child_validation_reason": child_analysis.get("validation_reason"),
         "child_selected_stage": child_signal.get("selected_component"),
         "child_selected_signal": child_signal.get("selected_signal"),
+        "helper_usage": helper_usage,
+        "child_failure_gate": child_failure_gate,
         "child_status": {
             "status": "completed",
             "passed_original_dab_validation": child_analysis.get("passed"),
             "validation_reason": child_analysis.get("validation_reason"),
             "selected_stage": child_signal.get("selected_component"),
             "selected_signal": child_signal.get("selected_signal"),
+            "helper_usage_status": helper_usage.get("status"),
+            "child_failure_gate": child_failure_gate,
         },
     }
     write_json(child_eval_dir / "generic_child_eval_report.json", report)
