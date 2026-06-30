@@ -574,9 +574,10 @@ Profile-specific hard rules for data_agent_tool_repair:
 6. generated_solve.py is evidence, not a patch target. Translate repeated generated-code failures into reusable helpers or minimal prompt glue.
 7. Include at least one adapters/patents/*.py target unless using the explicit prompt-only fallback described above.
 8. If repair_routing recommends adapters/patents/*.py helper targets, select one of those helper targets before adding any prompt glue.
-9. If creating a new helper module, use operation create_file and include import-safe, py_compile-clean Python.
-10. Do not modify feedback analyzer code, logs, candidates, archive, trajectories, reports, benchmarks, legacy code, data files, virtualenvs, pycache, or generated run artifacts.
-11. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
+9. A helper-only patch is not enough: also add minimal prompt glue or run_dab_agent integration so future generated_solve.py can discover and use the helper.
+10. If creating a new helper module, use operation create_file and include import-safe, py_compile-clean Python.
+11. Do not modify feedback analyzer code, logs, candidates, archive, trajectories, reports, benchmarks, legacy code, data files, virtualenvs, pycache, or generated run artifacts.
+12. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
 """
     if profile.name == "data_agent_project_repair":
         return """
@@ -1241,16 +1242,61 @@ def changed_project_files_from_numstat(candidate_dir: Path) -> list[str]:
     return rows
 
 
+def hardcode_marker_is_negated(text: str, start: int, end: int) -> bool:
+    context = text[max(0, start - 96): min(len(text), end + 96)]
+    negators = r"(?:no|not|never|without|avoid(?:s|ing)?|prevent(?:s|ing)?|forbid(?:s|den)?|must not|do not|does not)"
+    hardcode = r"hardcod\w*"
+    if re.search(negators + r"(?:\W+\w+){0,8}\W+" + hardcode, context):
+        return True
+    if re.search(hardcode + r"(?:\W+\w+){0,8}\W+" + negators, context):
+        return True
+    return False
+
+
 def no_hardcoded_answer_check(spec: dict[str, Any]) -> tuple[bool, str]:
-    suspicious = ("final answer is", "answer:", "hardcode", "expected output", "ground truth", "expected cpc")
+    suspicious = ("final answer is", "answer:", "expected output", "ground truth", "expected cpc")
     for edit in spec.get("edits") or []:
         if not isinstance(edit, dict):
             continue
         low = (str(edit.get("intended_change") or "") + "\n" + str(edit.get("rationale") or "")).lower()
-        if any(marker in low for marker in suspicious):
-            return False, "obvious answer hardcoding marker found in patch_spec"
+        for match in re.finditer(r"hardcod\w*", low):
+            if not hardcode_marker_is_negated(low, match.start(), match.end()):
+                return False, "obvious answer hardcoding marker found in patch_spec"
+        for marker in suspicious:
+            start = low.find(marker)
+            if start >= 0 and not hardcode_marker_is_negated(low, start, start + len(marker)):
+                return False, "obvious answer hardcoding marker found in patch_spec"
     return True, "ok"
 
+
+def data_agent_tool_helper_integration_check(spec: dict[str, Any]) -> tuple[bool, str]:
+    targets = [normalize_rel(str(path)) for path in spec.get("target_files") or []]
+    helper_targets = [path for path in targets if path.startswith("adapters/patents/") and path.endswith(".py")]
+    if not helper_targets:
+        return True, "ok"
+    integration_targets = {
+        "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+        "experiments/run_dab_agent.py",
+    }
+    if any(path in integration_targets for path in targets):
+        return True, "ok"
+    combined = "\n".join(
+        "\n".join(str(edit.get(key, "")) for key in ("intended_change", "rationale"))
+        for edit in spec.get("edits") or []
+        if isinstance(edit, dict)
+    ).lower()
+    explicit_existing_integration = (
+        "existing prompt already imports" in combined
+        or "existing generated_solve already imports" in combined
+        or "existing runner already injects" in combined
+        or "existing integration already" in combined
+    )
+    if explicit_existing_integration:
+        return True, "ok"
+    return (
+        False,
+        "helper_not_integrated: adapters/patents helper changes require prompt glue or run_dab_agent integration so future generated_solve.py can use the helper",
+    )
 
 def run_validation(profile: RepairProfile, workspace: Path, candidate_dir: Path) -> tuple[bool, list[dict[str, Any]]]:
     out = candidate_dir / "validation"
@@ -1262,6 +1308,12 @@ def run_validation(profile: RepairProfile, workspace: Path, candidate_dir: Path)
         hardcode_ok, hardcode_reason = no_hardcoded_answer_check(spec)
         results.append({"name": "no_obvious_answer_hardcoding", "exit_code": 0 if hardcode_ok else 1, "reason": hardcode_reason})
         if not hardcode_ok:
+            return False, results
+
+    if profile.name == "data_agent_tool_repair":
+        integration_ok, integration_reason = data_agent_tool_helper_integration_check(spec)
+        results.append({"name": "data_agent_tool_helper_integration", "exit_code": 0 if integration_ok else 1, "reason": integration_reason})
+        if not integration_ok:
             return False, results
 
     if profile.name in {"data_agent_project_repair", "data_agent_tool_repair"}:
