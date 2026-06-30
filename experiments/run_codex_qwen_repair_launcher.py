@@ -344,6 +344,19 @@ def is_prompt_path(path: str) -> bool:
     return rel.startswith("prompts/") and rel.endswith(".txt")
 
 
+def prompt_edit_looks_like_code_payload(text: str) -> bool:
+    low = text.lower()
+    if "json.loads" in low or "sqlite3" in low:
+        return True
+    for line in text.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if re.match(r"^(from\s+\S+\s+import\s+\S+|import\s+\S+|def\s+\w+\s*\()", stripped):
+            return True
+    return False
+
+
 def validate_project_repair_routing(
     spec: dict[str, Any],
     *,
@@ -999,9 +1012,8 @@ def validate_spec(spec: dict[str, Any] | None, profile: RepairProfile, candidate
             return False, "protocol_failed_invalid_patch_spec", f"edit {idx} requires non-empty anchor"
         prompt_edit = profile.name == "data_agent_prompt_repair" or (profile.name in {"data_agent_project_repair", "data_agent_tool_repair"} and is_prompt_path(edit["file"]))
         if prompt_edit:
-            code_markers = ("def ", "import ", "json.loads", "sqlite3")
-            intended_only = edit["intended_change"].lower()
-            if any(marker.lower() in intended_only for marker in code_markers):
+            intended_only = edit["intended_change"]
+            if prompt_edit_looks_like_code_payload(intended_only):
                 return False, "protocol_failed_invalid_patch_spec", f"edit {idx} appears to patch generated code instead of prompt instructions"
             change_ok, change_reason = validate_data_agent_prompt_change(edit, idx)
             if not change_ok:
@@ -1335,6 +1347,33 @@ def data_agent_tool_helper_integration_check(spec: dict[str, Any]) -> tuple[bool
         )
     return True, "ok"
 
+def data_agent_tool_helper_quality_check(spec: dict[str, Any]) -> tuple[bool, str]:
+    for edit in spec.get("edits") or []:
+        if not isinstance(edit, dict):
+            continue
+        rel = normalize_rel(str(edit.get("file") or ""))
+        if not (rel.startswith("adapters/patents/") and rel.endswith(".py")):
+            continue
+        helper_text = (str(edit.get("intended_change") or "") + "\n" + str(edit.get("rationale") or "")).lower()
+        if rel.endswith("cpc_mapping.py"):
+            forbidden_patterns = (
+                "fallback to prefix",
+                "prefix fallback",
+                "conservative prefix",
+                "fallback-derived",
+                "fallback derived",
+                "return symbol  # fallback",
+                "return symbol  #",
+            )
+            if any(pattern in helper_text for pattern in forbidden_patterns):
+                return False, "metadata_grounding_violation: cpc_mapping helper must not encode prefix/string-shape fallback logic"
+            if re.search(r"\.split\(\s*['\"]/[ '\"]*\)", helper_text) or "split('/')" in helper_text or 'split("/")' in helper_text:
+                return False, "metadata_grounding_violation: cpc_mapping helper must not infer CPC level from slash/prefix shape"
+            if "missing from metadata" in helper_text and "return symbol" in helper_text:
+                return False, "metadata_grounding_violation: helper must return None or log failure when metadata is missing, not return raw symbols as mapped answers"
+    return True, "ok"
+
+
 def run_validation(profile: RepairProfile, workspace: Path, candidate_dir: Path) -> tuple[bool, list[dict[str, Any]]]:
     out = candidate_dir / "validation"
     out.mkdir(parents=True, exist_ok=True)
@@ -1351,6 +1390,10 @@ def run_validation(profile: RepairProfile, workspace: Path, candidate_dir: Path)
         integration_ok, integration_reason = data_agent_tool_helper_integration_check(spec)
         results.append({"name": "data_agent_tool_helper_integration", "exit_code": 0 if integration_ok else 1, "reason": integration_reason})
         if not integration_ok:
+            return False, results
+        quality_ok, quality_reason = data_agent_tool_helper_quality_check(spec)
+        results.append({"name": "data_agent_tool_helper_quality", "exit_code": 0 if quality_ok else 1, "reason": quality_reason})
+        if not quality_ok:
             return False, results
 
     if profile.name in {"data_agent_project_repair", "data_agent_tool_repair"}:
