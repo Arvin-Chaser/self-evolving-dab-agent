@@ -1129,12 +1129,13 @@ def normalized_prompt_instruction(text: str) -> str:
     return text.strip().lower()
 
 
-def baseline_file_text(workspace: Path, rel: str) -> str:
+def baseline_file_text(workspace: Path, rel: str) -> tuple[str, str]:
     proc = run_cmd(["git", "show", f"HEAD:{normalize_rel(rel)}"], cwd=workspace)
     if proc.returncode == 0:
-        return proc.stdout or ""
+        return proc.stdout or "", "git"
     path = workspace / rel
-    return path.read_text(encoding="utf-8", errors="replace") if path.exists() else ""
+    text = path.read_text(encoding="utf-8", errors="replace") if path.exists() else ""
+    return text, "post_apply_fallback"
 
 
 def anchor_line_indent(baseline: str, anchor: str) -> str | None:
@@ -1163,21 +1164,33 @@ def prompt_static_post_apply_gate(profile: RepairProfile, workspace: Path, candi
         rel = str(edit.get("file") or "")
         if not rel:
             continue
-        baseline = baseline_file_text(workspace, rel)
-        normalized_baseline = normalized_prompt_instruction(baseline)
+        if not is_prompt_path(rel):
+            continue
         intended = str(edit.get("intended_change") or "")
+        baseline, baseline_source = baseline_file_text(workspace, rel)
+        normalized_baseline_lines = [
+            normalized_prompt_instruction(line)
+            for line in baseline.splitlines()
+            if normalized_prompt_instruction(line)
+        ]
         for line in intended.splitlines():
             stripped = line.strip()
             if not stripped:
                 continue
             normalized_line = normalized_prompt_instruction(stripped)
-            if len(normalized_line) >= 80 and normalized_line in normalized_baseline:
+            if len(normalized_line) < 80:
+                continue
+            occurrence_count = sum(1 for item in normalized_baseline_lines if item == normalized_line)
+            duplicate = occurrence_count >= 1 if baseline_source == "git" else occurrence_count >= 2
+            if duplicate:
                 failures.append(
                     {
                         "edit_index": edit_index,
                         "file": rel,
                         "reason": "duplicate_prompt_instruction",
                         "line": stripped[:240],
+                        "baseline_source": baseline_source,
+                        "occurrence_count": occurrence_count,
                     }
                 )
         if edit.get("operation") in {"insert_after_anchor", "insert_before_anchor"}:
