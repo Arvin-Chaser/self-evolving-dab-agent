@@ -77,6 +77,123 @@ def repo_rel(path: Path) -> str:
         return str(path)
 
 
+def adapt_feedback_for_repair_profile(feedback: dict[str, Any], repair_profile: str) -> dict[str, Any]:
+    """Return the repair-seed view of feedback for a specific repair profile.
+
+    The full evidence pack remains evidence-first and profile-neutral.  This
+    adapter only changes the compact seed that is handed to a candidate
+    launcher, so a tool-first profile is not accidentally nudged back into a
+    prompt-only repair.
+    """
+
+    if repair_profile != "data_agent_tool_repair":
+        return feedback
+
+    out = json.loads(json.dumps(feedback, ensure_ascii=False))
+    base_routing = out.get("repair_routing") if isinstance(out.get("repair_routing"), dict) else {}
+    base_layer = str(base_routing.get("recommended_repair_layer") or "data_agent_generation")
+    base_reason = str(base_routing.get("routing_reason") or "Active evidence points to the data-agent generation path.")
+    layer_low = base_layer.lower()
+    signal_low = "\n".join(
+        str(item)
+        for item in (
+            out.get("selected_stage"),
+            out.get("selected_signal"),
+            base_reason,
+            json.dumps(out.get("answer_delta") or {}, ensure_ascii=False),
+        )
+    ).lower()
+    combined = f"{layer_low}\n{signal_low}"
+
+    if any(marker in combined for marker in ("year", "ema", "best year", "year_axis")):
+        helper_targets = [
+            "adapters/patents/ema.py",
+            "adapters/patents/patent_query_utils.py",
+            "adapters/patents/cpc_mapping.py",
+            "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+        ]
+        helper_focus = "Create or update a reusable EMA/year-axis helper; prompt text may only tell generated_solve.py to use that helper."
+    elif any(marker in combined for marker in ("mapping", "granularity", "level", "missing", "extra", "answer_delta")):
+        helper_targets = [
+            "adapters/patents/cpc_mapping.py",
+            "adapters/patents/cpc_definition.py",
+            "adapters/patents/patent_query_utils.py",
+            "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+        ]
+        helper_focus = "Create or update reusable CPC mapping/answer-delta helper logic; prompt text may only provide thin import/use glue."
+    elif any(marker in combined for marker in ("traceback", "runtime", "api", "exception")):
+        helper_targets = [
+            "adapters/patents/patent_query_utils.py",
+            "adapters/runtime_observer.py",
+            "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+        ]
+        helper_focus = "Create or update reusable generated-code safety/helper logic for the concrete runtime pattern."
+    else:
+        helper_targets = [
+            "adapters/patents/patent_query_utils.py",
+            "adapters/patents/cpc_mapping.py",
+            "adapters/patents/ema.py",
+            "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+        ]
+        helper_focus = "Create or update a reusable PATENTS helper module before considering prompt glue."
+
+    routing = dict(base_routing)
+    routing.update(
+        {
+            "base_repair_routing": base_routing,
+            "recommended_repair_layer": f"data_agent_tool_helper_for_{base_layer}",
+            "recommended_target_files": helper_targets,
+            "anti_targets": [
+                "adapters/feedback/**",
+                "logs/**",
+                "candidates/**",
+                "archive/**",
+                "trajectories/**",
+                "benchmarks/**",
+                "legacy/**",
+                "data/**",
+            ],
+            "prompt_only_policy": {
+                "status": "weak_allowed",
+                "reason": "For data_agent_tool_repair, prompt-only is a fallback only when no safe reusable adapters/patents helper can be created; the rationale must contain `prompt-only fallback` and the evidence reason.",
+                "source_change_required": False,
+                "helper_target_required": True,
+            },
+            "routing_reason": f"{base_reason} Profile override: data_agent_tool_repair should turn this repeated generated-code failure into reusable adapters/patents helper code before adding prompt glue.",
+            "tool_first_policy": {
+                "required_primary_target": "adapters/patents/*.py",
+                "preferred_operations": ["create_file", "replace_text_once", "insert_after_anchor"],
+                "helper_focus": helper_focus,
+                "prompt_glue_limit": "Prompt edits are allowed only as small glue after at least one helper target is included, unless using explicit prompt-only fallback.",
+            },
+        }
+    )
+    routing["if_project_source"] = [
+        helper_focus,
+        "Keep helper code benchmark-safe: no hardcoded expected CPC answers, exact answer counts, or ground-truth lists.",
+        "Preserve current working parser/mapping capabilities shown by runtime trace evidence.",
+    ]
+    routing["if_prompt_only"] = [
+        "Use prompt-only only as an explicit fallback with phrase `prompt-only fallback` and evidence that no safe reusable helper can be created.",
+        "Do not merely restate existing CPC metadata or EMA instructions.",
+    ]
+
+    focus = list(out.get("next_repair_focus") or [])
+    out["next_repair_focus"] = [
+        helper_focus,
+        "In data_agent_tool_repair, include at least one adapters/patents/*.py helper target unless explicitly using prompt-only fallback.",
+    ] + focus
+    out["base_repair_routing"] = base_routing
+    out["repair_routing"] = routing
+    out["repair_profile_adaptation"] = {
+        "profile": "data_agent_tool_repair",
+        "status": "tool_first_routing_applied",
+        "base_repair_layer": base_layer,
+        "preferred_helper_targets": helper_targets,
+    }
+    return out
+
+
 def run_cmd(
     args: list[str],
     *,
@@ -306,18 +423,22 @@ def analyze_and_seed(
     fine_grained_json_path = loop_dir / "fine_grained_evidence_pack.json"
     fine_grained_md_path = loop_dir / "fine_grained_evidence_pack.md"
     write_pack(fine_grained_feedback, fine_grained_json_path, fine_grained_md_path)
+    repair_profile = str(candidate_context.get("repair_profile") or "")
+    seed_feedback = adapt_feedback_for_repair_profile(fine_grained_feedback, repair_profile)
     compact_feedback = {
-        "feedback_type": fine_grained_feedback.get("feedback_type"),
-        "source_run_dir": fine_grained_feedback.get("source_run_dir"),
-        "selected_stage": fine_grained_feedback.get("selected_stage"),
-        "selected_signal": fine_grained_feedback.get("selected_signal"),
-        "repair_routing": fine_grained_feedback.get("repair_routing"),
-        "parent_capabilities": fine_grained_feedback.get("parent_capabilities"),
-        "answer_delta": fine_grained_feedback.get("answer_delta"),
-        "runtime_trace_evidence": (fine_grained_feedback.get("runtime_trace_evidence") or [])[:8],
-        "ranked_feedback_signals": (fine_grained_feedback.get("ranked_feedback_signals") or [])[:5],
-        "repair_constraints": fine_grained_feedback.get("repair_constraints"),
-        "next_repair_focus": fine_grained_feedback.get("next_repair_focus"),
+        "feedback_type": seed_feedback.get("feedback_type"),
+        "source_run_dir": seed_feedback.get("source_run_dir"),
+        "selected_stage": seed_feedback.get("selected_stage"),
+        "selected_signal": seed_feedback.get("selected_signal"),
+        "repair_routing": seed_feedback.get("repair_routing"),
+        "base_repair_routing": seed_feedback.get("base_repair_routing"),
+        "repair_profile_adaptation": seed_feedback.get("repair_profile_adaptation"),
+        "parent_capabilities": seed_feedback.get("parent_capabilities"),
+        "answer_delta": seed_feedback.get("answer_delta"),
+        "runtime_trace_evidence": (seed_feedback.get("runtime_trace_evidence") or [])[:8],
+        "ranked_feedback_signals": (seed_feedback.get("ranked_feedback_signals") or [])[:5],
+        "repair_constraints": seed_feedback.get("repair_constraints"),
+        "next_repair_focus": seed_feedback.get("next_repair_focus"),
         "full_evidence_pack_paths": {
             "json": str(fine_grained_json_path),
             "markdown": str(fine_grained_md_path),
@@ -334,6 +455,12 @@ def analyze_and_seed(
             "passed": analysis.get("passed"),
             "validation_reason": analysis.get("validation_reason"),
         },
+        "repair_profile": repair_profile,
+        "repair_routing": compact_feedback.get("repair_routing"),
+        "base_repair_routing": compact_feedback.get("base_repair_routing"),
+        "repair_profile_adaptation": compact_feedback.get("repair_profile_adaptation"),
+        "answer_delta": compact_feedback.get("answer_delta"),
+        "parent_capabilities": compact_feedback.get("parent_capabilities"),
         "fine_grained_feedback": compact_feedback,
         "candidate_context": candidate_context,
     }
@@ -632,7 +759,7 @@ def run_loop(args: argparse.Namespace) -> int:
         seed, seed_path = analyze_and_seed(
             run_dir=parent_run,
             loop_dir=iteration_dir,
-            candidate_context={"parent_agent_id": parent_agent_id, "iteration": iteration},
+            candidate_context={"parent_agent_id": parent_agent_id, "iteration": iteration, "repair_profile": args.repair_profile},
         )
         if args.repair_seed:
             seed_path = Path(args.repair_seed).resolve()

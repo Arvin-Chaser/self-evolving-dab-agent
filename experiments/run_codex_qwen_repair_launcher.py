@@ -573,9 +573,10 @@ Profile-specific hard rules for data_agent_tool_repair:
 5. If no safe reusable helper can be created, output no_op_failed or explicitly justify a prompt-only fallback in the rationale using the phrase `prompt-only fallback` and the evidence reason.
 6. generated_solve.py is evidence, not a patch target. Translate repeated generated-code failures into reusable helpers or minimal prompt glue.
 7. Include at least one adapters/patents/*.py target unless using the explicit prompt-only fallback described above.
-8. If creating a new helper module, use operation create_file and include import-safe, py_compile-clean Python.
-9. Do not modify feedback analyzer code, logs, candidates, archive, trajectories, reports, benchmarks, legacy code, data files, virtualenvs, pycache, or generated run artifacts.
-10. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
+8. If repair_routing recommends adapters/patents/*.py helper targets, select one of those helper targets before adding any prompt glue.
+9. If creating a new helper module, use operation create_file and include import-safe, py_compile-clean Python.
+10. Do not modify feedback analyzer code, logs, candidates, archive, trajectories, reports, benchmarks, legacy code, data files, virtualenvs, pycache, or generated run artifacts.
+11. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
 """
     if profile.name == "data_agent_project_repair":
         return """
