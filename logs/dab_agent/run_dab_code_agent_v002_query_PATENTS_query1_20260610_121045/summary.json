@@ -1,9 +1,0 @@
-{
-  "prompt_version": "dab_code_agent_v002",
-  "mode": "agent_generated_code",
-  "total": 1,
-  "correct": 0,
-  "accuracy": 0.0,
-  "validation_reason": "agent_code_execution_error: WARNING: No explicit 'level' metadata found in cpc_definition. Will attempt heuristics and fallbacks.\nTraceback (most recent call last):\n  File \"/home/m0st1ma/research/text2sql/logs/dab_agent/run_dab_code_agent_v002_query_PATENTS_query1_20260610_121045/generated_solve.py\", line 560, in <module>\n    main()\n  File \"/home/m0st1ma/research/text2sql/logs/dab_agent/run_dab_code_agent_v002_query_PATENTS_query1_20260610_121045/generated_solve.py\", line 393, in main\n    year = extract_year_from_text(r['publication_date'])\n                                  ~^^^^^^^^^^^^^^^^^^^^\nIndexError: No item with that key\n",
-  "run_dir": "/home/m0st1ma/research/text2sql/logs/dab_agent/run_dab_code_agent_v002_query_PATENTS_query1_20260610_121045"
-}

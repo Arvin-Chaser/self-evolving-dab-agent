@@ -1,0 +1,165 @@
+You are a data agent solving a DAB benchmark task.
+
+You are given:
+1. A natural language data-analysis query.
+2. Database descriptions and hints.
+3. Local file paths for the required data.
+4. SQLite schema and sample rows.
+
+Your job is to generate a Python script named solve.py.
+
+The script must:
+1. Read the local data files.
+2. Perform the required data analysis.
+3. Write the final answer to the path provided by FINAL_ANSWER_PATH.
+4. Print useful execution/debug information to stdout.
+5. Avoid hard-coding the ground truth answer.
+6. Avoid using internet access.
+7. Use only local files and standard Python libraries unless necessary.
+
+Stage trace requirement:
+
+Your generated solve.py must write a JSON file to STAGE_TRACE_PATH.
+
+The trace must record the agent's reasoning process using the following 8-stage protocol. This trace is not the final answer; it is a structured execution log for later error analysis.
+
+The JSON should be a list of stage objects. Each object should contain:
+- stage: one of the 8 stage names
+- status: "started", "completed", "failed", or "skipped"
+- summary: short description of what was done in this stage
+- evidence_used: concrete data sources, fields, files, sample rows, schemas, or observations used
+- assumptions: assumptions made at this stage
+- outputs: important intermediate decisions or artifacts
+- uncertainties: unresolved issues or risks
+- error: error message if the stage failed, otherwise null
+
+Use exactly these stage names:
+
+S1_task_understanding
+S2_data_schema_grounding
+S3_planning_decomposition
+S4_tool_dependency_planning
+S5_query_code_generation
+S6_execution
+S7_transformation_calculation
+S8_answer_synthesis_validation
+
+Important:
+- Do not only write the trace at the very end. Maintain a trace list during execution and write it to STAGE_TRACE_PATH whenever a major stage completes or fails.
+- If the script crashes, it should still try to write the trace before exiting.
+- The trace should include concrete evidence, not vague statements.
+- For S2, record which data sources and fields are selected, and why.
+- For S4, record which local files are allowed and which files are forbidden.
+- For S7, record parsing, mapping, aggregation, filtering, formulas, and granularity decisions.
+- For S8, record the final output count, duplicate check, format check, and any consistency checks.
+- Never read ground_truth.csv or validate.py from solve.py.
+
+Important:
+- If the task requires a complete set of results, the script must compute the complete set, not examples.
+- If the task requires codes, output only the required codes in final_answer.txt.
+- The final answer should be validator-oriented: concise, complete, and formatted clearly.
+- You may inspect and parse JSON-like text fields in the database.
+- You may parse the CPC definition SQL dump as a text file if needed.
+- You should make reasonable assumptions explicit in comments.
+
+Additional robust instructions and checks (apply these generally to similar DAB tasks):
+
+S1 — Task understanding (general guidance)
+- Identify the exact required output type (e.g., list of codes, numeric table, CSV) and any level/granularity constraints from the natural language question.
+- When the question references hierarchy/level (e.g., "CPC group codes at level 5"), treat that as a strict requirement: only output items that are explicitly mapped to that level by the provided metadata/schema.
+
+S2 — Data schema grounding (required)
+- If a metadata/definition file is provided (e.g., CPC_DEFINITION_SQL_PATH or other schema/definition files), your script must attempt to read and parse it to ground hierarchical levels, code-to-group mappings, and any canonical code forms. Do not infer hierarchy solely from string patterns.
+- Parse any provided definition SQL/text file to extract mappings of CPC codes to their hierarchical levels (e.g., level 1..N) and group codes. Use these mappings to map patent-classification strings to the required level.
+- If the metadata file is unavailable or incomplete, document the fallback assumptions in comments and implement conservative, well-explained heuristics; but prefer the metadata whenever present.
+
+S3 — Planning and decomposition (explicit)
+- Decompose the task into explicit executable steps in code comments and in the script flow. Typical steps include:
+  - Load database and relevant tables.
+  - Load/parse CPC definition metadata and build a mapping from raw patent-class strings to canonical codes and levels.
+  - Normalize classification values in the patent data using the mapping.
+  - Aggregate counts by year and by the required level of CPC grouping.
+  - Compute the exponential moving average (EMA) per code across years with the specified smoothing factor, ensuring chronological order.
+  - Determine each code's best year (year with highest EMA).
+  - Filter results to codes whose best year matches the requested year (e.g., 2022).
+  - Prepare and write final results with validation checks.
+
+S4 — Tool and dependency planning (restrictions)
+- Use only the local files provided and standard Python libraries (sqlite3, csv, json, re, math, datetime, pathlib, etc.).
+- Do not open or import any validator, ground-truth file, or logs that could leak the expected answer.
+- Explicitly list in code comments which files are used and which ones are intentionally avoided.
+- If the task requires parsing a SQL dump (CPC_DEFINITION_SQL_PATH), treat it as a text file and extract CREATE/INSERT lines that reveal code hierarchies or mapping tables.
+
+S5 — Query/code generation correctness
+- When generating SQL or Python code, ensure correct grouping and joins. Use metadata-derived canonical keys for joins between patent records and definition mappings.
+- Normalize code strings consistently (strip whitespace, upper-case as necessary) before matching to mapping.
+
+S6 — Execution and output writing
+- The script must write the final output to FINAL_ANSWER_PATH.
+- Print progress and summary statistics to stdout (rows processed, mapping coverage, number of codes filtered, etc.) to aid debugging.
+
+S7 — Transformation and calculation (critical rules)
+- EMA calculation:
+  - Sort years in ascending order before applying EMA.
+  - Use the standard recursive EMA formula: EMA_t = alpha * value_t + (1 - alpha) * EMA_{t-1}. Initialize EMA_{first_year} = value_{first_year} (or explicitly document a different initialization in comments).
+  - Use the exact smoothing factor given in the prompt (e.g., 0.2).
+- Granularity and mapping:
+  - Map raw patent classification values to the canonical codes and hierarchical level using the parsed metadata file. Do not infer a code's level from string shape (slashes, number of characters, or slash patterns).
+  - After mapping, aggregate counts at the canonical level requested by the task (e.g., "level 5"). If the metadata defines "levels" numerically or via explicit grouping (e.g., groups, subclasses), use that definition verbatim.
+  - Ensure that the aggregation reduces to one record per canonical code per year at the desired level. Avoid emitting lower-level subclass codes when the task requests group-level codes.
+- Filtering:
+  - Compute each canonical code's "best year" as the year with its maximum EMA value (if ties occur, document tie-breaking logic and apply it deterministically, e.g., choose the latest year).
+  - After computing best years, filter to only those codes whose best year equals the requested year (e.g., 2022).
+
+S8 — Answer synthesis and validation (strict)
+- Before writing final_answer.txt, perform these consistency checks:
+  - Each output code must appear in the metadata mapping and be at the requested level.
+  - All output codes must be unique.
+  - All output codes must satisfy the filtering criteria (e.g., best year == 2022).
+  - Print counts for: total canonical codes considered, how many had best year==requested, how many were output.
+  - If the mapping coverage is incomplete (some patent records could not be mapped), print a warning with the number and proceed, but do not invent codes.
+- Final answer format:
+  - If the prompt asks for codes only, write exactly one code per line with no extra characters, whitespace-trimmed, in a deterministic order (e.g., sorted ascending).
+  - Do not include additional commentary or labels in the final_answer.txt file—only the required tokens.
+
+General robustness principles (transferable)
+- Prefer metadata-driven decisions over regex/string-shape heuristics for hierarchy and levels.
+- Make all assumptions explicit in code comments; do not bake dataset-specific rules into the prompt.
+- When a definition or mapping file is provided, always attempt to parse and use it for mapping and granularity control.
+- Add defensive checks and clear debug output so that failures can be traced to mapping, aggregation, or filtering steps.
+
+Important: Do not read validator/ground-truth files or log files that would reveal the expected outputs. Do not hard-code the expected number of outputs or specific codes.
+
+Available local paths:
+DAB_ROOT = {dab_root}
+CASE_DIR = {case_dir}
+PUBLICATION_DB_PATH = {publication_db_path}
+CPC_DEFINITION_SQL_PATH = {cpc_definition_sql_path}
+FINAL_ANSWER_PATH = {final_answer_path}
+STAGE_TRACE_PATH = {stage_trace_path}
+
+Question:
+{question}
+
+Database description:
+{db_description}
+
+SQLite table schema:
+{sqlite_schema}
+
+Sample rows:
+{sample_rows}
+
+Now generate only the Python code for solve.py.
+Do not include explanations outside the code.
+
+## Targeted Evolution Note
+
+The previous run exposed the following primary stage-level failure signal:
+
+- Stage: S6_execution
+- Observation: failed to parse stage_trace.json: Expecting value: line 125 column 9 (char 4951)
+
+When handling this stage, explicitly verify assumptions, preserve intermediate
+evidence in the stage trace, and prefer the smallest corrective action that can
+be checked by the generated code before finalizing the answer.

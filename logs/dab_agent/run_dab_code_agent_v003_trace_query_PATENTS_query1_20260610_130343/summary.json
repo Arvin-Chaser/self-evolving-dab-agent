@@ -1,9 +1,0 @@
-{
-  "prompt_version": "dab_code_agent_v003_trace",
-  "mode": "agent_generated_code",
-  "total": 1,
-  "correct": 0,
-  "accuracy": 0.0,
-  "validation_reason": "missing_final_answer_file_or_empty_answer",
-  "run_dir": "/home/m0st1ma/research/text2sql/logs/dab_agent/run_dab_code_agent_v003_trace_query_PATENTS_query1_20260610_130343"
-}

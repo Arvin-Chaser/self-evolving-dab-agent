@@ -1,4 +1,0 @@
-DEBUG: Total publicationinfo rows fetched: 277813
-DEBUG: Rows processed: 277813, mapped associations: 0, unmapped associations: 1615162
-DEBUG: Global years range: 1900 - 2024
-FINAL: Wrote 0 codes to /home/m0st1ma/research/text2sql/logs/dab_agent/run_dab_code_agent_v003_trace_query_PATENTS_query1_20260610_130343/final_answer.txt

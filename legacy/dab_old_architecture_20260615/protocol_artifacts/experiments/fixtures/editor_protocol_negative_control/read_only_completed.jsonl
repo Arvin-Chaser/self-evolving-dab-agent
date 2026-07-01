@@ -1,0 +1,1 @@
+{"type":"item.completed","item":{"id":"item_1","type":"command_execution","command":"sed -n '1,20p' sample.py","aggregated_output":"VALUE = 1\n","exit_code":0,"status":"completed"}}

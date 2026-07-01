@@ -1,2 +1,0 @@
-WARNING: No INSERT INTO cpc_definition found in SQL dump. Attempting to parse CREATE TABLE data.
-ERROR: No CPC mapping could be parsed. Exiting.
