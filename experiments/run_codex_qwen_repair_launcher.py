@@ -339,6 +339,15 @@ def load_repair_routing(repair_seed: Path | None) -> dict[str, Any]:
     return routing if isinstance(routing, dict) else {}
 
 
+def load_helper_repair_plan(repair_seed: Path | None) -> dict[str, Any]:
+    seed = load_repair_seed_json(repair_seed)
+    plan = seed.get("helper_repair_plan")
+    if not isinstance(plan, dict):
+        fine = seed.get("fine_grained_feedback") if isinstance(seed.get("fine_grained_feedback"), dict) else {}
+        plan = fine.get("helper_repair_plan") if isinstance(fine, dict) else None
+    return plan if isinstance(plan, dict) else {}
+
+
 def is_prompt_path(path: str) -> bool:
     rel = normalize_rel(path)
     return rel.startswith("prompts/") and rel.endswith(".txt")
@@ -505,6 +514,17 @@ def build_context_pack(
             "Use this routing before selecting target_files. If it conflicts with generic instincts, follow the routing.",
             "```json",
             json.dumps(routing, indent=2, ensure_ascii=False),
+            "```",
+            "",
+        ]
+    helper_plan = load_helper_repair_plan(repair_seed)
+    if helper_plan:
+        lines += [
+            "## Helper repair plan from fine-grained feedback",
+            "This plan is derived deterministically from selected_stage, selected_signal, runtime trace events, ranked feedback, and answer_delta. Treat it as the primary target for data_agent_tool_repair.",
+            "If the patch_spec cannot implement the recommended helper file/API safely, output no_op_failed instead of choosing an unrelated helper.",
+            "```json",
+            json.dumps(helper_plan, indent=2, ensure_ascii=False),
             "```",
             "",
         ]
@@ -1347,6 +1367,37 @@ def data_agent_tool_helper_integration_check(spec: dict[str, Any]) -> tuple[bool
         )
     return True, "ok"
 
+def data_agent_tool_helper_plan_check(spec: dict[str, Any], repair_seed: Path | None) -> tuple[bool, str]:
+    plan = load_helper_repair_plan(repair_seed)
+    if plan.get("status") != "planned":
+        return True, "ok"
+    required_helper = normalize_rel(str(plan.get("recommended_helper_file") or ""))
+    if not required_helper:
+        return True, "ok"
+    targets = [normalize_rel(str(path)) for path in spec.get("target_files") or []]
+    if required_helper not in targets:
+        return (
+            False,
+            f"helper_plan_target_mismatch: fine-grained helper_repair_plan requires {required_helper}, but patch_spec targets {targets}",
+        )
+    combined = "\n".join(
+        "\n".join(str(edit.get(key, "")) for key in ("intended_change", "rationale"))
+        for edit in spec.get("edits") or []
+        if isinstance(edit, dict)
+    ).lower()
+    required_functions = [
+        str(item.get("name") or "").lower()
+        for item in plan.get("required_functions") or []
+        if isinstance(item, dict) and item.get("name")
+    ]
+    if required_functions and not any(name in combined for name in required_functions):
+        return (
+            False,
+            "helper_plan_api_missing: patch_spec targets the planned helper file but does not implement or mention the required helper API names",
+        )
+    return True, "ok"
+
+
 def data_agent_tool_helper_quality_check(spec: dict[str, Any]) -> tuple[bool, str]:
     for edit in spec.get("edits") or []:
         if not isinstance(edit, dict):
@@ -1374,7 +1425,7 @@ def data_agent_tool_helper_quality_check(spec: dict[str, Any]) -> tuple[bool, st
     return True, "ok"
 
 
-def run_validation(profile: RepairProfile, workspace: Path, candidate_dir: Path) -> tuple[bool, list[dict[str, Any]]]:
+def run_validation(profile: RepairProfile, workspace: Path, candidate_dir: Path, repair_seed: Path | None = None) -> tuple[bool, list[dict[str, Any]]]:
     out = candidate_dir / "validation"
     out.mkdir(parents=True, exist_ok=True)
     results: list[dict[str, Any]] = []
@@ -1387,6 +1438,10 @@ def run_validation(profile: RepairProfile, workspace: Path, candidate_dir: Path)
             return False, results
 
     if profile.name == "data_agent_tool_repair":
+        plan_ok, plan_reason = data_agent_tool_helper_plan_check(spec, repair_seed)
+        results.append({"name": "data_agent_tool_helper_plan_alignment", "exit_code": 0 if plan_ok else 1, "reason": plan_reason})
+        if not plan_ok:
+            return False, results
         integration_ok, integration_reason = data_agent_tool_helper_integration_check(spec)
         results.append({"name": "data_agent_tool_helper_integration", "exit_code": 0 if integration_ok else 1, "reason": integration_reason})
         if not integration_ok:
@@ -1509,7 +1564,7 @@ def run_launcher(args: argparse.Namespace) -> int:
         write_manifest(candidate_dir, {"candidate_id": candidate_id, "status": gate_status, "reason": gate_reason, "repair_profile": profile.name, "workspace": str(workspace), **diff_info})
         return 72
 
-    validation_ok, validation_results = run_validation(profile, workspace, candidate_dir)
+    validation_ok, validation_results = run_validation(profile, workspace, candidate_dir, repair_seed=repair_seed)
     final_status = "valid_candidate_pending_child_eval" if validation_ok else "failed_validation"
     write_manifest(
         candidate_dir,

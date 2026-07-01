@@ -38,6 +38,7 @@ sys.path.insert(0, str(ROOT))
 from experiments.analyze_agent_error import analyze_run
 from experiments.build_meta_agent_evidence_pack import build_fine_grained_feedback_pack, write_pack
 from experiments.extract_primary_signal import extract_primary_signal
+from experiments.helper_repair_planner import plan_helper_repair
 from experiments.run_dab_agent import run_dab_agent
 
 
@@ -473,6 +474,40 @@ def analyze_and_seed(
     write_pack(fine_grained_feedback, fine_grained_json_path, fine_grained_md_path)
     repair_profile = str(candidate_context.get("repair_profile") or "")
     seed_feedback = adapt_feedback_for_repair_profile(fine_grained_feedback, repair_profile)
+    helper_repair_plan = plan_helper_repair(seed_feedback, repair_profile)
+    if helper_repair_plan.get("status") == "planned":
+        routing = dict(seed_feedback.get("repair_routing") or {})
+        recommended_helper = helper_repair_plan.get("recommended_helper_file")
+        recommended_prompt = helper_repair_plan.get("recommended_prompt_glue_file")
+        existing_targets = [str(item) for item in routing.get("recommended_target_files") or []]
+        prioritized_targets = []
+        for item in (recommended_helper, recommended_prompt):
+            if item and str(item) not in prioritized_targets:
+                prioritized_targets.append(str(item))
+        for item in existing_targets:
+            if item not in prioritized_targets:
+                prioritized_targets.append(item)
+        if prioritized_targets:
+            routing["recommended_target_files"] = prioritized_targets
+        routing["helper_repair_plan_summary"] = {
+            "recommended_helper_file": recommended_helper,
+            "helper_focus": helper_repair_plan.get("helper_focus"),
+            "required_functions": helper_repair_plan.get("required_functions"),
+            "success_criteria": helper_repair_plan.get("success_criteria"),
+        }
+        tool_policy = dict(routing.get("tool_first_policy") or {})
+        if recommended_helper:
+            tool_policy["required_primary_target"] = recommended_helper
+        if helper_repair_plan.get("helper_focus"):
+            tool_policy["helper_focus"] = helper_repair_plan.get("helper_focus")
+        routing["tool_first_policy"] = tool_policy
+        seed_feedback["repair_routing"] = routing
+        seed_feedback["next_repair_focus"] = [
+            str(helper_repair_plan.get("helper_focus") or "Use the helper_repair_plan as the primary target."),
+            "Implement the helper API named in helper_repair_plan; if that API cannot be safely implemented, output no_op_failed.",
+            "Validation should address helper_repair_plan.focused_validation_tests before relying on broad child eval.",
+        ] + list(seed_feedback.get("next_repair_focus") or [])
+    seed_feedback["helper_repair_plan"] = helper_repair_plan
     compact_feedback = {
         "feedback_type": seed_feedback.get("feedback_type"),
         "source_run_dir": seed_feedback.get("source_run_dir"),
@@ -481,6 +516,7 @@ def analyze_and_seed(
         "repair_routing": seed_feedback.get("repair_routing"),
         "base_repair_routing": seed_feedback.get("base_repair_routing"),
         "repair_profile_adaptation": seed_feedback.get("repair_profile_adaptation"),
+        "helper_repair_plan": seed_feedback.get("helper_repair_plan"),
         "parent_capabilities": seed_feedback.get("parent_capabilities"),
         "answer_delta": seed_feedback.get("answer_delta"),
         "runtime_trace_evidence": (seed_feedback.get("runtime_trace_evidence") or [])[:8],
@@ -507,6 +543,7 @@ def analyze_and_seed(
         "repair_routing": compact_feedback.get("repair_routing"),
         "base_repair_routing": compact_feedback.get("base_repair_routing"),
         "repair_profile_adaptation": compact_feedback.get("repair_profile_adaptation"),
+        "helper_repair_plan": compact_feedback.get("helper_repair_plan"),
         "answer_delta": compact_feedback.get("answer_delta"),
         "parent_capabilities": compact_feedback.get("parent_capabilities"),
         "fine_grained_feedback": compact_feedback,
@@ -661,6 +698,56 @@ def run_generic_child_eval(
         loop_dir / "child_analyze.stderr",
     )
     child_signal = extract_primary_signal(child_run_dir / "agent_error_summary.json")
+    child_eval_dir = candidate_dir / "child_eval"
+    child_eval_dir.mkdir(parents=True, exist_ok=True)
+    child_feedback = build_fine_grained_feedback_pack(
+        child_run_dir,
+        primary_signal=child_signal,
+        max_trace_events=12,
+    )
+    child_feedback = adapt_feedback_for_repair_profile(child_feedback, "data_agent_tool_repair")
+    child_helper_repair_plan = plan_helper_repair(child_feedback, "data_agent_tool_repair")
+    child_feedback["helper_repair_plan"] = child_helper_repair_plan
+    child_feedback_json_path = child_eval_dir / "child_fine_grained_evidence_pack.json"
+    child_feedback_md_path = child_eval_dir / "child_fine_grained_evidence_pack.md"
+    write_pack(child_feedback, child_feedback_json_path, child_feedback_md_path)
+    next_repair_seed = {
+        "seed_id": f"next_data_agent_repair_seed_iter{iteration:03d}",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "source": "child_eval_fine_grained_feedback",
+        "parent_candidate_dir": str(candidate_dir),
+        "child_run_dir": str(child_run_dir),
+        "selected_stage": child_signal.get("selected_component"),
+        "selected_signal": child_signal.get("selected_signal"),
+        "analysis_summary": {
+            "passed": child_analysis.get("passed"),
+            "validation_reason": child_analysis.get("validation_reason"),
+        },
+        "repair_profile": "data_agent_tool_repair",
+        "repair_routing": child_feedback.get("repair_routing"),
+        "helper_repair_plan": child_helper_repair_plan,
+        "answer_delta": child_feedback.get("answer_delta"),
+        "fine_grained_feedback": {
+            "feedback_type": child_feedback.get("feedback_type"),
+            "source_run_dir": child_feedback.get("source_run_dir"),
+            "selected_stage": child_feedback.get("selected_stage"),
+            "selected_signal": child_feedback.get("selected_signal"),
+            "repair_routing": child_feedback.get("repair_routing"),
+            "helper_repair_plan": child_helper_repair_plan,
+            "parent_capabilities": child_feedback.get("parent_capabilities"),
+            "answer_delta": child_feedback.get("answer_delta"),
+            "runtime_trace_evidence": (child_feedback.get("runtime_trace_evidence") or [])[:8],
+            "ranked_feedback_signals": (child_feedback.get("ranked_feedback_signals") or [])[:5],
+            "repair_constraints": child_feedback.get("repair_constraints"),
+            "next_repair_focus": child_feedback.get("next_repair_focus"),
+            "full_evidence_pack_paths": {
+                "json": str(child_feedback_json_path),
+                "markdown": str(child_feedback_md_path),
+            },
+        },
+    }
+    next_repair_seed_path = child_eval_dir / "next_data_agent_repair_seed.json"
+    write_json(next_repair_seed_path, next_repair_seed)
     helper_usage = generated_code_uses_helper(
         child_run_dir / "generated_solve.py",
         candidate_patents_helper_modules(candidate_dir),
@@ -668,8 +755,6 @@ def run_generic_child_eval(
     child_failure_gate = None
     if helper_usage.get("status") == "helper_not_used_by_child_generated_code":
         child_failure_gate = "helper_not_used_by_child_generated_code"
-    child_eval_dir = candidate_dir / "child_eval"
-    child_eval_dir.mkdir(parents=True, exist_ok=True)
     report = {
         "status": "completed",
         "final_status": "candidate_child_eval_passed" if child_analysis.get("passed") else "candidate_child_eval_failed",
@@ -680,6 +765,12 @@ def run_generic_child_eval(
         "child_validation_reason": child_analysis.get("validation_reason"),
         "child_selected_stage": child_signal.get("selected_component"),
         "child_selected_signal": child_signal.get("selected_signal"),
+        "child_fine_grained_feedback_pack": {
+            "json": str(child_feedback_json_path),
+            "markdown": str(child_feedback_md_path),
+        },
+        "next_data_agent_repair_seed": str(next_repair_seed_path),
+        "child_helper_repair_plan": child_helper_repair_plan,
         "helper_usage": helper_usage,
         "child_failure_gate": child_failure_gate,
         "child_status": {
