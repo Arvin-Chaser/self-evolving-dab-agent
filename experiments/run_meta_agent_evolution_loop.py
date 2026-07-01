@@ -628,6 +628,50 @@ def materialize_child_parent_prompt(child_ws: Path, prompt_path: Path) -> Path:
         shutil.copy2(source, target)
     return target
 
+def resolve_parent_candidate_patch(parent_agent_card: dict[str, Any] | None) -> Path | None:
+    if not parent_agent_card:
+        return None
+    source_refs = parent_agent_card.get("source_refs") if isinstance(parent_agent_card.get("source_refs"), dict) else {}
+    patch_ref = source_refs.get("candidate_patch")
+    if not patch_ref:
+        return None
+    patch_path = Path(str(patch_ref))
+    if not patch_path.is_absolute():
+        patch_path = ROOT / patch_path
+    return patch_path if patch_path.exists() else None
+
+
+def materialize_child_parent_source(child_ws: Path, parent_agent_card: dict[str, Any] | None) -> dict[str, Any]:
+    patch_path = resolve_parent_candidate_patch(parent_agent_card)
+    if patch_path is None:
+        return {"status": "skipped", "reason": "parent candidate patch missing or not declared"}
+    if not patch_path.read_text(encoding="utf-8", errors="replace").strip():
+        return {"status": "skipped", "reason": "parent candidate patch empty", "patch_path": str(patch_path)}
+    proc = run_cmd(
+        [
+            "git",
+            "apply",
+            f"--exclude={DATA_AGENT_CANONICAL_PROMPT.as_posix()}",
+            str(patch_path),
+        ],
+        cwd=child_ws,
+    )
+    if proc.returncode != 0:
+        return {
+            "status": "failed",
+            "reason": "parent source patch apply failed",
+            "patch_path": str(patch_path),
+            "stderr": proc.stderr,
+        }
+    changed = run_cmd(["git", "diff", "--name-only"], cwd=child_ws)
+    return {
+        "status": "applied",
+        "patch_path": str(patch_path),
+        "excluded_prompt": DATA_AGENT_CANONICAL_PROMPT.as_posix(),
+        "changed_files": [line for line in changed.stdout.splitlines() if line.strip()],
+    }
+
+
 def run_generic_child_eval(
     *,
     candidate_dir: Path,
@@ -637,6 +681,7 @@ def run_generic_child_eval(
     timeout_sec: int,
     loop_dir: Path,
     iteration: int,
+    parent_agent_card: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     patch_path = candidate_dir / "patch.diff"
     if not patch_path.exists() or not patch_path.read_text(encoding="utf-8", errors="replace").strip():
@@ -651,14 +696,22 @@ def run_generic_child_eval(
     run_cmd(["git", "add", "."], cwd=child_ws)
     run_cmd(["git", "commit", "--quiet", "-m", "baseline"], cwd=child_ws)
 
+    parent_source_materialization = materialize_child_parent_source(child_ws, parent_agent_card)
+    if parent_source_materialization.get("status") == "failed":
+        return {
+            "status": "parent_source_materialization_failed",
+            "parent_source_materialization": parent_source_materialization,
+            "workspace": str(child_ws),
+        }
+
     try:
         child_prompt = materialize_child_parent_prompt(child_ws, prompt_path)
     except FileNotFoundError as exc:
-        return {"status": "child_prompt_materialization_failed", "reason": str(exc), "workspace": str(child_ws)}
+        return {"status": "child_prompt_materialization_failed", "reason": str(exc), "workspace": str(child_ws), "parent_source_materialization": parent_source_materialization}
 
     # The candidate patch is defined against the canonical data-agent prompt path.
-    # Baseline must include the selected parent prompt before applying the candidate patch.
-    run_cmd(["git", "add", str(DATA_AGENT_CANONICAL_PROMPT)], cwd=child_ws)
+    # Baseline must include the selected parent source helpers and parent prompt before applying the candidate patch.
+    run_cmd(["git", "add", "."], cwd=child_ws)
     run_cmd(["git", "commit", "--quiet", "--amend", "--no-edit"], cwd=child_ws)
     apply_proc = run_cmd(["git", "apply", str(patch_path)], cwd=child_ws)
     if apply_proc.returncode != 0:
@@ -760,6 +813,7 @@ def run_generic_child_eval(
         "status": "completed",
         "final_status": "candidate_child_eval_passed" if child_analysis.get("passed") else "candidate_child_eval_failed",
         "workspace": str(child_ws),
+        "parent_source_materialization": parent_source_materialization,
         "child_run_dir": str(child_run_dir),
         "child_run_exit_code": proc.returncode,
         "child_passed": child_analysis.get("passed"),
@@ -977,6 +1031,7 @@ def run_loop(args: argparse.Namespace) -> int:
                 timeout_sec=args.timeout_sec,
                 loop_dir=iteration_dir,
                 iteration=iteration,
+                parent_agent_card=parent["card"],
             )
 
         postprocess_exit = None
