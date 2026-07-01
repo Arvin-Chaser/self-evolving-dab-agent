@@ -295,16 +295,55 @@ def make_workspace(candidate_dir: Path) -> Path:
     return workspace
 
 
+def escape_invalid_json_backslashes(raw: str) -> str:
+    valid_json_escapes = {'"', '\\', '/', 'b', 'f', 'n', 'r', 't', 'u'}
+    out: list[str] = []
+    index = 0
+    while index < len(raw):
+        if raw[index] != "\\":
+            out.append(raw[index])
+            index += 1
+            continue
+        end = index
+        while end < len(raw) and raw[end] == "\\":
+            end += 1
+        run_length = end - index
+        next_char = raw[end] if end < len(raw) else ""
+        if run_length % 2 == 1 and next_char and next_char not in valid_json_escapes:
+            out.append("\\" * (run_length + 1))
+        else:
+            out.append("\\" * run_length)
+        index = end
+    return "".join(out)
+
+
+def json_loads_lenient_model_output(raw: str) -> Any:
+    r"""Parse model-emitted JSON with one conservative repair.
+
+    Qwen occasionally emits Python code inside JSON strings with Python-style
+    escapes such as ``\'`` or ``\.``.  These are invalid JSON escapes.  When
+    a run of backslashes is followed by a non-JSON escape character, preserve
+    the intended backslash by adding one more backslash before JSON parsing.
+    All other JSON syntax remains strict.
+    """
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        repaired = escape_invalid_json_backslashes(raw)
+        if repaired == raw:
+            raise
+        return json.loads(repaired)
+
 def extract_first_json(text: str) -> dict[str, Any] | None:
     stripped = text.strip()
     try:
-        value = json.loads(stripped)
+        value = json_loads_lenient_model_output(stripped)
         return value if isinstance(value, dict) else None
     except json.JSONDecodeError:
         pass
     for block in re.findall(r"```(?:json)?\s*(.*?)```", text, flags=re.DOTALL | re.IGNORECASE):
         try:
-            value = json.loads(block.strip())
+            value = json_loads_lenient_model_output(block.strip())
         except json.JSONDecodeError:
             continue
         if isinstance(value, dict):
@@ -313,7 +352,7 @@ def extract_first_json(text: str) -> dict[str, Any] | None:
     if not match:
         return None
     try:
-        value = json.loads(match.group(0))
+        value = json_loads_lenient_model_output(match.group(0))
     except json.JSONDecodeError:
         return None
     return value if isinstance(value, dict) else None
@@ -361,9 +400,31 @@ def prompt_edit_looks_like_code_payload(text: str) -> bool:
         stripped = line.strip()
         if not stripped:
             continue
-        if re.match(r"^(from\s+\S+\s+import\s+\S+|import\s+\S+|def\s+\w+\s*\()", stripped):
+        if re.match(r"^def\s+\w+\s*\(", stripped):
+            return True
+        if re.match(r"^(from\s+\S+\s+import\s+\S+|import\s+\S+)", stripped):
+            helper_import_instruction = "adapters.patents" in stripped and any(
+                marker in low
+                for marker in ("must import", "must use", "reusable helper", "do not reimplement", "instead of reimplementing")
+            )
+            if helper_import_instruction:
+                continue
             return True
     return False
+
+
+def prompt_edit_is_helper_glue(text: str) -> bool:
+    low = text.lower()
+    return "adapters.patents" in text and any(
+        marker in low
+        for marker in (
+            "must import",
+            "must use",
+            "reusable helper",
+            "do not reimplement",
+            "instead of reimplementing",
+        )
+    )
 
 
 def validate_project_repair_routing(
@@ -1071,7 +1132,7 @@ def validate_spec(spec: dict[str, Any] | None, profile: RepairProfile, candidate
     return True, "patch_spec_valid", "ok"
 
 
-def apply_edit(workspace: Path, edit: dict[str, str]) -> None:
+def apply_edit(workspace: Path, edit: dict[str, str]) -> dict[str, Any]:
     path = workspace / edit["file"]
     op = edit["operation"]
     anchor = edit["anchor"]
@@ -1081,14 +1142,27 @@ def apply_edit(workspace: Path, edit: dict[str, str]) -> None:
             raise ValueError(f"create_file target already exists: {edit['file']}")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(change, encoding="utf-8")
-        return
+        return {}
     if not path.exists():
         raise ValueError(f"target file does not exist: {edit['file']}")
     text = path.read_text(encoding="utf-8")
     if op == "append_text":
         path.write_text(text + ("" if text.endswith("\n") else "\n") + change, encoding="utf-8")
-        return
+        return {}
     if anchor not in text:
+        if op in {"insert_after_anchor", "insert_before_anchor"} and is_prompt_path(edit["file"]) and prompt_edit_is_helper_glue(change):
+            appended = (
+                text
+                + ("" if text.endswith("\n") else "\n")
+                + "\nAdditional helper contract for reusable PATENTS helpers:\n"
+                + change.strip()
+                + "\n"
+            )
+            path.write_text(appended, encoding="utf-8")
+            return {
+                "anchor_fallback": "append_prompt_helper_glue",
+                "reason": "prompt helper glue anchor not found; appended under restricted helper-glue fallback",
+            }
         raise ValueError(f"anchor not found in {edit['file']}")
     if op == "replace_text_once":
         path.write_text(text.replace(anchor, change, 1), encoding="utf-8")
@@ -1098,14 +1172,15 @@ def apply_edit(workspace: Path, edit: dict[str, str]) -> None:
         path.write_text(text.replace(anchor, change + anchor, 1), encoding="utf-8")
     else:
         raise ValueError(f"unsupported operation: {op}")
+    return {}
 
 
 def apply_spec(spec: dict[str, Any], workspace: Path, candidate_dir: Path) -> tuple[bool, str]:
     applied: list[dict[str, str]] = []
     try:
         for edit in spec["edits"]:
-            apply_edit(workspace, edit)
-            applied.append({"file": edit["file"], "operation": edit["operation"]})
+            apply_meta = apply_edit(workspace, edit)
+            applied.append({"file": edit["file"], "operation": edit["operation"], **apply_meta})
     except Exception as exc:
         write_json(candidate_dir / "apply_result.json", {"status": "patch_apply_failed", "reason": str(exc), "applied_before_failure": applied})
         return False, str(exc)
