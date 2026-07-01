@@ -111,41 +111,84 @@ def cpc_definition_parser_plan(feedback: dict[str, Any]) -> dict[str, Any]:
     return plan
 
 
-def cpc_mapping_plan(feedback: dict[str, Any]) -> dict[str, Any]:
-    plan = _base_plan(feedback, reason="Fine-grained feedback points to CPC level/granularity mapping or string-shape inference.")
+def cpc_mapping_plan(feedback: dict[str, Any], *, reason: str | None = None, runtime_type_repair: bool = False) -> dict[str, Any]:
+    plan = _base_plan(feedback, reason=reason or "Fine-grained feedback points to CPC level/granularity mapping or string-shape inference.")
+    must_handle = [
+        "exact metadata lookup before normalization",
+        "parent traversal using symbol_to_parents",
+        "no slash-count/prefix-length/string-shape level inference",
+        "return None when metadata cannot confirm a level-5 symbol",
+    ]
+    focused_tests = [
+        "py_compile adapters/patents/cpc_mapping.py",
+        "import adapters.patents.cpc_mapping",
+        "synthetic metadata test: level > 5 child maps to level 5 parent",
+        "synthetic metadata test: missing symbol returns None, not raw fallback",
+        "child generated_solve.py must import adapters.patents.cpc_mapping",
+    ]
+    success_criteria = [
+        "no helper string-shape fallback",
+        "child trace logs mapping coverage instead of silently accepting unmapped codes",
+    ]
+    if runtime_type_repair:
+        must_handle.extend(
+            [
+                "symbol_to_level values may be int, numeric strings such as '5', empty strings, or malformed strings",
+                "coerce numeric-like level values to int before comparing with target level",
+                "treat invalid or missing level values as unknown instead of raising TypeError",
+                "preserve get_level5_symbol public API used by existing generated_solve.py imports",
+            ]
+        )
+        focused_tests.extend(
+            [
+                "synthetic metadata test: level string '5' is accepted as level 5",
+                "synthetic metadata test: child level string '6' can traverse to parent level string '5'",
+                "synthetic metadata test: malformed level string returns None without TypeError",
+            ]
+        )
+        success_criteria.insert(0, "child no longer fails with TypeError comparing int and str in get_level5_symbol")
     plan.update(
         {
             "recommended_helper_file": "adapters/patents/cpc_mapping.py",
             "recommended_prompt_glue_file": "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
-            "helper_focus": "Create a metadata-grounded CPC level mapping helper and require generated_solve.py to call it for raw publication CPC codes.",
+            "helper_focus": "Create or update a metadata-grounded CPC level mapping helper and require generated_solve.py to call it for raw publication CPC codes.",
             "required_functions": [
                 {
                     "name": "get_level5_symbol",
-                    "signature": "get_level5_symbol(raw_code: str, symbol_to_level: dict[str, int | None], symbol_to_parents: dict[str, list[str]]) -> str | None",
+                    "signature": "get_level5_symbol(raw_code: str, symbol_to_level: dict[str, int | str | None], symbol_to_parents: dict[str, list[str]]) -> str | None",
                     "purpose": "Map a raw CPC symbol to a metadata-confirmed level-5 symbol or return None.",
-                    "must_handle": [
-                        "exact metadata lookup before normalization",
-                        "parent traversal using symbol_to_parents",
-                        "no slash-count/prefix-length/string-shape level inference",
-                        "return None when metadata cannot confirm a level-5 symbol",
-                    ],
+                    "must_handle": must_handle,
                 }
             ],
-            "focused_validation_tests": [
-                "py_compile adapters/patents/cpc_mapping.py",
-                "import adapters.patents.cpc_mapping",
-                "synthetic metadata test: level > 5 child maps to level 5 parent",
-                "synthetic metadata test: missing symbol returns None, not raw fallback",
-                "child generated_solve.py must import adapters.patents.cpc_mapping",
-            ],
-            "success_criteria": [
-                "no helper string-shape fallback",
-                "child trace logs mapping coverage instead of silently accepting unmapped codes",
-            ],
-            "matched_feedback": _matched_feedback(feedback, ("granularity", "mapping", "level", "fallback", "string shape", "missing", "extra")),
+            "focused_validation_tests": focused_tests,
+            "success_criteria": success_criteria,
+            "matched_feedback": _matched_feedback(
+                feedback,
+                (
+                    "granularity",
+                    "mapping",
+                    "level",
+                    "fallback",
+                    "string shape",
+                    "missing",
+                    "extra",
+                    "cpc_mapping.py",
+                    "get_level5_symbol",
+                    "typeerror",
+                    "not supported between instances",
+                ),
+            ),
         }
     )
     return plan
+
+
+def cpc_mapping_runtime_type_plan(feedback: dict[str, Any]) -> dict[str, Any]:
+    return cpc_mapping_plan(
+        feedback,
+        reason="Runtime traceback points to adapters/patents/cpc_mapping.py get_level5_symbol comparing non-normalized level values.",
+        runtime_type_repair=True,
+    )
 
 
 def metadata_year_plan(feedback: dict[str, Any]) -> dict[str, Any]:
@@ -252,6 +295,19 @@ def plan_helper_repair(feedback: dict[str, Any], repair_profile: str | None = No
     )
     event_names = _event_names(feedback)
 
+    cpc_mapping_traceback = (
+        "adapters/patents/cpc_mapping.py" in combined
+        or "adapters.patents.cpc_mapping" in combined
+        or "get_level5_symbol" in combined
+    )
+    level_type_error = (
+        "not supported between instances of 'int' and 'str'" in combined
+        or "not supported between instances of \"int\" and \"str\"" in combined
+        or ("typeerror" in combined and "level > 5" in combined)
+        or ("typeerror" in combined and "get_level5_symbol" in combined and "level" in combined)
+    )
+    if cpc_mapping_traceback and level_type_error:
+        return cpc_mapping_runtime_type_plan(feedback)
     if "cpc_definition_field_count_mismatch" in combined or ("cpc_definition" in combined and "field_count" in combined):
         return cpc_definition_parser_plan(feedback)
     if "no_years_found" in combined or "no_yearly_data" in combined or "no_years_with_level5_data" in combined:

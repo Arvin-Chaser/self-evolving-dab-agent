@@ -280,6 +280,89 @@ def materialize_parent_prompt(
         raise RuntimeError(f"failed to amend materialized parent prompt into baseline: {amend.stderr}")
     return DATA_AGENT_CANONICAL_PROMPT
 
+def load_parent_agent_card(parent_agent_id: str | None) -> dict[str, Any] | None:
+    if not parent_agent_id:
+        return None
+    card_path = ROOT / "archive" / "agents" / parent_agent_id / "agent_card.json"
+    if not card_path.exists():
+        return None
+    try:
+        card = json.loads(card_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return card if isinstance(card, dict) else None
+
+
+def resolve_parent_candidate_patch(parent_agent_id: str | None) -> Path | None:
+    card = load_parent_agent_card(parent_agent_id)
+    if not card:
+        return None
+    source_refs = card.get("source_refs") if isinstance(card.get("source_refs"), dict) else {}
+    patch_ref = source_refs.get("candidate_patch")
+    if not patch_ref:
+        return None
+    patch_path = Path(str(patch_ref))
+    if not patch_path.is_absolute():
+        patch_path = ROOT / patch_path
+    return patch_path if patch_path.exists() else None
+
+
+def materialize_parent_source_patch(
+    *,
+    profile: RepairProfile,
+    workspace: Path,
+    candidate_dir: Path,
+    parent_agent_id: str | None,
+) -> dict[str, Any]:
+    if profile.name not in {"data_agent_project_repair", "data_agent_tool_repair"}:
+        return {"status": "skipped", "reason": f"profile {profile.name} does not materialize parent source"}
+    patch_path = resolve_parent_candidate_patch(parent_agent_id)
+    if patch_path is None:
+        result = {"status": "skipped", "reason": "parent candidate patch missing or not declared", "parent_agent_id": parent_agent_id}
+        write_json(candidate_dir / "materialized_parent_source.json", result)
+        return result
+    if not patch_path.read_text(encoding="utf-8", errors="replace").strip():
+        result = {"status": "skipped", "reason": "parent candidate patch empty", "parent_agent_id": parent_agent_id, "patch_path": str(patch_path)}
+        write_json(candidate_dir / "materialized_parent_source.json", result)
+        return result
+    apply_proc = run_cmd(
+        [
+            "git",
+            "apply",
+            f"--exclude={DATA_AGENT_CANONICAL_PROMPT.as_posix()}",
+            str(patch_path),
+        ],
+        cwd=workspace,
+    )
+    if apply_proc.returncode != 0:
+        result = {
+            "status": "failed",
+            "reason": "parent source patch apply failed",
+            "parent_agent_id": parent_agent_id,
+            "patch_path": str(patch_path),
+            "stderr": apply_proc.stderr,
+        }
+        write_json(candidate_dir / "materialized_parent_source.json", result)
+        raise RuntimeError(result["reason"] + ": " + apply_proc.stderr)
+    changed = run_cmd(["git", "diff", "--name-only"], cwd=workspace)
+    changed_files = [line for line in changed.stdout.splitlines() if line.strip()]
+    amend = run_cmd(["git", "add", "."], cwd=workspace)
+    if amend.returncode != 0:
+        raise RuntimeError(f"failed to stage materialized parent source: {amend.stderr}")
+    amend = run_cmd(["git", "commit", "--quiet", "--amend", "--no-edit"], cwd=workspace)
+    if amend.returncode != 0:
+        raise RuntimeError(f"failed to amend materialized parent source into baseline: {amend.stderr}")
+    result = {
+        "status": "applied",
+        "parent_agent_id": parent_agent_id,
+        "patch_path": str(patch_path),
+        "excluded_prompt": DATA_AGENT_CANONICAL_PROMPT.as_posix(),
+        "changed_files": changed_files,
+    }
+    write_json(candidate_dir / "materialized_parent_source.json", result)
+    return result
+
+
 def make_workspace(candidate_dir: Path) -> Path:
     root = Path(tempfile.mkdtemp(prefix="codex_qwen_repair."))
     workspace = root / "workspace"
@@ -1596,10 +1679,12 @@ def run_launcher(args: argparse.Namespace) -> int:
     repair_seed_override = os.environ.get("META_LOOP_REPAIR_SEED_OVERRIDE") == "1"
     parent_run = Path(args.parent_run or os.environ.get("META_LOOP_PARENT_RUN", "")) if (args.parent_run or os.environ.get("META_LOOP_PARENT_RUN")) else None
     parent_prompt = Path(args.parent_prompt or os.environ.get("META_LOOP_PARENT_PROMPT", "")) if (args.parent_prompt or os.environ.get("META_LOOP_PARENT_PROMPT")) else None
-    if parent_prompt is None and profile.name in {"data_agent_prompt_repair", "data_agent_project_repair"}:
+    parent_agent_id = os.environ.get("META_LOOP_PARENT_AGENT_ID")
+    if parent_prompt is None and profile.name in {"data_agent_prompt_repair", "data_agent_project_repair", "data_agent_tool_repair"}:
         parent_prompt = Path("prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt")
 
     workspace = make_workspace(candidate_dir)
+    materialize_parent_source_patch(profile=profile, workspace=workspace, candidate_dir=candidate_dir, parent_agent_id=parent_agent_id)
     parent_prompt = materialize_parent_prompt(profile=profile, workspace=workspace, candidate_dir=candidate_dir, parent_prompt=parent_prompt)
     context = build_context_pack(
         profile=profile,
