@@ -1502,7 +1502,7 @@ def data_agent_tool_helper_integration_check(spec: dict[str, Any]) -> tuple[bool
         )
 
     prompt_glue = "\n".join(
-        "\n".join(str(edit.get(key, "")) for key in ("intended_change", "rationale"))
+        "\n".join(str(edit.get(key, "")) for key in ("anchor", "intended_change", "rationale"))
         for edit in spec.get("edits") or []
         if isinstance(edit, dict) and normalize_rel(str(edit.get("file") or "")) == "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt"
     ).lower()
