@@ -592,8 +592,9 @@ def run_candidate_launcher(
             "REPAIR_PROFILE": repair_profile,
         }
     )
+    launcher_cmd = [sys.executable, str(launcher)] if launcher.suffix == ".py" else ["/bin/bash", str(launcher)]
     proc = run_cmd(
-        ["/bin/bash", str(launcher)],
+        launcher_cmd,
         cwd=ROOT,
         env=env,
         stdout_path=loop_dir / "candidate_launcher.stdout",
