@@ -293,18 +293,31 @@ def load_parent_agent_card(parent_agent_id: str | None) -> dict[str, Any] | None
     return card if isinstance(card, dict) else None
 
 
-def resolve_parent_candidate_patch(parent_agent_id: str | None) -> Path | None:
-    card = load_parent_agent_card(parent_agent_id)
-    if not card:
-        return None
-    source_refs = card.get("source_refs") if isinstance(card.get("source_refs"), dict) else {}
-    patch_ref = source_refs.get("candidate_patch")
-    if not patch_ref:
-        return None
-    patch_path = Path(str(patch_ref))
-    if not patch_path.is_absolute():
-        patch_path = ROOT / patch_path
-    return patch_path if patch_path.exists() else None
+def resolve_parent_candidate_patches(parent_agent_id: str | None) -> list[Path]:
+    patches: list[Path] = []
+    seen: set[str] = set()
+
+    def collect(agent_id: str | None) -> None:
+        if not agent_id or agent_id in seen:
+            return
+        seen.add(agent_id)
+        card = load_parent_agent_card(agent_id)
+        if not card:
+            return
+        lineage = card.get("lineage") if isinstance(card.get("lineage"), dict) else {}
+        collect(str(lineage.get("parent_agent_id") or ""))
+        source_refs = card.get("source_refs") if isinstance(card.get("source_refs"), dict) else {}
+        patch_ref = source_refs.get("candidate_patch")
+        if not patch_ref:
+            return
+        patch_path = Path(str(patch_ref))
+        if not patch_path.is_absolute():
+            patch_path = ROOT / patch_path
+        if patch_path.exists() and patch_path not in patches:
+            patches.append(patch_path)
+
+    collect(parent_agent_id)
+    return patches
 
 
 def materialize_parent_source_patch(
@@ -316,34 +329,40 @@ def materialize_parent_source_patch(
 ) -> dict[str, Any]:
     if profile.name not in {"data_agent_project_repair", "data_agent_tool_repair"}:
         return {"status": "skipped", "reason": f"profile {profile.name} does not materialize parent source"}
-    patch_path = resolve_parent_candidate_patch(parent_agent_id)
-    if patch_path is None:
+    patch_paths = resolve_parent_candidate_patches(parent_agent_id)
+    if not patch_paths:
         result = {"status": "skipped", "reason": "parent candidate patch missing or not declared", "parent_agent_id": parent_agent_id}
         write_json(candidate_dir / "materialized_parent_source.json", result)
         return result
-    if not patch_path.read_text(encoding="utf-8", errors="replace").strip():
-        result = {"status": "skipped", "reason": "parent candidate patch empty", "parent_agent_id": parent_agent_id, "patch_path": str(patch_path)}
+    applied_patches: list[str] = []
+    for patch_path in patch_paths:
+        if not patch_path.read_text(encoding="utf-8", errors="replace").strip():
+            continue
+        apply_proc = run_cmd(
+            [
+                "git",
+                "apply",
+                f"--exclude={DATA_AGENT_CANONICAL_PROMPT.as_posix()}",
+                str(patch_path),
+            ],
+            cwd=workspace,
+        )
+        if apply_proc.returncode != 0:
+            result = {
+                "status": "failed",
+                "reason": "parent source patch apply failed",
+                "parent_agent_id": parent_agent_id,
+                "patch_path": str(patch_path),
+                "applied_patches": applied_patches,
+                "stderr": apply_proc.stderr,
+            }
+            write_json(candidate_dir / "materialized_parent_source.json", result)
+            raise RuntimeError(result["reason"] + ": " + apply_proc.stderr)
+        applied_patches.append(str(patch_path))
+    if not applied_patches:
+        result = {"status": "skipped", "reason": "parent candidate patches empty", "parent_agent_id": parent_agent_id, "patch_paths": [str(path) for path in patch_paths]}
         write_json(candidate_dir / "materialized_parent_source.json", result)
         return result
-    apply_proc = run_cmd(
-        [
-            "git",
-            "apply",
-            f"--exclude={DATA_AGENT_CANONICAL_PROMPT.as_posix()}",
-            str(patch_path),
-        ],
-        cwd=workspace,
-    )
-    if apply_proc.returncode != 0:
-        result = {
-            "status": "failed",
-            "reason": "parent source patch apply failed",
-            "parent_agent_id": parent_agent_id,
-            "patch_path": str(patch_path),
-            "stderr": apply_proc.stderr,
-        }
-        write_json(candidate_dir / "materialized_parent_source.json", result)
-        raise RuntimeError(result["reason"] + ": " + apply_proc.stderr)
     changed = run_cmd(["git", "diff", "--name-only"], cwd=workspace)
     changed_files = [line for line in changed.stdout.splitlines() if line.strip()]
     amend = run_cmd(["git", "add", "."], cwd=workspace)
@@ -355,7 +374,7 @@ def materialize_parent_source_patch(
     result = {
         "status": "applied",
         "parent_agent_id": parent_agent_id,
-        "patch_path": str(patch_path),
+        "patch_paths": applied_patches,
         "excluded_prompt": DATA_AGENT_CANONICAL_PROMPT.as_posix(),
         "changed_files": changed_files,
     }

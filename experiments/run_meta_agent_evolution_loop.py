@@ -628,45 +628,80 @@ def materialize_child_parent_prompt(child_ws: Path, prompt_path: Path) -> Path:
         shutil.copy2(source, target)
     return target
 
-def resolve_parent_candidate_patch(parent_agent_card: dict[str, Any] | None) -> Path | None:
-    if not parent_agent_card:
+def load_archive_agent_card(agent_id: str | None) -> dict[str, Any] | None:
+    if not agent_id:
         return None
-    source_refs = parent_agent_card.get("source_refs") if isinstance(parent_agent_card.get("source_refs"), dict) else {}
-    patch_ref = source_refs.get("candidate_patch")
-    if not patch_ref:
+    card_path = ROOT / "archive" / "agents" / agent_id / "agent_card.json"
+    if not card_path.exists():
         return None
-    patch_path = Path(str(patch_ref))
-    if not patch_path.is_absolute():
-        patch_path = ROOT / patch_path
-    return patch_path if patch_path.exists() else None
+    try:
+        card = json.loads(card_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return card if isinstance(card, dict) else None
+
+
+def resolve_parent_candidate_patches(parent_agent_card: dict[str, Any] | None) -> list[Path]:
+    patches: list[Path] = []
+    seen: set[str] = set()
+
+    def collect(card: dict[str, Any] | None) -> None:
+        if not card:
+            return
+        agent_id = str(card.get("agent_id") or "")
+        if agent_id and agent_id in seen:
+            return
+        if agent_id:
+            seen.add(agent_id)
+        lineage = card.get("lineage") if isinstance(card.get("lineage"), dict) else {}
+        parent_card = load_archive_agent_card(str(lineage.get("parent_agent_id") or ""))
+        collect(parent_card)
+        source_refs = card.get("source_refs") if isinstance(card.get("source_refs"), dict) else {}
+        patch_ref = source_refs.get("candidate_patch")
+        if not patch_ref:
+            return
+        patch_path = Path(str(patch_ref))
+        if not patch_path.is_absolute():
+            patch_path = ROOT / patch_path
+        if patch_path.exists() and patch_path not in patches:
+            patches.append(patch_path)
+
+    collect(parent_agent_card)
+    return patches
 
 
 def materialize_child_parent_source(child_ws: Path, parent_agent_card: dict[str, Any] | None) -> dict[str, Any]:
-    patch_path = resolve_parent_candidate_patch(parent_agent_card)
-    if patch_path is None:
+    patch_paths = resolve_parent_candidate_patches(parent_agent_card)
+    if not patch_paths:
         return {"status": "skipped", "reason": "parent candidate patch missing or not declared"}
-    if not patch_path.read_text(encoding="utf-8", errors="replace").strip():
-        return {"status": "skipped", "reason": "parent candidate patch empty", "patch_path": str(patch_path)}
-    proc = run_cmd(
-        [
-            "git",
-            "apply",
-            f"--exclude={DATA_AGENT_CANONICAL_PROMPT.as_posix()}",
-            str(patch_path),
-        ],
-        cwd=child_ws,
-    )
-    if proc.returncode != 0:
-        return {
-            "status": "failed",
-            "reason": "parent source patch apply failed",
-            "patch_path": str(patch_path),
-            "stderr": proc.stderr,
-        }
+    applied_patches: list[str] = []
+    for patch_path in patch_paths:
+        if not patch_path.read_text(encoding="utf-8", errors="replace").strip():
+            continue
+        proc = run_cmd(
+            [
+                "git",
+                "apply",
+                f"--exclude={DATA_AGENT_CANONICAL_PROMPT.as_posix()}",
+                str(patch_path),
+            ],
+            cwd=child_ws,
+        )
+        if proc.returncode != 0:
+            return {
+                "status": "failed",
+                "reason": "parent source patch apply failed",
+                "patch_path": str(patch_path),
+                "applied_patches": applied_patches,
+                "stderr": proc.stderr,
+            }
+        applied_patches.append(str(patch_path))
+    if not applied_patches:
+        return {"status": "skipped", "reason": "parent candidate patches empty", "patch_paths": [str(path) for path in patch_paths]}
     changed = run_cmd(["git", "diff", "--name-only"], cwd=child_ws)
     return {
         "status": "applied",
-        "patch_path": str(patch_path),
+        "patch_paths": applied_patches,
         "excluded_prompt": DATA_AGENT_CANONICAL_PROMPT.as_posix(),
         "changed_files": [line for line in changed.stdout.splitlines() if line.strip()],
     }
