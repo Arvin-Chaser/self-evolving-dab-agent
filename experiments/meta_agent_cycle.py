@@ -639,7 +639,7 @@ def materialize_prompt_patch(
         subprocess.run(["git", "config", "user.email", "archive-shadow-parent@localhost"], cwd=temp_root, check=True)
         subprocess.run(["git", "add", "."], cwd=temp_root, check=True)
         subprocess.run(["git", "commit", "--quiet", "-m", "baseline"], cwd=temp_root, check=True)
-        apply_proc = subprocess.run(["git", "apply", str(patch_path)], cwd=temp_root, text=True, capture_output=True, check=False)
+        apply_proc = subprocess.run(["git", "apply", f"--include={source_rel}", str(patch_path)], cwd=temp_root, text=True, capture_output=True, check=False)
         if apply_proc.returncode != 0:
             return None, None
         out_rel = Path("archive/prompts") / agent_id / Path(source_rel).name
