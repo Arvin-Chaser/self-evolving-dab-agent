@@ -253,6 +253,46 @@ def ema_plan(feedback: dict[str, Any]) -> dict[str, Any]:
     return plan
 
 
+def answer_delta_action_plan(feedback: dict[str, Any]) -> dict[str, Any]:
+    plan = _base_plan(
+        feedback,
+        reason="Trace already contains candidate_decision_summary diagnostics but answer metrics did not improve; next helper must change ranking/filtering behavior, not add more observation-only logging.",
+    )
+    plan.update(
+        {
+            "recommended_helper_file": "adapters/patents/candidate_filtering.py",
+            "recommended_prompt_glue_file": "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+            "helper_focus": "Create a reusable candidate ranking/filtering helper that consumes candidate diagnostics and returns the final CPC symbols to write, rather than only logging a summary.",
+            "required_functions": [
+                {
+                    "name": "rank_or_filter_candidates",
+                    "signature": "rank_or_filter_candidates(candidate_rows: list[dict], *, target_year: int = 2022) -> list[str]",
+                    "purpose": "Return the candidate CPC symbols selected for the final answer using generated evidence such as best_year, counts, EMA values, and exclusion reasons.",
+                    "must_handle": [
+                        "no ground-truth answer lists or exact expected counts",
+                        "deterministic ranking/tie policy",
+                        "uses best_year/EMA/count evidence rather than simply echoing all candidates",
+                        "returns a concrete list of symbols for final_answer.txt",
+                    ],
+                }
+            ],
+            "focused_validation_tests": [
+                "py_compile adapters/patents/candidate_filtering.py",
+                "import adapters.patents.candidate_filtering",
+                "synthetic rank_or_filter_candidates test filters at least one excluded candidate",
+                "child generated_solve.py must use rank_or_filter_candidates to construct final_answer.txt",
+                "child answer delta must improve relative to parent or candidate is not parent-eligible",
+            ],
+            "success_criteria": [
+                "generated_solve.py uses the helper output as final CPC symbols, not merely for logging",
+                "child F1 improves relative to archive parent",
+                "candidate_decision_summary remains available as supporting trace evidence",
+            ],
+            "matched_feedback": _matched_feedback(feedback, ("candidate_decision_summary", "answer_delta", "missing", "extra", "precision", "recall", "f1")),
+        }
+    )
+    return plan
+
 def answer_delta_plan(feedback: dict[str, Any]) -> dict[str, Any]:
     plan = _base_plan(feedback, reason="Fine-grained feedback shows non-empty but wrong answer; helper should diagnose missing/extra candidates rather than rewrite parser bootstrapping.")
     plan.update(
@@ -319,6 +359,8 @@ def plan_helper_repair(feedback: dict[str, Any], repair_profile: str | None = No
         or answer_delta.get("expected_count") is not None
         or answer_delta.get("predicted_count") is not None
     ):
+        if "candidate_decision_summary" in event_names:
+            return answer_delta_action_plan(feedback)
         return answer_delta_plan(feedback)
     if "ema" in combined or "best year" in combined or "year_axis" in combined or "smoothing" in combined:
         return ema_plan(feedback)

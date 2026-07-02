@@ -35,6 +35,12 @@ IMPORTANT_TRACE_EVENTS = {
     "no_yearly_data_for_ema",
     "no_years_found",
     "final_answer_written",
+    "candidate_decision_summary",
+}
+
+
+PRIORITY_TRACE_EVENTS = {
+    "candidate_decision_summary",
 }
 
 
@@ -147,9 +153,8 @@ def trace_events(trace: Any, max_events: int = 12) -> list[dict[str, Any]]:
                 "repair_implication": repair_implication_for_event(name, item),
             }
         )
-        if len(selected) >= max_events:
-            break
-    return selected
+    selected.sort(key=lambda event: 0 if event.get("event") in PRIORITY_TRACE_EVENTS else 1)
+    return selected[:max_events]
 
 
 def repair_implication_for_event(name: str, item: dict[str, Any]) -> str:
