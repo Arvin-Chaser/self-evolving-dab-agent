@@ -260,3 +260,24 @@ def test_shadow_parent_negative_delta_is_explicitly_flagged(tmp_path: Path):
     assert assessment["evolution_status"] == "failed_negative_delta"
     assert assessment["evolution_parent_eligible"] is False
     assert assessment["parent_comparison_metrics"]["delta_f1"] < 0
+
+
+def test_candidate_filtering_glue_allows_unfiltered_candidate_rows_phrase():
+    spec = {
+        "target_files": [
+            "adapters/patents/candidate_filtering.py",
+            "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+        ],
+        "edits": [
+            {
+                "file": "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+                "anchor": "Answer synthesis and validation:",
+                "intended_change": "You MUST import and use rank_or_filter_candidates from adapters.patents.candidate_filtering. Pass the full list of unfiltered candidate rows to rank_or_filter_candidates and use its output as final CPC symbols. Do not reimplement this logic inline.",
+                "rationale": "The helper must consume unfiltered candidate rows and produce the final answer symbols.",
+            }
+        ],
+    }
+
+    ok, reason = data_agent_tool_helper_integration_check(spec)
+
+    assert ok, reason

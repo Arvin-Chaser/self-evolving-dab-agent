@@ -1551,10 +1551,16 @@ def data_agent_tool_helper_integration_check(spec: dict[str, Any]) -> tuple[bool
                 False,
                 "weak_filtering_no_op: prompt glue must require rank_or_filter_candidates(candidate_rows, target_year=2022), not a pre-filtered candidates_2022 list",
             )
-        if "candidate_rows" not in prompt_glue:
+        full_candidate_rows_glue = (
+            "candidate_rows" in prompt_glue
+            or "full list of unfiltered candidate rows" in prompt_glue
+            or "full unfiltered candidate rows" in prompt_glue
+            or "unfiltered candidate rows" in prompt_glue
+        )
+        if not full_candidate_rows_glue:
             return (
                 False,
-                "candidate_filtering_glue_missing_full_candidate_rows: prompt glue must tell generated_solve.py to pass full candidate_rows to rank_or_filter_candidates",
+                "candidate_filtering_glue_missing_full_candidate_rows: prompt glue must tell generated_solve.py to pass full candidate_rows / full unfiltered candidate rows to rank_or_filter_candidates",
             )
     return True, "ok"
 

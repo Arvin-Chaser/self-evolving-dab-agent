@@ -262,7 +262,7 @@ def answer_delta_action_plan(feedback: dict[str, Any]) -> dict[str, Any]:
         {
             "recommended_helper_file": "adapters/patents/candidate_filtering.py",
             "recommended_prompt_glue_file": "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
-            "helper_focus": "Create a reusable candidate ranking/filtering helper that consumes the full unfiltered candidate_rows and returns the final CPC symbols to write; do not pass pre-filtered candidates_2022 and do not merely sort/log a summary.",
+            "helper_focus": "Create a reusable candidate ranking/filtering helper that consumes the full unfiltered candidate_rows and returns the final CPC symbols to write; do not pass pre-filtered candidates_2022; do not implement only best_year == target_year filtering; add an evidence-based exclusion/ranking policy beyond best-year equality.",
             "required_functions": [
                 {
                     "name": "rank_or_filter_candidates",
@@ -272,6 +272,8 @@ def answer_delta_action_plan(feedback: dict[str, Any]) -> dict[str, Any]:
                         "no ground-truth answer lists or exact expected counts",
                         "deterministic ranking/tie policy",
                         "uses best_year/EMA/count evidence rather than simply echoing all candidates",
+                        "must not be equivalent to filtering only row.get(\'best_year\') == target_year",
+                        "must add an evidence-based exclusion/ranking policy beyond best-year equality",
                         "returns a concrete list of symbols for final_answer.txt",
                     ],
                 }
@@ -279,8 +281,8 @@ def answer_delta_action_plan(feedback: dict[str, Any]) -> dict[str, Any]:
             "focused_validation_tests": [
                 "py_compile adapters/patents/candidate_filtering.py",
                 "import adapters.patents.candidate_filtering",
-                "synthetic rank_or_filter_candidates test filters at least one excluded candidate",
-                "child generated_solve.py must use rank_or_filter_candidates to construct final_answer.txt",
+                "synthetic rank_or_filter_candidates test proves behavior is not equivalent to best_year == target_year only",
+                "child generated_solve.py must call rank_or_filter_candidates on full unfiltered candidate_rows to construct final_answer.txt",
                 "child answer delta must improve relative to parent or candidate is not parent-eligible",
             ],
             "success_criteria": [
