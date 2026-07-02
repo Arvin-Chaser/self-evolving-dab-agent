@@ -387,6 +387,27 @@ def generated_code_snippets(run_dir: Path, max_chars: int = 5000) -> list[dict[s
     return snippets[:6]
 
 
+def actionable_answer_delta(answer_delta: dict[str, Any], final_answer: str) -> bool:
+    if not final_answer.strip():
+        return False
+    if not isinstance(answer_delta, dict):
+        return False
+    return (
+        answer_delta.get("missing_count") is not None
+        or answer_delta.get("extra_count") is not None
+        or answer_delta.get("expected_count") is not None
+        or answer_delta.get("predicted_count") is not None
+    )
+
+
+def answer_delta_signal(answer_delta: dict[str, Any]) -> str:
+    parts = ["non-empty answer has measurable expected/predicted CPC delta"]
+    for key in ("expected_count", "predicted_count", "missing_count", "extra_count", "precision", "recall", "f1"):
+        if answer_delta.get(key) is not None:
+            parts.append(f"{key}={answer_delta.get(key)}")
+    return "; ".join(parts)
+
+
 def build_fine_grained_feedback_pack(
     run_dir: Path,
     *,
@@ -407,6 +428,9 @@ def build_fine_grained_feedback_pack(
     caps = parent_capabilities(result, final_answer, selected_events)
     selected_stage = signal.get("selected_stage") or signal.get("selected_component")
     selected_signal = signal.get("selected_signal")
+    if actionable_answer_delta(answer_delta, final_answer):
+        selected_stage = "answer_delta"
+        selected_signal = answer_delta_signal(answer_delta)
     routing = repair_routing(
         validation_reason=validation_reason,
         selected_stage=selected_stage,

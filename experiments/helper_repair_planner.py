@@ -265,7 +265,7 @@ def answer_delta_plan(feedback: dict[str, Any]) -> dict[str, Any]:
                     "name": "summarize_candidate_decisions",
                     "signature": "summarize_candidate_decisions(candidate_rows: list[dict]) -> dict[str, object]",
                     "purpose": "Summarize why each CPC candidate was included/excluded using generated evidence only.",
-                    "must_handle": ["no ground-truth answer lists", "per-code best year", "candidate count and exclusion reason samples"],
+                    "must_handle": ["no ground-truth answer lists", "per-code best year", "candidate count and exclusion reason samples", "report missing/extra pressure from answer_delta without using expected answer values"],
                 }
             ],
             "focused_validation_tests": [
@@ -312,13 +312,18 @@ def plan_helper_repair(feedback: dict[str, Any], repair_profile: str | None = No
         return cpc_definition_parser_plan(feedback)
     if "no_years_found" in combined or "no_yearly_data" in combined or "no_years_with_level5_data" in combined:
         return metadata_year_plan(feedback)
+    answer_delta = feedback.get("answer_delta") if isinstance(feedback.get("answer_delta"), dict) else {}
+    if (
+        answer_delta.get("missing_count") is not None
+        or answer_delta.get("extra_count") is not None
+        or answer_delta.get("expected_count") is not None
+        or answer_delta.get("predicted_count") is not None
+    ):
+        return answer_delta_plan(feedback)
     if "ema" in combined or "best year" in combined or "year_axis" in combined or "smoothing" in combined:
         return ema_plan(feedback)
     if "granularity" in combined or "string shape" in combined or "slash" in combined or "level" in combined or "granularity_mapping" in event_names:
         return cpc_mapping_plan(feedback)
-    answer_delta = feedback.get("answer_delta") if isinstance(feedback.get("answer_delta"), dict) else {}
-    if answer_delta.get("missing_count") is not None or answer_delta.get("extra_count") is not None:
-        return answer_delta_plan(feedback)
 
     plan = _base_plan(feedback, reason="No precise helper target matched; default to safe reusable PATENTS utilities.")
     plan.update(

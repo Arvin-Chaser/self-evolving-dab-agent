@@ -10,12 +10,60 @@
       "recommended_use": "Use as default protocol for iter004."
     },
     {
+      "arm_id": "data_agent_shadow_codex_qwen_proxy_patents_iter045_cpc_mapping_level_type_replay_gate_iter001_20260701_143850",
+      "arm_type": "data_agent",
+      "score": 0.663333,
+      "evidence": "Candidate remains non-mergeable, but child answer has non-zero overlap with expected CPC set.",
+      "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+      "source_candidate": "codex_qwen_proxy_patents_iter045_cpc_mapping_level_type_replay_gate_iter001_20260701_143850"
+    },
+    {
       "arm_id": "data_agent_shadow_codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342",
       "arm_type": "data_agent",
       "score": 0.657273,
       "evidence": "Candidate remains non-mergeable, but child answer has non-zero overlap with expected CPC set.",
       "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
       "source_candidate": "codex_qwen_patents_iter006_skill_data_agent_repair_iter001_20260625_032342"
+    },
+    {
+      "arm_id": "data_agent_shadow_codex_qwen_proxy_patents_iter030_recent_ranked_parent_iter001_20260626_072904",
+      "arm_type": "data_agent",
+      "score": 0.657273,
+      "evidence": "Candidate remains non-mergeable, but child answer has non-zero overlap with expected CPC set.",
+      "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+      "source_candidate": "codex_qwen_proxy_patents_iter030_recent_ranked_parent_iter001_20260626_072904"
+    },
+    {
+      "arm_id": "data_agent_shadow_codex_qwen_proxy_patents_iter041_helper_api_contract_iter001_20260630_122257",
+      "arm_type": "data_agent",
+      "score": 0.657273,
+      "evidence": "Candidate remains non-mergeable, but child answer has non-zero overlap with expected CPC set.",
+      "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+      "source_candidate": "codex_qwen_proxy_patents_iter041_helper_api_contract_iter001_20260630_122257"
+    },
+    {
+      "arm_id": "data_agent_shadow_codex_qwen_patents_iter016_parent_artifact_suppressed_repair_iter001_20260626_032043",
+      "arm_type": "data_agent",
+      "score": 0.6375,
+      "evidence": "Candidate remains non-mergeable, but child answer has non-zero overlap with expected CPC set.",
+      "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+      "source_candidate": "codex_qwen_patents_iter016_parent_artifact_suppressed_repair_iter001_20260626_032043"
+    },
+    {
+      "arm_id": "data_agent_shadow_codex_qwen_patents_iter021_copy_data_block_repair_iter001_20260626_045925",
+      "arm_type": "data_agent",
+      "score": 0.6,
+      "evidence": "Candidate remains non-mergeable, but child answer has non-zero overlap with expected CPC set.",
+      "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+      "source_candidate": "codex_qwen_patents_iter021_copy_data_block_repair_iter001_20260626_045925"
+    },
+    {
+      "arm_id": "data_agent_shadow_codex_qwen_proxy_patents_iter028_fine_grained_repair_iter001_20260626_070206",
+      "arm_type": "data_agent",
+      "score": 0.56,
+      "evidence": "Candidate remains non-mergeable, but child answer has non-zero overlap with expected CPC set.",
+      "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+      "source_candidate": "codex_qwen_proxy_patents_iter028_fine_grained_repair_iter001_20260626_070206"
     },
     {
       "arm_id": "dab_code_agent_v005_runtime_observer",
@@ -30,6 +78,15 @@
       "score": 0.15,
       "evidence": "Historical parent has analyzer ImportError/Traceback in child eval.",
       "recommended_use": "Historical reference only."
+    },
+    {
+      "arm_id": "data_agent_shadow_codex_qwen_proxy_patents_iter046_answer_delta_ema_ranking_iter001_20260702_015100",
+      "arm_type": "data_agent",
+      "score": 0.0,
+      "evidence": "Candidate has non-zero answer overlap but did not improve relative to its archive parent, so it is not parent-eligible.",
+      "recommended_use": "Do not select: no relative answer improvement over parent.",
+      "source_candidate": "codex_qwen_proxy_patents_iter046_answer_delta_ema_ranking_iter001_20260702_015100",
+      "archive_correction": "no_relative_improvement_against_parent"
     }
   ]
 }

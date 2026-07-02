@@ -1544,18 +1544,33 @@ def data_agent_tool_helper_integration_check(spec: dict[str, Any]) -> tuple[bool
         )
     return True, "ok"
 
-def data_agent_tool_helper_plan_check(spec: dict[str, Any], repair_seed: Path | None) -> tuple[bool, str]:
+def data_agent_tool_helper_plan_check(spec: dict[str, Any], repair_seed: Path | None, candidate_dir: Path | None = None) -> tuple[bool, str]:
+    targets = [normalize_rel(str(path)) for path in spec.get("target_files") or []]
+    helper_targets = [path for path in targets if path.startswith("adapters/patents/") and path.endswith(".py")]
+    changed_files = set(changed_project_files_from_numstat(candidate_dir)) if candidate_dir else set()
+    if candidate_dir is not None and helper_targets:
+        unchanged_helper_targets = [path for path in helper_targets if path not in changed_files]
+        if unchanged_helper_targets:
+            return (
+                False,
+                f"declared_helper_target_no_effect: patch_spec targets helper file(s) {unchanged_helper_targets}, but final patch.diff changes {sorted(changed_files)}",
+            )
+
     plan = load_helper_repair_plan(repair_seed)
     if plan.get("status") != "planned":
         return True, "ok"
     required_helper = normalize_rel(str(plan.get("recommended_helper_file") or ""))
     if not required_helper:
         return True, "ok"
-    targets = [normalize_rel(str(path)) for path in spec.get("target_files") or []]
     if required_helper not in targets:
         return (
             False,
             f"helper_plan_target_mismatch: fine-grained helper_repair_plan requires {required_helper}, but patch_spec targets {targets}",
+        )
+    if candidate_dir is not None and required_helper not in changed_files:
+        return (
+            False,
+            f"helper_plan_target_no_effect: fine-grained helper_repair_plan requires {required_helper}, but final patch.diff changes {sorted(changed_files)}",
         )
     combined = "\n".join(
         "\n".join(str(edit.get(key, "")) for key in ("intended_change", "rationale"))
@@ -1615,7 +1630,7 @@ def run_validation(profile: RepairProfile, workspace: Path, candidate_dir: Path,
             return False, results
 
     if profile.name == "data_agent_tool_repair":
-        plan_ok, plan_reason = data_agent_tool_helper_plan_check(spec, repair_seed)
+        plan_ok, plan_reason = data_agent_tool_helper_plan_check(spec, repair_seed, candidate_dir)
         results.append({"name": "data_agent_tool_helper_plan_alignment", "exit_code": 0 if plan_ok else 1, "reason": plan_reason})
         if not plan_ok:
             return False, results

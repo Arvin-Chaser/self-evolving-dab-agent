@@ -130,7 +130,28 @@ def compute_answer_metrics(validation_reason: str | None) -> dict[str, Any]:
     }
 
 
-def compute_evolution_assessment(candidate_type: str, child_eval: dict[str, Any]) -> dict[str, Any]:
+def parent_answer_metrics(archive_root: Path | None, parent_agent_id: str | None, case_id: str = "PATENTS_query1") -> dict[str, Any]:
+    if not archive_root or not parent_agent_id:
+        return {}
+    card = find_agent_card(archive_root, parent_agent_id)
+    if not isinstance(card, dict):
+        return {}
+    evals = card.get("evals") if isinstance(card.get("evals"), dict) else {}
+    case_eval = evals.get(case_id) if isinstance(evals.get(case_id), dict) else None
+    if case_eval is None and evals:
+        case_eval = next((item for item in evals.values() if isinstance(item, dict) and isinstance(item.get("answer_metrics"), dict)), None)
+    metrics = (case_eval or {}).get("answer_metrics") if isinstance(case_eval, dict) else None
+    return metrics if isinstance(metrics, dict) else {}
+
+
+def compute_evolution_assessment(
+    candidate_type: str,
+    child_eval: dict[str, Any],
+    *,
+    archive_root: Path | None = None,
+    parent_agent_id: str | None = None,
+    case_id: str = "PATENTS_query1",
+) -> dict[str, Any]:
     child_status = child_eval.get("child_status") or {}
     validation_reason = child_status.get("validation_reason") or child_eval.get("child_validation_reason")
     answer_metrics = compute_answer_metrics(validation_reason)
@@ -141,26 +162,52 @@ def compute_evolution_assessment(candidate_type: str, child_eval: dict[str, Any]
     has_answer_like_output = predicted_count > 0
     useful_new_signal = bool(child_status.get("selected_stage") or child_eval.get("child_selected_stage"))
 
+    answer_f1 = float(answer_metrics.get("f1") or 0.0)
+    parent_metrics = parent_answer_metrics(archive_root, parent_agent_id, case_id)
+    has_parent_answer_metrics = parent_metrics.get("f1") is not None
+    parent_f1 = float(parent_metrics.get("f1") or 0.0) if has_parent_answer_metrics else None
+    delta_f1 = round(answer_f1 - parent_f1, 6) if parent_f1 is not None else None
+    relative_improved = bool(child_passed or parent_f1 is None or answer_f1 > parent_f1 + 1e-6)
+
     if child_passed:
         evolution_status = "passed"
         eligible = True
-    elif candidate_type == "data_agent_repair" and answer_metrics.get("f1", 0.0) > 0:
+    elif candidate_type == "data_agent_repair" and answer_f1 > 0 and relative_improved:
         evolution_status = "improved_but_failed"
         eligible = True
+    elif candidate_type == "data_agent_repair" and answer_f1 > 0 and not relative_improved:
+        evolution_status = "failed_no_relative_answer_improvement"
+        eligible = False
     else:
         evolution_status = "failed_no_measured_answer_improvement"
         eligible = False
 
-    answer_f1 = float(answer_metrics.get("f1") or 0.0)
     reward = 1.0 if child_passed else 0.0
     if evolution_status == "improved_but_failed":
         reward = round(min(0.85, 0.20 + 0.70 * answer_f1 + (0.05 if execution_success else 0.0)), 6)
+
+    if child_passed:
+        rationale = "Strict validation passed."
+    elif eligible:
+        rationale = "Candidate remains non-mergeable, but child answer improved relative to its archive parent."
+    elif evolution_status == "failed_no_relative_answer_improvement":
+        rationale = "Candidate has non-zero answer overlap but did not improve relative to its archive parent, so it is not parent-eligible."
+    else:
+        rationale = "Candidate did not produce measurable answer overlap."
 
     return {
         "evolution_status": evolution_status,
         "evolution_parent_eligible": eligible,
         "reward": reward,
         "answer_metrics": answer_metrics,
+        "parent_comparison_metrics": {
+            "parent_agent_id": parent_agent_id,
+            "parent_answer_metrics": parent_metrics,
+            "child_f1": answer_f1,
+            "parent_f1": parent_f1,
+            "delta_f1": delta_f1,
+            "relative_improved": relative_improved,
+        },
         "execution_metrics": {
             "child_exit_code": child_exit_code,
             "child_execution_success": execution_success,
@@ -172,15 +219,8 @@ def compute_evolution_assessment(candidate_type: str, child_eval: dict[str, Any]
             "child_selected_signal": child_status.get("selected_signal") or child_eval.get("child_selected_signal"),
         },
         "merge_eligible": child_passed,
-        "selection_rationale": (
-            "Strict validation passed."
-            if child_passed
-            else "Candidate remains non-mergeable, but child answer has non-zero overlap with expected CPC set."
-            if eligible
-            else "Candidate did not produce measurable answer overlap."
-        ),
+        "selection_rationale": rationale,
     }
-
 
 def infer_state(candidate_dir: Path) -> dict[str, Any]:
     manifest = load_json(candidate_dir / "manifest.json") or {}
@@ -760,7 +800,7 @@ def archive_candidate(
     manifest = load_json(candidate_dir / "manifest.json") or {}
     child_eval = load_json(candidate_dir / "child_eval/child_eval_report.json") or load_json(candidate_dir / "child_eval/generic_child_eval_report.json") or {}
     review = load_json(candidate_dir / "post_child_eval_review/post_child_eval_review.json") or {}
-    assessment = compute_evolution_assessment(candidate_type, child_eval)
+    assessment = compute_evolution_assessment(candidate_type, child_eval, archive_root=archive_root, parent_agent_id=parent_agent_id)
     derived_parent = create_shadow_parent_agent(
         candidate_dir=candidate_dir,
         archive_root=archive_root,
@@ -829,7 +869,7 @@ def postprocess_candidate(args: argparse.Namespace) -> int:
         raise SystemExit(f"candidate_dir not found: {candidate_dir}")
     state = infer_state(candidate_dir)
     child_eval = load_json(candidate_dir / "child_eval/child_eval_report.json") or load_json(candidate_dir / "child_eval/generic_child_eval_report.json") or {}
-    assessment = compute_evolution_assessment(args.candidate_type, child_eval)
+    assessment = compute_evolution_assessment(args.candidate_type, child_eval, archive_root=archive_root, parent_agent_id=args.parent_agent_id, case_id=args.case_id)
     if state.get("status") == "candidate_child_eval_failed" and assessment.get("evolution_status") == "improved_but_failed":
         state["status"] = "candidate_child_eval_improved_but_failed"
     state["evolution_assessment"] = assessment
