@@ -262,7 +262,7 @@ def answer_delta_action_plan(feedback: dict[str, Any]) -> dict[str, Any]:
         {
             "recommended_helper_file": "adapters/patents/candidate_filtering.py",
             "recommended_prompt_glue_file": "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
-            "helper_focus": "Create a reusable candidate ranking/filtering helper that consumes candidate diagnostics and returns the final CPC symbols to write, rather than only logging a summary.",
+            "helper_focus": "Create a reusable candidate ranking/filtering helper that consumes the full unfiltered candidate_rows and returns the final CPC symbols to write; do not pass pre-filtered candidates_2022 and do not merely sort/log a summary.",
             "required_functions": [
                 {
                     "name": "rank_or_filter_candidates",
@@ -284,7 +284,7 @@ def answer_delta_action_plan(feedback: dict[str, Any]) -> dict[str, Any]:
                 "child answer delta must improve relative to parent or candidate is not parent-eligible",
             ],
             "success_criteria": [
-                "generated_solve.py uses the helper output as final CPC symbols, not merely for logging",
+                "generated_solve.py passes full candidate_rows to the helper and uses the helper output as final CPC symbols, not merely for logging",
                 "child F1 improves relative to archive parent",
                 "candidate_decision_summary remains available as supporting trace evidence",
             ],

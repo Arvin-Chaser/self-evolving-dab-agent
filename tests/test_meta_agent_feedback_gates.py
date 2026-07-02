@@ -4,7 +4,11 @@ from pathlib import Path
 from experiments.build_meta_agent_evidence_pack import build_fine_grained_feedback_pack
 from experiments.helper_repair_planner import plan_helper_repair
 from experiments.meta_agent_cycle import compute_evolution_assessment
-from experiments.run_codex_qwen_repair_launcher import data_agent_tool_helper_plan_check
+from experiments.run_codex_qwen_repair_launcher import (
+    data_agent_tool_helper_integration_check,
+    data_agent_tool_helper_plan_check,
+    data_agent_tool_helper_quality_check,
+)
 
 
 VALIDATION_REASON = (
@@ -150,3 +154,109 @@ def test_answer_delta_routing_preempts_ema_when_answer_delta_actionable(tmp_path
 
     assert feedback["selected_stage"] == "answer_delta"
     assert feedback["repair_routing"]["recommended_repair_layer"] == "answer_delta_mapping_or_ranking"
+
+def test_candidate_filtering_rejects_best_year_only_noop():
+    spec = {
+        "target_files": ["adapters/patents/candidate_filtering.py"],
+        "edits": [
+            {
+                "file": "adapters/patents/candidate_filtering.py",
+                "intended_change": """
+def rank_or_filter_candidates(candidate_rows, *, target_year=2022):
+    filtered = [row for row in candidate_rows if row.get('best_year') == target_year]
+    sorted_candidates = sorted(filtered, key=lambda r: (-r.get('count', 0), r.get('symbol', '')))
+    return [row['symbol'] for row in sorted_candidates]
+""",
+                "rationale": "Filter by target year and sort by count.",
+            }
+        ],
+    }
+
+    ok, reason = data_agent_tool_helper_quality_check(spec)
+
+    assert not ok
+    assert "weak_filtering_no_op" in reason
+
+
+def test_candidate_filtering_glue_requires_full_candidate_rows():
+    spec = {
+        "target_files": [
+            "adapters/patents/candidate_filtering.py",
+            "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+        ],
+        "edits": [
+            {
+                "file": "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+                "anchor": "Answer synthesis and validation:",
+                "intended_change": "You MUST import and use rank_or_filter_candidates from adapters.patents.candidate_filtering on candidates_2022. Do not reimplement this logic inline.",
+                "rationale": "Use candidate filtering helper after pre-filtering.",
+            }
+        ],
+    }
+
+    ok, reason = data_agent_tool_helper_integration_check(spec)
+
+    assert not ok
+    assert "weak_filtering_no_op" in reason
+
+
+def test_candidate_filtering_glue_allows_full_candidate_rows():
+    spec = {
+        "target_files": [
+            "adapters/patents/candidate_filtering.py",
+            "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+        ],
+        "edits": [
+            {
+                "file": "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+                "anchor": "Answer synthesis and validation:",
+                "intended_change": "You MUST import and use rank_or_filter_candidates from adapters.patents.candidate_filtering on full candidate_rows before final filtering. Do not reimplement this logic inline.",
+                "rationale": "The helper must consume full candidate_rows and produce the final answer symbols.",
+            }
+        ],
+    }
+
+    ok, reason = data_agent_tool_helper_integration_check(spec)
+
+    assert ok, reason
+
+
+def test_shadow_parent_negative_delta_is_explicitly_flagged(tmp_path: Path):
+    archive_root = tmp_path / "archive"
+    parent_dir = archive_root / "agents" / "parent_agent"
+    parent_dir.mkdir(parents=True)
+    (parent_dir / "agent_card.json").write_text(
+        json.dumps(
+            {
+                "evals": {
+                    "PATENTS_query1": {
+                        "answer_metrics": {"f1": 0.590476, "precision": 0.563636, "recall": 0.62}
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    child_eval = {
+        "child_run_exit_code": 0,
+        "child_status": {
+            "validation_reason": (
+                "strict_match_failed: expected 50 unique CPC codes, got 60 unique CPC codes.\n"
+                "Missing CPC codes (18): A23P, A24D\n"
+                "Extra CPC codes (28): A01P, A21C"
+            ),
+            "selected_stage": "answer_delta",
+            "selected_signal": "worse metrics than parent",
+        },
+    }
+
+    assessment = compute_evolution_assessment(
+        "data_agent_repair",
+        child_eval,
+        archive_root=archive_root,
+        parent_agent_id="parent_agent",
+    )
+
+    assert assessment["evolution_status"] == "failed_negative_delta"
+    assert assessment["evolution_parent_eligible"] is False
+    assert assessment["parent_comparison_metrics"]["delta_f1"] < 0

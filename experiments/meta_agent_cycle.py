@@ -175,6 +175,9 @@ def compute_evolution_assessment(
     elif candidate_type == "data_agent_repair" and answer_f1 > 0 and relative_improved:
         evolution_status = "improved_but_failed"
         eligible = True
+    elif candidate_type == "data_agent_repair" and answer_f1 > 0 and delta_f1 is not None and delta_f1 < -1e-6:
+        evolution_status = "failed_negative_delta"
+        eligible = False
     elif candidate_type == "data_agent_repair" and answer_f1 > 0 and not relative_improved:
         evolution_status = "failed_no_relative_answer_improvement"
         eligible = False
@@ -190,6 +193,8 @@ def compute_evolution_assessment(
         rationale = "Strict validation passed."
     elif eligible:
         rationale = "Candidate remains non-mergeable, but child answer improved relative to its archive parent."
+    elif evolution_status == "failed_negative_delta":
+        rationale = "Candidate reduced answer F1 relative to its archive parent, so it is not parent-eligible."
     elif evolution_status == "failed_no_relative_answer_improvement":
         rationale = "Candidate has non-zero answer overlap but did not improve relative to its archive parent, so it is not parent-eligible."
     else:

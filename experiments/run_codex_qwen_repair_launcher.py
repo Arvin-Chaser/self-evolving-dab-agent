@@ -1545,6 +1545,17 @@ def data_agent_tool_helper_integration_check(spec: dict[str, Any]) -> tuple[bool
             False,
             "helper_glue_missing_no_inline_rule: prompt glue should tell generated_solve.py not to reimplement helper logic inline",
         )
+    if "candidate_filtering" in prompt_glue or "rank_or_filter_candidates" in prompt_glue:
+        if "candidates_2022" in prompt_glue or "already filtered" in prompt_glue or "pre-filtered" in prompt_glue:
+            return (
+                False,
+                "weak_filtering_no_op: prompt glue must require rank_or_filter_candidates(candidate_rows, target_year=2022), not a pre-filtered candidates_2022 list",
+            )
+        if "candidate_rows" not in prompt_glue:
+            return (
+                False,
+                "candidate_filtering_glue_missing_full_candidate_rows: prompt glue must tell generated_solve.py to pass full candidate_rows to rank_or_filter_candidates",
+            )
     return True, "ok"
 
 def data_agent_tool_helper_plan_check(spec: dict[str, Any], repair_seed: Path | None, candidate_dir: Path | None = None) -> tuple[bool, str]:
@@ -1601,6 +1612,11 @@ def data_agent_tool_helper_quality_check(spec: dict[str, Any]) -> tuple[bool, st
         if not (rel.startswith("adapters/patents/") and rel.endswith(".py")):
             continue
         helper_text = (str(edit.get("intended_change") or "") + "\n" + str(edit.get("rationale") or "")).lower()
+        if rel.endswith("candidate_filtering.py"):
+            if re.search(r"best_year\W*==\W*target_year", helper_text) and "return [row['symbol']" in helper_text:
+                return False, "weak_filtering_no_op: candidate_filtering helper must not merely repeat best_year == target_year filtering and return all remaining symbols"
+            if "sort" in helper_text and "filter" not in helper_text and "exclude" not in helper_text:
+                return False, "weak_filtering_no_op: candidate_filtering helper only sorts candidates, which cannot improve set-valued answer validation"
         if rel.endswith("cpc_mapping.py"):
             forbidden_patterns = (
                 "fallback to prefix",
