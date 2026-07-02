@@ -318,6 +318,25 @@ def repair_routing(
                 "routing_reason": "The active failure is a generated_solve runtime traceback or runtime observer API misuse.",
             }
         )
+    elif (stage == "answer_delta" or parent_caps.get("final_answer_nonempty")) and (
+        answer_delta.get("missing_count") is not None
+        or answer_delta.get("extra_count") is not None
+        or answer_delta.get("expected_count") is not None
+        or answer_delta.get("predicted_count") is not None
+    ):
+        routing.update(
+            {
+                "recommended_repair_layer": "answer_delta_mapping_or_ranking",
+                "recommended_target_files": base_targets,
+                "anti_targets": ["adapters/feedback/**", "logs/**", "candidates/**", "archive/**", "trajectories/**", "benchmarks/**"],
+                "prompt_only_policy": {
+                    "status": "allowed_if_specific",
+                    "reason": "Prompt-only is acceptable if it targets missing/extra evidence rather than rewriting parser bootstrapping.",
+                    "source_change_required": False,
+                },
+                "routing_reason": "The parent wrote a non-empty answer and the remaining signal is measurable answer-delta quality.",
+            }
+        )
     elif any(name in event_names for name in {"no_years_found", "no_yearly_data_for_ema", "no_years_with_level5_data"}) or any(
         marker in combined for marker in ("no_years_found", "yearly", "ema", "best year")
     ):
@@ -332,22 +351,6 @@ def repair_routing(
                     "source_change_required": False,
                 },
                 "routing_reason": "Trace or selected signal points to year extraction or EMA input construction.",
-            }
-        )
-    elif parent_caps.get("cpc_definition_parsed") and parent_caps.get("cpc_hierarchy_built") and (
-        answer_delta.get("missing_count") is not None or answer_delta.get("extra_count") is not None
-    ):
-        routing.update(
-            {
-                "recommended_repair_layer": "answer_delta_mapping_or_ranking",
-                "recommended_target_files": base_targets,
-                "anti_targets": ["adapters/feedback/**", "logs/**", "candidates/**", "archive/**", "trajectories/**", "benchmarks/**"],
-                "prompt_only_policy": {
-                    "status": "allowed_if_specific",
-                    "reason": "Prompt-only is acceptable if it targets missing/extra evidence rather than rewriting parser bootstrapping.",
-                    "source_change_required": False,
-                },
-                "routing_reason": "Parser/hierarchy evidence is already present and the remaining signal is answer-delta quality.",
             }
         )
 

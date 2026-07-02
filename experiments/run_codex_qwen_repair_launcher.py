@@ -1465,15 +1465,18 @@ def changed_project_files_from_numstat(candidate_dir: Path) -> list[str]:
     return rows
 
 
-def hardcode_marker_is_negated(text: str, start: int, end: int) -> bool:
+def text_marker_is_negated(text: str, start: int, end: int, marker_regex: str) -> bool:
     context = text[max(0, start - 96): min(len(text), end + 96)]
     negators = r"(?:no|not|never|without|avoid(?:s|ing)?|prevent(?:s|ing)?|forbid(?:s|den)?|must not|do not|does not)"
-    hardcode = r"hardcod\w*"
-    if re.search(negators + r"(?:\W+\w+){0,8}\W+" + hardcode, context):
+    if re.search(negators + r"(?:\W+\w+){0,8}\W+" + marker_regex, context):
         return True
-    if re.search(hardcode + r"(?:\W+\w+){0,8}\W+" + negators, context):
+    if re.search(marker_regex + r"(?:\W+\w+){0,8}\W+" + negators, context):
         return True
     return False
+
+
+def hardcode_marker_is_negated(text: str, start: int, end: int) -> bool:
+    return text_marker_is_negated(text, start, end, r"hardcod\w*")
 
 
 def no_hardcoded_answer_check(spec: dict[str, Any]) -> tuple[bool, str]:
@@ -1487,7 +1490,7 @@ def no_hardcoded_answer_check(spec: dict[str, Any]) -> tuple[bool, str]:
                 return False, "obvious answer hardcoding marker found in patch_spec"
         for marker in suspicious:
             start = low.find(marker)
-            if start >= 0 and not hardcode_marker_is_negated(low, start, start + len(marker)):
+            if start >= 0 and not text_marker_is_negated(low, start, start + len(marker), re.escape(marker)):
                 return False, "obvious answer hardcoding marker found in patch_spec"
     return True, "ok"
 

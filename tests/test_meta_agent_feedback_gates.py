@@ -112,3 +112,41 @@ def test_shadow_parent_requires_relative_f1_improvement(tmp_path: Path):
     assert assessment["evolution_status"] == "failed_no_relative_answer_improvement"
     assert assessment["evolution_parent_eligible"] is False
     assert assessment["parent_comparison_metrics"]["delta_f1"] == 0.0
+
+def test_negated_ground_truth_is_not_hardcoding():
+    from experiments.run_codex_qwen_repair_launcher import no_hardcoded_answer_check
+
+    spec = {
+        "edits": [
+            {
+                "file": "adapters/patents/answer_diagnostics.py",
+                "intended_change": "Summarize candidates without using ground truth answers or expected answer values.",
+                "rationale": "Benchmark-safe diagnostic helper; no hardcoded expected CPC answers.",
+            }
+        ]
+    }
+
+    ok, reason = no_hardcoded_answer_check(spec)
+
+    assert ok, reason
+
+
+def test_answer_delta_routing_preempts_ema_when_answer_delta_actionable(tmp_path: Path):
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    (run_dir / "result.json").write_text(json.dumps({"validation_reason": VALIDATION_REASON}), encoding="utf-8")
+    (run_dir / "agent_error_summary.json").write_text("{}", encoding="utf-8")
+    (run_dir / "pipeline_diagnostics.json").write_text("{}", encoding="utf-8")
+    (run_dir / "stage_trace.json").write_text(
+        json.dumps([{"event": "ema_summary", "outputs": {"best_year": 2020}}]),
+        encoding="utf-8",
+    )
+    (run_dir / "final_answer.txt").write_text("A01B1/00\nA01B5/00\n", encoding="utf-8")
+
+    feedback = build_fine_grained_feedback_pack(
+        run_dir,
+        primary_signal={"selected_stage": "schema_grounding", "selected_signal": "EMA and best year look suspicious"},
+    )
+
+    assert feedback["selected_stage"] == "answer_delta"
+    assert feedback["repair_routing"]["recommended_repair_layer"] == "answer_delta_mapping_or_ranking"

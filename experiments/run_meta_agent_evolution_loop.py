@@ -532,8 +532,8 @@ def analyze_and_seed(
         "seed_id": f"repair_seed_{loop_dir.name}",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "parent_run_dir": str(run_dir),
-        "selected_stage": signal.get("selected_component"),
-        "selected_signal": signal.get("selected_signal"),
+        "selected_stage": compact_feedback.get("selected_stage"),
+        "selected_signal": compact_feedback.get("selected_signal"),
         "total_observations": signal.get("total_observations"),
         "analysis_summary": {
             "passed": analysis.get("passed"),
