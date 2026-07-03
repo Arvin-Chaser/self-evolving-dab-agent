@@ -43,6 +43,27 @@ PROFILE_SKILLS = {
 }
 
 try:
+    from experiments.helper_repair_planner import plan_helper_repair
+except Exception:  # pragma: no cover
+    plan_helper_repair = None  # type: ignore[assignment]
+
+try:
+    from experiments.open_diagnosis import compact_open_diagnosis_evidence
+except Exception:  # pragma: no cover
+    compact_open_diagnosis_evidence = None  # type: ignore[assignment]
+
+try:
+    from experiments.gate_policy import GATE_POLICY_SCHEMA_VERSION, decorate_validation_gate, should_block_validation
+except Exception:  # pragma: no cover
+    GATE_POLICY_SCHEMA_VERSION = "gate_policy_unavailable"
+
+    def decorate_validation_gate(result: dict[str, Any]) -> dict[str, Any]:
+        return result
+
+    def should_block_validation(result: dict[str, Any]) -> bool:
+        return result.get("hard_fail", True) and result.get("exit_code") not in (None, 0)
+
+try:
     from llm_client import call_meta_llm, describe_llm_config
 except Exception:  # pragma: no cover
     call_meta_llm = None  # type: ignore[assignment]
@@ -166,6 +187,179 @@ PROFILES: dict[str, RepairProfile] = {
         max_changed_lines=180,
     ),
 }
+
+GATE_SCHEMA_VERSION = "profile_gate_schema_v001"
+
+PROFILE_GATE_VERSIONS = {
+    "analyzer_infra_repair": "analyzer_infra_repair_gate_v001",
+    "data_agent_prompt_repair": "data_agent_prompt_repair_gate_v002",
+    "data_agent_project_repair": "data_agent_project_repair_gate_v003",
+    "data_agent_tool_repair": "data_agent_tool_repair_gate_v006",
+}
+
+VALIDATION_GATE_CATALOG: dict[str, dict[str, str]] = {
+    "no_obvious_answer_hardcoding": {
+        "gate_layer": "hard_safety",
+        "gate_type": "anti_cheating",
+        "purpose": "Reject patch specs that hardcode expected answers, ground truth, or answer-count shortcuts.",
+    },
+    "data_agent_tool_helper_plan_alignment": {
+        "gate_layer": "task_contract",
+        "gate_type": "fine_grained_feedback_alignment",
+        "purpose": "Require helper targets to match the deterministic helper plan derived from fine-grained feedback.",
+    },
+    "data_agent_tool_helper_integration": {
+        "gate_layer": "task_contract",
+        "gate_type": "runtime_integration",
+        "purpose": "Require reusable helper changes to be discoverable by generated_solve.py via prompt glue or runner integration.",
+    },
+    "data_agent_tool_helper_quality": {
+        "gate_layer": "task_contract",
+        "gate_type": "no_op_or_metric_gaming_guard",
+        "purpose": "Reject helper implementations that merely restate the old rule, sort without filtering, or game answer cardinality.",
+    },
+    "static_prompt_repair_checks": {
+        "gate_layer": "validation",
+        "gate_type": "static_prompt_contract",
+        "purpose": "Record that prompt-only static checks passed.",
+    },
+    "static_project_repair_checks": {
+        "gate_layer": "validation",
+        "gate_type": "static_project_contract",
+        "purpose": "Record that project-source static checks passed.",
+    },
+    "static_data_agent_tool_repair_checks": {
+        "gate_layer": "validation",
+        "gate_type": "static_tool_contract",
+        "purpose": "Record that data-agent tool repair static checks passed.",
+    },
+}
+
+
+def profile_gate_version(profile: RepairProfile) -> str:
+    return PROFILE_GATE_VERSIONS.get(profile.name, f"{profile.name}_gate_v001")
+
+
+def profile_gate_protocol(profile: RepairProfile) -> dict[str, Any]:
+    """Describe the gate contract used for this candidate.
+
+    The protocol is intentionally data-only so archive/selector code can later
+    compare candidates by gate version instead of treating all failures as
+    equivalent.
+    """
+    return {
+        "schema_version": GATE_SCHEMA_VERSION,
+        "gate_policy_schema_version": GATE_POLICY_SCHEMA_VERSION,
+        "repair_profile": profile.name,
+        "profile_gate_version": profile_gate_version(profile),
+        "gate_policy": {
+            "hard_gate": "Safety, protocol, benchmark integrity, non-empty real patch, and executable syntax/import checks can block candidate validation.",
+            "soft_observation": "Semantic/interface/tool-contract checks are recorded for archive evidence and next-iteration meta-agent learning rather than used as human-coded repair vetoes.",
+            "promotion_gate": "Child eval and parent-child metrics decide parent eligibility; failed candidates can still seed future repair as evidence.",
+        },
+        "hard_gates": [
+            {
+                "name": "patch_spec_schema",
+                "gate_layer": "protocol",
+                "gate_type": "structured_patch_spec",
+                "purpose": "Qwen must output parseable JSON patch_spec/no_op_failed, not free-form patches.",
+            },
+            {
+                "name": "allowed_source_scope",
+                "gate_layer": "hard_safety",
+                "gate_type": "scope_control",
+                "purpose": "Changed files must match the profile allowlist and avoid control artifacts.",
+                "allowed_patterns": list(profile.allowed_patterns),
+                "forbidden_patterns": list(profile.forbidden_patterns),
+            },
+            {
+                "name": "non_empty_patch",
+                "gate_layer": "protocol",
+                "gate_type": "real_diff_required",
+                "purpose": "patch.diff and project_changed_files must be non-empty before validation.",
+            },
+            {
+                "name": "diff_size_limit",
+                "gate_layer": "hard_safety",
+                "gate_type": "minimality",
+                "purpose": "Reject large rewrites for a local repair task.",
+                "max_changed_lines": profile.max_changed_lines,
+            },
+        ],
+        "task_contract_gates": [
+            {"name": name, **meta}
+            for name, meta in VALIDATION_GATE_CATALOG.items()
+            if (
+                name.startswith("data_agent_tool_helper")
+                and profile.name == "data_agent_tool_repair"
+            )
+            or name == "no_obvious_answer_hardcoding"
+        ],
+        "validation_gates": [
+            {
+                "name": "py_compile_changed_python_files",
+                "gate_layer": "validation",
+                "gate_type": "syntax",
+                "purpose": "Every changed Python file must compile.",
+            },
+            *[
+                {
+                    "name": f"import_{module.replace('.', '_')}",
+                    "gate_layer": "validation",
+                    "gate_type": "module_import",
+                    "purpose": "Required public modules must remain importable.",
+                    "module": module,
+                }
+                for module in profile.import_modules
+            ],
+        ],
+        "soft_score_inputs": [
+            "answer_delta",
+            "parent_child_delta_f1",
+            "selected_stage",
+            "selected_signal",
+            "fine_grained_feedback_alignment",
+            "helper_usage_observed_in_child",
+            "new_stage_errors",
+        ],
+        "notes": [
+            "Hard gates decide candidate validity before child eval.",
+            "Task contract gates encode the repair profile's causal hypothesis.",
+            "Soft score inputs are for archive selection and future bandit-style parent selection, not immediate patch validity.",
+        ],
+    }
+
+
+def gate_result(
+    profile: RepairProfile,
+    name: str,
+    *,
+    exit_code: int = 0,
+    reason: str | None = None,
+    file: str | None = None,
+    gate_layer: str | None = None,
+    gate_type: str | None = None,
+    hard_fail: bool = True,
+    **extra: Any,
+) -> dict[str, Any]:
+    catalog = VALIDATION_GATE_CATALOG.get(name, {})
+    result: dict[str, Any] = {
+        "name": name,
+        "exit_code": exit_code,
+        "gate_layer": gate_layer or catalog.get("gate_layer", "validation"),
+        "gate_type": gate_type or catalog.get("gate_type", "runtime_check"),
+        "profile_gate_version": profile_gate_version(profile),
+        "hard_fail": hard_fail,
+    }
+    if reason is not None:
+        result["reason"] = reason
+    if file is not None:
+        result["file"] = file
+    if catalog.get("purpose"):
+        result["purpose"] = catalog["purpose"]
+    result.update(extra)
+    return decorate_validation_gate(result)
+
 
 FINAL_STATUSES = {
     "valid_candidate_pending_child_eval",
@@ -480,13 +674,61 @@ def load_repair_routing(repair_seed: Path | None) -> dict[str, Any]:
     return routing if isinstance(routing, dict) else {}
 
 
-def load_helper_repair_plan(repair_seed: Path | None) -> dict[str, Any]:
-    seed = load_repair_seed_json(repair_seed)
+def repair_seed_feedback_for_planner(seed: dict[str, Any]) -> dict[str, Any]:
+    fine = seed.get("fine_grained_feedback") if isinstance(seed.get("fine_grained_feedback"), dict) else None
+    if isinstance(fine, dict) and (fine.get("selected_stage") or fine.get("selected_signal")):
+        feedback = dict(fine)
+        for key in (
+            "selected_stage",
+            "selected_signal",
+            "answer_delta",
+            "analysis_summary",
+            "repair_routing",
+            "runtime_trace_evidence",
+            "ranked_feedback_signals",
+            "parent_capabilities",
+            "patch_generation_feedback",
+        ):
+            if key not in feedback and key in seed:
+                feedback[key] = seed.get(key)
+        return feedback
+    return seed
+
+
+def cached_helper_repair_plan_from_seed(seed: dict[str, Any]) -> dict[str, Any]:
     plan = seed.get("helper_repair_plan")
     if not isinstance(plan, dict):
         fine = seed.get("fine_grained_feedback") if isinstance(seed.get("fine_grained_feedback"), dict) else {}
         plan = fine.get("helper_repair_plan") if isinstance(fine, dict) else None
     return plan if isinstance(plan, dict) else {}
+
+
+def load_helper_repair_plan(repair_seed: Path | None) -> dict[str, Any]:
+    seed = load_repair_seed_json(repair_seed)
+    if not seed:
+        return {}
+    cached_plan = cached_helper_repair_plan_from_seed(seed)
+    feedback = repair_seed_feedback_for_planner(seed)
+    repair_profile = str(seed.get("repair_profile") or feedback.get("repair_profile") or "data_agent_tool_repair")
+    if plan_helper_repair is not None and isinstance(feedback, dict) and (feedback.get("selected_stage") or feedback.get("selected_signal")):
+        try:
+            recomputed = plan_helper_repair(feedback, repair_profile)
+        except Exception:
+            recomputed = {}
+        if isinstance(recomputed, dict) and recomputed.get("status") == "planned":
+            recomputed = dict(recomputed)
+            recomputed["plan_source"] = "recomputed_from_repair_seed_with_current_planner"
+            if cached_plan:
+                recomputed["cached_helper_repair_plan_ignored"] = True
+                recomputed["cached_helper_repair_plan_ignore_reason"] = (
+                    "Repair seed helper_repair_plan was recomputed with the current planner to avoid stale cached routing."
+                )
+            return recomputed
+    if cached_plan:
+        cached_plan = dict(cached_plan)
+        cached_plan.setdefault("plan_source", "cached_in_repair_seed")
+        return cached_plan
+    return {}
 
 
 def is_prompt_path(path: str) -> bool:
@@ -580,6 +822,157 @@ def validate_project_repair_routing(
         return False, "prompt-only project repair does not mention the repair_routing layer/reason in rationale"
     return True, "ok"
 
+
+def compact_repair_seed_summary(seed: dict[str, Any]) -> dict[str, Any]:
+    """Keep only cross-project seed fields that guide patch generation.
+
+    Full repair_seed can duplicate patch_generation_feedback, helper plan, and
+    fine_grained_feedback.  The context pack should expose a compact index and
+    artifact paths, not the entire nested seed.
+    """
+    keys = (
+        "seed_id",
+        "created_at",
+        "parent_run_dir",
+        "selected_stage",
+        "selected_signal",
+        "repair_profile",
+        "analysis_summary",
+        "parent_capabilities",
+        "answer_delta",
+        "candidate_context",
+    )
+    summary = {key: seed.get(key) for key in keys if seed.get(key) is not None}
+    open_diag = seed.get("open_diagnosis_evidence")
+    if isinstance(open_diag, dict):
+        summary["open_diagnosis_evidence"] = compact_open_diagnosis_evidence(open_diag) if compact_open_diagnosis_evidence else open_diag
+    fine = seed.get("fine_grained_feedback") if isinstance(seed.get("fine_grained_feedback"), dict) else {}
+    paths = fine.get("full_evidence_pack_paths") if isinstance(fine.get("full_evidence_pack_paths"), dict) else None
+    if paths:
+        summary["full_evidence_pack_paths"] = paths
+    archive_selection = seed.get("archive_selection") if isinstance(seed.get("archive_selection"), dict) else {}
+    if archive_selection:
+        summary["archive_selection"] = {
+            "schema_version": archive_selection.get("schema_version"),
+            "selection_path": archive_selection.get("selection_path"),
+            "current_failure_tags": archive_selection.get("current_failure_tags"),
+            "parent_pool_preview": (archive_selection.get("parent_pool_preview") or [])[:3],
+            "evidence_pool": (archive_selection.get("evidence_pool") or [])[:5],
+        }
+    priority = seed.get("archive_evidence_priority_observations")
+    if priority:
+        summary["archive_evidence_priority_observations"] = priority
+    return summary
+
+
+def compact_parent_artifact(name: str, artifact: Path) -> tuple[str, str]:
+    fence = "json" if artifact.suffix == ".json" else "text"
+    if name == "agent_error_summary.json":
+        data = load_repair_seed_json(artifact)
+        if data:
+            compact = {
+                "passed": data.get("passed"),
+                "validation_reason": data.get("validation_reason"),
+                "selected_signal": data.get("selected_signal"),
+                "localized_errors_sample": (data.get("localized_errors") or [])[:5] if isinstance(data.get("localized_errors"), list) else None,
+                "preserved_invariants": data.get("preserved_invariants"),
+            }
+            return "json", json.dumps(compact, indent=2, ensure_ascii=False)
+        return fence, read_text(artifact, 3000)
+    if name == "stage_trace.json":
+        data = load_repair_seed_json(artifact)
+        if isinstance(data, list):
+            interesting = []
+            for item in data:
+                if not isinstance(item, dict):
+                    continue
+                event = str(item.get("event") or "")
+                severity = str(item.get("severity") or "")
+                trigger = str(item.get("trigger") or "")
+                if event in {"candidate_decision_summary", "final_answer_written", "ema_best_years_computed", "cpc_mapping_summary", "cpc_level5_mapping_summary", "granularity_mapping_fallback_used", "no_years_found"} or severity in {"warning", "error"} or trigger in {"runtime_check_failed", "runtime_anomaly"}:
+                    interesting.append(item)
+                if len(interesting) >= 8:
+                    break
+            return "json", json.dumps(interesting, indent=2, ensure_ascii=False)
+        return fence, read_text(artifact, 2500)
+    if name == "generated_solve.py":
+        text = read_text(artifact)
+        keywords = ("candidate", "best_year", "ema", "final_answer", "level", "mapping", "helper", "diagnostic")
+        snippets: list[str] = []
+        lines = text.splitlines()
+        used: set[int] = set()
+        for idx, line in enumerate(lines):
+            if not any(key in line.lower() for key in keywords):
+                continue
+            start = max(0, idx - 4)
+            end = min(len(lines), idx + 10)
+            if any(i in used for i in range(start, end)):
+                continue
+            used.update(range(start, end))
+            snippets.append("\n".join(f"{i+1}: {lines[i]}" for i in range(start, end)))
+            if sum(len(item) for item in snippets) > 5000:
+                break
+        return "python", "\n\n# ... snippet ...\n".join(snippets) if snippets else read_text(artifact, 3000)
+    if name == "final_answer.txt":
+        return "text", read_text(artifact, 1500)
+    return fence, read_text(artifact, 2500)
+
+
+def recommended_context_source_files(profile: RepairProfile, repair_seed: Path | None) -> list[str]:
+    seed = load_repair_seed_json(repair_seed)
+    routing = load_repair_routing(repair_seed)
+    helper_plan = load_helper_repair_plan(repair_seed)
+    recommended: list[str] = []
+
+    def add(path: Any) -> None:
+        rel = normalize_rel(str(path or ""))
+        if rel and rel not in recommended:
+            recommended.append(rel)
+
+    if isinstance(helper_plan, dict):
+        add(helper_plan.get("recommended_helper_file"))
+        add(helper_plan.get("recommended_prompt_glue_file"))
+    for item in (routing.get("recommended_target_files") if isinstance(routing, dict) else []) or []:
+        add(item)
+
+    if profile.name == "data_agent_tool_repair":
+        # Tool repair needs helper targets and thin prompt glue, not analyzer or
+        # meta-agent implementation internals by default.
+        defaults = [
+            "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+            "adapters/patents/__init__.py",
+            "adapters/patents/cpc_mapping.py",
+            "adapters/patents/ema.py",
+            "adapters/patents/patent_query_utils.py",
+        ]
+    elif profile.name == "data_agent_project_repair":
+        defaults = [
+            "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+            "experiments/run_dab_agent.py",
+            "adapters/runtime_observer.py",
+            "adapters/patents/cpc_mapping.py",
+            "adapters/patents/ema.py",
+            "adapters/patents/patent_query_utils.py",
+        ]
+    elif profile.name == "analyzer_infra_repair":
+        defaults = list(profile.allowed_patterns)
+    else:
+        defaults = ["prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt"]
+    for item in defaults:
+        add(item)
+    return [path for path in recommended if "*" not in path][:8]
+
+
+def source_excerpt_limit(profile: RepairProfile, rel: str) -> int:
+    if is_prompt_path(rel):
+        return 6000 if profile.name == "data_agent_prompt_repair" else 4500
+    if rel.startswith("adapters/patents/"):
+        return 6500
+    if rel in {"experiments/run_dab_agent.py", "adapters/runtime_observer.py"}:
+        return 4500
+    return 3000
+
+
 def build_context_pack(
     *,
     profile: RepairProfile,
@@ -670,6 +1063,20 @@ def build_context_pack(
             "When validation shows the expected and generated counts are close but items differ, prefer instructions for comparing candidate best-year decisions and avoiding fallback-derived extras, not instructions that change COPY parsing mechanics.",
             "",
         ]
+    seed_for_open_diagnosis = load_repair_seed_json(repair_seed)
+    open_diag = seed_for_open_diagnosis.get("open_diagnosis_evidence") if isinstance(seed_for_open_diagnosis.get("open_diagnosis_evidence"), dict) else None
+    if open_diag:
+        compact_open_diag = compact_open_diagnosis_evidence(open_diag) if compact_open_diagnosis_evidence else open_diag
+        lines += [
+            "## Open diagnosis evidence",
+            "Use this section to form your own open-vocabulary diagnosis before choosing target_files. Do not treat selected_stage or helper_repair_plan as a closed failure taxonomy.",
+            "Your patch_spec should include a top-level `open_diagnosis` object with diagnosis_label, causal_hypothesis, supporting_evidence, ruled_out_or_deprioritized_hypotheses, next_repair_strategy, not_to_repeat, and uncertainties.",
+            "If your diagnosis disagrees with deterministic routing/helper_plan, explain the disagreement in open_diagnosis and still obey safety/scope gates.",
+            "```json",
+            json.dumps(compact_open_diag, indent=2, ensure_ascii=False),
+            "```",
+            "",
+        ]
     routing = load_repair_routing(repair_seed)
     if routing:
         lines += [
@@ -684,19 +1091,48 @@ def build_context_pack(
     if helper_plan:
         lines += [
             "## Helper repair plan from fine-grained feedback",
-            "This plan is derived deterministically from selected_stage, selected_signal, runtime trace events, ranked feedback, and answer_delta. Treat it as the primary target for data_agent_tool_repair.",
-            "If the patch_spec cannot implement the recommended helper file/API safely, output no_op_failed instead of choosing an unrelated helper.",
+            "This deterministic plan is an advisory/fallback proposal derived from selected_stage, selected_signal, runtime trace events, ranked feedback, and answer_delta.",
+            "Use the Open diagnosis evidence first. If you choose a different safe target than this plan, justify the disagreement in top-level open_diagnosis; otherwise implement the recommended helper file/API or output no_op_failed.",
             "```json",
             json.dumps(helper_plan, indent=2, ensure_ascii=False),
             "```",
             "",
         ]
+    seed_for_patch_generation = load_repair_seed_json(repair_seed)
+    patch_feedback = seed_for_patch_generation.get("patch_generation_feedback") if isinstance(seed_for_patch_generation.get("patch_generation_feedback"), dict) else None
+    if patch_feedback:
+        lines += [
+            "## Patch-generation fine-grained feedback",
+            "This section is the primary action evidence for patch_spec generation. The patch_spec must explicitly address required_patch_behavior and must avoid forbidden_patch_shortcuts.",
+            "Use evidence_to_use to choose target files and helper APIs; do not hardcode diagnostic-only missing/extra samples as answers.",
+            "```json",
+            json.dumps(patch_feedback, indent=2, ensure_ascii=False),
+            "```",
+            "",
+        ]
     if repair_seed and repair_seed.exists():
-        lines += ["## Repair seed", "```json", read_text(repair_seed, 32000).strip(), "```", ""]
+        seed_data_for_context = load_repair_seed_json(repair_seed)
+        seed_summary = compact_repair_seed_summary(seed_data_for_context)
+        lines += ["## Repair seed summary", "This compact summary avoids repeating patch_generation_feedback/helper_repair_plan already shown above.", "```json", json.dumps(seed_summary, indent=2, ensure_ascii=False), "```", ""]
+        archive_priority = seed_data_for_context.get("archive_evidence_priority_observations")
+        archive_evidence_pool = ((seed_data_for_context.get("fine_grained_feedback") or {}).get("archive_evidence_pool") if isinstance(seed_data_for_context.get("fine_grained_feedback"), dict) else None)
+        if archive_priority or archive_evidence_pool:
+            lines += [
+                "## Archive evidence from prior candidates",
+                "These are failed/non-parent candidates selected by archive_selector. Treat them as high-value negative examples and do not repeat their observed failure modes.",
+                "The patch_spec proposed_contracts must explicitly address any relevant high_priority_observations.",
+                "```json",
+                json.dumps({
+                    "archive_evidence_priority_observations": archive_priority or [],
+                    "archive_evidence_pool": archive_evidence_pool or [],
+                }, indent=2, ensure_ascii=False),
+                "```",
+                "",
+            ]
     if parent_prompt:
         prompt_path = parent_prompt if parent_prompt.is_absolute() else workspace / parent_prompt
-        if prompt_path.exists():
-            lines += ["## Parent data-agent prompt", f"Path: `{normalize_rel(parent_prompt)}`", "```text", read_text(prompt_path, 24000), "```", ""]
+        if prompt_path.exists() and profile.name == "data_agent_prompt_repair":
+            lines += ["## Parent data-agent prompt", f"Path: `{normalize_rel(parent_prompt)}`", "```text", read_text(prompt_path, 9000), "```", ""]
     if parent_run and parent_run.exists():
         if profile.name == "data_agent_prompt_repair" and repair_seed_override:
             lines += [
@@ -712,9 +1148,8 @@ def build_context_pack(
             for name in artifact_names:
                 artifact = parent_run / name
                 if artifact.exists():
-                    fence = "json" if artifact.suffix == ".json" else "text"
-                    max_chars = 16000 if name == "agent_error_summary.json" else 12000
-                    lines += [f"## Parent run artifact: {name}", f"Path: `{artifact}`", f"```{fence}", read_text(artifact, max_chars), "```", ""]
+                    fence, compact_text = compact_parent_artifact(name, artifact)
+                    lines += [f"## Parent run artifact summary: {name}", f"Path: `{artifact}`", f"```{fence}", compact_text, "```", ""]
             if profile.name == "data_agent_prompt_repair" and (parent_run / "generated_solve.py").exists():
                 lines += [
                     "## Generated code evidence policy",
@@ -731,27 +1166,20 @@ def build_context_pack(
             if source.exists():
                 lines += [f"## Source excerpt: {pattern}", "```python", read_text(source, 24000), "```", ""]
     if profile.name in {"data_agent_project_repair", "data_agent_tool_repair"}:
-        source_excerpts = [
-            "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
-            "adapters/patents/__init__.py",
-            "adapters/patents/cpc_definition.py",
-            "adapters/patents/cpc_mapping.py",
-            "adapters/patents/ema.py",
-            "adapters/patents/patent_query_utils.py",
-            "adapters/runtime_observer.py",
-            "adapters/dab_validator.py",
-            "adapters/feedback/common_trace_checks.py",
-            "adapters/feedback/dab_patents_checks.py",
-            "experiments/run_dab_agent.py",
-            "experiments/analyze_agent_error.py",
-            "experiments/extract_primary_signal.py",
-            "experiments/build_meta_agent_evidence_pack.py",
+        source_excerpts = recommended_context_source_files(profile, repair_seed)
+        lines += [
+            "## Project source excerpt policy",
+            "Only profile-relevant recommended target/helper files are included. Analyzer/meta-agent internals are omitted unless this repair profile targets them.",
+            "```json",
+            json.dumps({"included_source_excerpts": source_excerpts}, indent=2, ensure_ascii=False),
+            "```",
+            "",
         ]
         for rel in source_excerpts:
             source = workspace / rel
             if source.exists():
                 fence = "python" if source.suffix == ".py" else "text"
-                lines += [f"## Project source excerpt: {rel}", f"```{fence}", read_text(source, 12000), "```", ""]
+                lines += [f"## Project source excerpt: {rel}", f"```{fence}", read_text(source, source_excerpt_limit(profile, rel)), "```", ""]
     out = candidate_dir / "minimal_source_context_pack.md"
     out.write_text("\n".join(lines), encoding="utf-8")
     return out
@@ -774,7 +1202,15 @@ Profile-specific hard rules for data_agent_tool_repair:
 10. Prompt glue must be mandatory, not advisory: use wording such as `MUST import/use from adapters.patents.<module>` and `do not reimplement this helper logic inline`; avoid weak wording such as `prefer` or `when available`.
 11. If creating a new helper module, use operation create_file and include import-safe, py_compile-clean Python.
 12. Do not modify feedback analyzer code, logs, candidates, archive, trajectories, reports, benchmarks, legacy code, data files, virtualenvs, pycache, or generated run artifacts.
-13. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
+13. Treat the Open diagnosis evidence and Patch-generation fine-grained feedback as the primary action evidence. First produce your own top-level open_diagnosis object; diagnosis_label is open vocabulary and must not be limited to selected_stage.
+14. The patch_spec rationale must cite the selected_stage/selected_signal, at least one concrete evidence item, and how the patch changes child behavior.
+15. If helper_repair_plan.patch_generation_contract.schema_version is helper_patch_generation_contract_v002 and behavior_change_contract.required is true, your JSON patch_spec MUST include a top-level behavior_change_contract object with before, after, decision_path_change, child_observable_effect, and why_not_diagnostics_only.
+16. For action helpers such as candidate_filtering.py/rank_or_filter_candidates, diagnostics-only or logging-only helpers are insufficient. The helper must affect final answer selection/ranking/filtering, and prompt glue must require generated_solve.py to use the helper output for final_answer.txt.
+17. Prompt glue for any helper must include a concrete data-flow requirement, not only `import/use`: name the helper call, name the runtime inputs, name the returned variable(s), and state where the returned value must be consumed. Examples: `metadata = parse_cpc_definition_sql(CPC_DEFINITION_SQL_PATH); symbol_to_level = metadata.get("symbol_to_level", {}); symbol_to_parents = metadata.get("symbol_to_parents", {})` before CPC mapping; `selected_symbols = rank_or_filter_candidates(candidate_rows, target_year=2022)` and write `selected_symbols` to final_answer.txt.
+18. For every helper-facing patch, declare a local interface contract: identify the generated_solve.py/prompt caller, the helper callee, the exact expected call pattern, the runtime argument types likely passed by generated_solve.py, and the helper-side compatibility behavior. The helper must be robust to the actual local call contract, e.g. if prompt glue passes a path constant string, the helper should accept str/path-like inputs or the prompt glue must explicitly convert to Path before calling.
+19. The proposed validation must exercise the local interface contract, not only the helper's ideal type signature. If the expected call pattern is `parse_cpc_definition_sql(CPC_DEFINITION_SQL_PATH)` and CPC_DEFINITION_SQL_PATH is a string, validation_hint must include a string-path call test.
+20. If the selected signal says CPCDefinition metadata was not read, prioritize a CPCDefinition metadata reader/parser helper and require generated_solve.py to call it before raw CPC mapping. Do not repair this as candidate filtering first.
+21. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
 """
     if profile.name == "data_agent_project_repair":
         return """
@@ -832,6 +1268,19 @@ Otherwise output this schema:
 {{
   "status": "patch_spec",
   "repair_profile": "{profile.name}",
+  "open_diagnosis": {{
+    "diagnosis_label": "free-form concise label, not a fixed enum",
+    "causal_hypothesis": "why the child/parent evidence points to this repair",
+    "supporting_evidence": ["specific evidence references"],
+    "ruled_out_or_deprioritized_hypotheses": ["what the evidence makes less likely"],
+    "next_repair_strategy": {{
+      "target_layer": "free-form layer description",
+      "target_files": ["..."],
+      "expected_child_observable_effect": "what should change in child eval"
+    }},
+    "not_to_repeat": ["patch shapes or assumptions to avoid"],
+    "uncertainties": ["unknowns and validation checks"]
+  }},
   "target_files": ["..."],
   "edits": [
     {{
@@ -843,6 +1292,34 @@ Otherwise output this schema:
     }}
   ],
   "risk_scope": "{profile.risk_scope}",
+  "behavior_change_contract": {{
+    "before": "what parent generated_solve.py did before, from the evidence",
+    "after": "what child generated_solve.py should do after applying this patch",
+    "decision_path_change": "which selection/ranking/filtering or parser decision path changes; say no_op_failed if no behavior change is safe",
+    "child_observable_effect": "what child_eval should observe, e.g. helper output used for final_answer.txt or selected signal moves",
+    "why_not_diagnostics_only": "why this is not merely logging/summarization when action repair is required"
+  }},
+  "proposed_contracts": [
+    {{
+      "contract_id": "short_snake_case_id",
+      "statement": "specific behavior contract this patch claims to satisfy",
+      "target_files": ["files whose behavior should satisfy the contract"],
+      "expected_observable_effect": "child-eval or trace/log/answer effect that should be observed",
+      "validation_hint": "how child eval or focused validation should check it"
+    }}
+  ],
+  "local_interface_contracts": [
+    {{
+      "contract_id": "short_snake_case_id",
+      "caller_context": "where the local project will call this behavior, e.g. generated_solve.py via prompt glue",
+      "callee": "module.function or prompt/API surface being introduced or changed",
+      "expected_call_pattern": "the exact or representative local call pattern the patch expects",
+      "argument_contract": "runtime argument names and types/shapes the callee must accept, based on local evidence",
+      "compatibility_behavior": "how the patch handles those actual local inputs without crashing or becoming a no-op",
+      "target_files": ["files whose code/prompt must satisfy this local interface contract"],
+      "validation_hint": "focused validation that exercises the local call pattern and argument types, not only an idealized unit call"
+    }}
+  ],
   "public_functions_to_preserve": {json.dumps(list(profile.required_public_functions), ensure_ascii=False)},
   "forbidden_actions_ack": {{
 {chr(10).join(f'    "{key}": true,' for key in profile.required_ack).rstrip(',')}
@@ -1201,6 +1678,52 @@ def validate_spec(spec: dict[str, Any] | None, profile: RepairProfile, candidate
             change_ok, change_reason = validate_data_agent_prompt_change(edit, idx)
             if not change_ok:
                 return False, "protocol_failed_invalid_patch_spec", change_reason
+    contracts = spec.get("proposed_contracts")
+    if not isinstance(contracts, list) or not contracts:
+        return False, "protocol_failed_invalid_patch_spec", "proposed_contracts must be a non-empty list; output no_op_failed if no behavior contract is safe"
+    for idx, contract in enumerate(contracts):
+        if not isinstance(contract, dict):
+            return False, "protocol_failed_invalid_patch_spec", f"proposed_contracts[{idx}] must be object"
+        statement = contract.get("statement") or contract.get("contract") or contract.get("contract_statement")
+        if not isinstance(statement, str) or not statement.strip():
+            return False, "protocol_failed_invalid_patch_spec", f"proposed_contracts[{idx}] missing non-empty statement"
+        effect = contract.get("expected_observable_effect") or contract.get("success_condition") or contract.get("validation_hint")
+        if not isinstance(effect, str) or not effect.strip():
+            return False, "protocol_failed_invalid_patch_spec", f"proposed_contracts[{idx}] missing expected_observable_effect or validation_hint"
+        files = contract.get("target_files") or contract.get("files") or []
+        if isinstance(files, str):
+            files = [files]
+        if not isinstance(files, list) or not files:
+            return False, "protocol_failed_invalid_patch_spec", f"proposed_contracts[{idx}] missing target_files"
+        for file in files:
+            if not isinstance(file, str) or not is_allowed_file(file, profile):
+                return False, "protocol_failed_invalid_patch_spec", f"proposed_contracts[{idx}] target file not allowed: {file}"
+    if profile.name == "data_agent_tool_repair":
+        interface_contracts = spec.get("local_interface_contracts")
+        if not isinstance(interface_contracts, list) or not interface_contracts:
+            return False, "protocol_failed_invalid_patch_spec", "data_agent_tool_repair patch_spec must include non-empty local_interface_contracts for helper/prompt call compatibility"
+        for idx, contract in enumerate(interface_contracts):
+            if not isinstance(contract, dict):
+                return False, "protocol_failed_invalid_patch_spec", f"local_interface_contracts[{idx}] must be object"
+            for key in (
+                "caller_context",
+                "callee",
+                "expected_call_pattern",
+                "argument_contract",
+                "compatibility_behavior",
+                "validation_hint",
+            ):
+                value = contract.get(key)
+                if not isinstance(value, str) or not value.strip():
+                    return False, "protocol_failed_invalid_patch_spec", f"local_interface_contracts[{idx}] missing non-empty {key}"
+            files = contract.get("target_files") or contract.get("files") or []
+            if isinstance(files, str):
+                files = [files]
+            if not isinstance(files, list) or not files:
+                return False, "protocol_failed_invalid_patch_spec", f"local_interface_contracts[{idx}] missing target_files"
+            for file in files:
+                if not isinstance(file, str) or not is_allowed_file(file, profile):
+                    return False, "protocol_failed_invalid_patch_spec", f"local_interface_contracts[{idx}] target file not allowed: {file}"
     if spec.get("risk_scope") != profile.risk_scope:
         return False, "protocol_failed_invalid_patch_spec", f"risk_scope must be {profile.risk_scope}"
     ack = spec.get("forbidden_actions_ack")
@@ -1546,7 +2069,20 @@ def data_agent_tool_helper_integration_check(spec: dict[str, Any]) -> tuple[bool
             "helper_glue_missing_no_inline_rule: prompt glue should tell generated_solve.py not to reimplement helper logic inline",
         )
     if "candidate_filtering" in prompt_glue or "rank_or_filter_candidates" in prompt_glue:
-        if "candidates_2022" in prompt_glue or "already filtered" in prompt_glue or "pre-filtered" in prompt_glue:
+        mentions_prefiltered = "pre-filtered" in prompt_glue or "prefiltered" in prompt_glue
+        negates_prefiltered = (
+            "not pre-filtered" in prompt_glue
+            or "not prefiltered" in prompt_glue
+            or "not a pre-filtered" in prompt_glue
+            or "not pass pre-filtered" in prompt_glue
+            or "do not pass pre-filtered" in prompt_glue
+        )
+        uses_prefiltered_input = (
+            "candidates_2022" in prompt_glue
+            or "already filtered" in prompt_glue
+            or (mentions_prefiltered and not negates_prefiltered)
+        )
+        if uses_prefiltered_input:
             return (
                 False,
                 "weak_filtering_no_op: prompt glue must require rank_or_filter_candidates(candidate_rows, target_year=2022), not a pre-filtered candidates_2022 list",
@@ -1563,6 +2099,73 @@ def data_agent_tool_helper_integration_check(spec: dict[str, Any]) -> tuple[bool
                 "candidate_filtering_glue_missing_full_candidate_rows: prompt glue must tell generated_solve.py to pass full candidate_rows / full unfiltered candidate rows to rank_or_filter_candidates",
             )
     return True, "ok"
+
+
+def helper_plan_requires_behavior_change(plan: dict[str, Any]) -> bool:
+    if not isinstance(plan, dict) or plan.get("status") != "planned":
+        return False
+    contract = plan.get("patch_generation_contract") if isinstance(plan.get("patch_generation_contract"), dict) else {}
+    behavior = contract.get("behavior_change_contract") if isinstance(contract.get("behavior_change_contract"), dict) else {}
+    if behavior.get("required") is True:
+        return True
+    helper = normalize_rel(str(plan.get("recommended_helper_file") or ""))
+    if helper.endswith("candidate_filtering.py"):
+        return True
+    for func in plan.get("required_functions") or []:
+        if isinstance(func, dict) and str(func.get("name") or "") == "rank_or_filter_candidates":
+            return True
+    return False
+
+
+def data_agent_tool_behavior_change_contract_check(spec: dict[str, Any], plan: dict[str, Any]) -> tuple[bool, str]:
+    if not helper_plan_requires_behavior_change(plan):
+        return True, "ok"
+    behavior = spec.get("behavior_change_contract")
+    if not isinstance(behavior, dict):
+        return False, "behavior_change_contract_missing: v002 action-helper repairs must declare before/after/decision_path_change/child_observable_effect/why_not_diagnostics_only"
+    required_fields = (
+        "before",
+        "after",
+        "decision_path_change",
+        "child_observable_effect",
+        "why_not_diagnostics_only",
+    )
+    for field in required_fields:
+        value = behavior.get(field)
+        if not isinstance(value, str) or len(value.strip()) < 8:
+            return False, f"behavior_change_contract_incomplete: missing non-empty {field}"
+    edit_text = "\n".join(
+        "\n".join(str(edit.get(key, "")) for key in ("intended_change", "rationale"))
+        for edit in spec.get("edits") or []
+        if isinstance(edit, dict)
+    )
+    combined = (json.dumps(behavior, ensure_ascii=False) + "\n" + edit_text).lower()
+    action_markers = (
+        "final_answer",
+        "final answer",
+        "selected_symbols",
+        "construct final",
+        "write final",
+        "rank_or_filter_candidates",
+        "ranking",
+        "filtering",
+        "selection",
+        "select final",
+        "exclude",
+        "exclusion",
+    )
+    if not any(marker in combined for marker in action_markers):
+        return False, "behavior_change_contract_no_decision_path: action helper must affect final answer selection/ranking/filtering, not only diagnostics"
+    diagnostic_markers = ("diagnostic", "diagnostics", "summarize", "summary", "logging", "log only", "observation-only")
+    final_answer_markers = ("final_answer", "final answer", "selected_symbols", "use its output", "helper output", "construct final", "write final")
+    if any(marker in combined for marker in diagnostic_markers) and not any(marker in combined for marker in final_answer_markers):
+        return False, "diagnostics_only_patch_rejected: v002 action-helper repair must use helper output to change final_answer construction"
+    why = str(behavior.get("why_not_diagnostics_only") or "").lower()
+    bad_why = ("diagnostics are sufficient", "logging is sufficient", "only log", "only summarize", "observation only")
+    if any(marker in why for marker in bad_why):
+        return False, "diagnostics_only_patch_rejected: why_not_diagnostics_only admits the patch is observation-only"
+    return True, "ok"
+
 
 def data_agent_tool_helper_plan_check(spec: dict[str, Any], repair_seed: Path | None, candidate_dir: Path | None = None) -> tuple[bool, str]:
     targets = [normalize_rel(str(path)) for path in spec.get("target_files") or []]
@@ -1607,6 +2210,9 @@ def data_agent_tool_helper_plan_check(spec: dict[str, Any], repair_seed: Path | 
             False,
             "helper_plan_api_missing: patch_spec targets the planned helper file but does not implement or mention the required helper API names",
         )
+    behavior_ok, behavior_reason = data_agent_tool_behavior_change_contract_check(spec, plan)
+    if not behavior_ok:
+        return False, behavior_reason
     return True, "ok"
 
 
@@ -1618,11 +2224,81 @@ def data_agent_tool_helper_quality_check(spec: dict[str, Any]) -> tuple[bool, st
         if not (rel.startswith("adapters/patents/") and rel.endswith(".py")):
             continue
         helper_text = (str(edit.get("intended_change") or "") + "\n" + str(edit.get("rationale") or "")).lower()
+        diagnostics_helper_markers = (
+            "answer_diagnostics.py",
+            "summarize_candidate_decisions",
+            "diagnostic helper",
+            "candidate diagnostics",
+            "diagnostics-only",
+            "observation-only",
+            "only logs",
+            "log_event(event=\'candidate_decision_summary\'",
+            'log_event(event="candidate_decision_summary"',
+        )
+        if rel.endswith("answer_diagnostics.py") or any(marker in helper_text for marker in diagnostics_helper_markers):
+            return (
+                False,
+                "diagnostics_only_action_helper_rejected: data_agent_tool_repair must generate a helper that changes final answer ranking/filtering, not only candidate diagnostics/logging",
+            )
         if rel.endswith("candidate_filtering.py"):
+            cardinality_gaming_markers = (
+                "expected_count",
+                "expected count",
+                "expected answer count",
+                "match expected",
+                "matches expected",
+                "top 50",
+                "[:50]",
+                "at most 50",
+                "exactly 50",
+            )
+            cardinality_check_text = helper_text
+            negated_cardinality_phrases = (
+                "no hardcoded answers or expected counts",
+                "no hardcoded answer or expected count",
+                "no hardcoded expected counts",
+                "no hardcoded expected count",
+                "without using expected counts",
+                "without using expected count",
+                "does not use expected counts",
+                "does not use expected count",
+                "do not use expected counts",
+                "do not use expected count",
+                "must not use expected counts",
+                "must not use expected count",
+                "no expected counts",
+                "no expected count",
+            )
+            for phrase in negated_cardinality_phrases:
+                cardinality_check_text = cardinality_check_text.replace(phrase, "")
+            if any(marker in cardinality_check_text for marker in cardinality_gaming_markers):
+                return False, "metric_gaming_guard: candidate_filtering helper must not use expected answer count/top-k truncation as the repair mechanism"
             if re.search(r"best_year\W*==\W*target_year", helper_text) and "return [row['symbol']" in helper_text:
                 return False, "weak_filtering_no_op: candidate_filtering helper must not merely repeat best_year == target_year filtering and return all remaining symbols"
             if "sort" in helper_text and "filter" not in helper_text and "exclude" not in helper_text:
                 return False, "weak_filtering_no_op: candidate_filtering helper only sorts candidates, which cannot improve set-valued answer validation"
+        if rel.endswith("cpc_definition_parser.py"):
+            tuple_return_markers = (
+                "-> tuple",
+                "-> tuple[",
+                "-> tuple[dict",
+                "tuple[dict",
+                "tuple[dict[str",
+                "return symbol_to_level, symbol_to_parents",
+                "return (symbol_to_level, symbol_to_parents)",
+            )
+            if any(marker in helper_text for marker in tuple_return_markers):
+                return (
+                    False,
+                    "cpc_definition_parser_return_contract_violation: parse_cpc_definition_sql must return a dict with symbol_to_level and symbol_to_parents, not a bare tuple",
+                )
+            has_symbol_to_level_key = '"symbol_to_level"' in helper_text or "'symbol_to_level'" in helper_text
+            has_symbol_to_parents_key = '"symbol_to_parents"' in helper_text or "'symbol_to_parents'" in helper_text
+            if not (has_symbol_to_level_key and has_symbol_to_parents_key):
+                return (
+                    False,
+                    "cpc_definition_parser_return_contract_violation: helper text must expose symbol_to_level and symbol_to_parents dict keys",
+                )
         if rel.endswith("cpc_mapping.py"):
             forbidden_patterns = (
                 "fallback to prefix",
@@ -1642,6 +2318,139 @@ def data_agent_tool_helper_quality_check(spec: dict[str, Any]) -> tuple[bool, st
     return True, "ok"
 
 
+def data_agent_tool_gate_soft_warning(reason: str | None) -> bool:
+    """Return True for heuristic tool-repair gates that should not block child eval.
+
+    These checks are useful signals, but we have repeatedly seen keyword-level
+    false positives.  Keep protocol/safety/syntax gates hard; let child eval and
+    parent-vs-child metrics decide semantic usefulness.
+    """
+    if not reason or reason == "ok":
+        return False
+    lowered = reason.lower()
+    soft_markers = (
+        "helper_plan_target_mismatch",
+        "helper_plan_api_missing",
+        "behavior_change_contract_no_decision_path",
+        "diagnostics_only_patch_rejected",
+        "diagnostics_only_action_helper_rejected",
+        "helper_not_integrated",
+        "helper_glue_too_weak",
+        "helper_glue_missing_no_inline_rule",
+        "candidate_filtering_glue_missing_full_candidate_rows",
+        "weak_filtering_no_op",
+        "metric_gaming_guard",
+        "declared_helper_target_no_effect",
+        "helper_plan_target_no_effect",
+        "behavior_change_contract_missing",
+        "behavior_change_contract_incomplete",
+        "metadata_grounding_violation",
+        "cpc_definition_parser_return_contract_violation",
+    )
+    # In the evolvable meta-agent setup, semantic/interface repair checks are
+    # observations for the next iteration, not human-coded hard vetoes.  Safety,
+    # protocol, forbidden-file, empty-patch, and syntax gates remain hard in
+    # other layers.
+    return any(marker in lowered for marker in soft_markers)
+
+
+
+def cpc_definition_sql_validation_path() -> Path | None:
+    """Return the real PATENTS CPCDefinition SQL path when available locally."""
+    candidates = [
+        os.environ.get("META_AGENT_CPC_DEFINITION_SQL_PATH"),
+        os.environ.get("CPC_DEFINITION_SQL_PATH"),
+        "/home/m0st1ma/research/DataAgentBench/query_PATENTS/query_dataset/patent_CPCDefinition.sql",
+    ]
+    for raw in candidates:
+        if not raw:
+            continue
+        path = Path(raw)
+        if path.exists():
+            return path
+    return None
+
+
+def run_cpc_definition_parser_real_sql_smoke(
+    profile: RepairProfile,
+    workspace: Path,
+    candidate_dir: Path,
+) -> dict[str, Any] | None:
+    """Validate changed CPCDefinition parser helpers against the real PATENTS SQL dump."""
+    rel = "adapters/patents/cpc_definition_parser.py"
+    if profile.name != "data_agent_tool_repair":
+        return None
+    if rel not in set(changed_project_files_from_numstat(candidate_dir)):
+        return None
+    parser_path = workspace / rel
+    if not parser_path.exists():
+        return gate_result(
+            profile,
+            "real_cpc_definition_parser_smoke",
+            exit_code=1,
+            reason="changed cpc_definition_parser.py does not exist after apply",
+            file=rel,
+            gate_layer="validation",
+            gate_type="real_data_parser_smoke",
+        )
+    sql_path = cpc_definition_sql_validation_path()
+    if sql_path is None:
+        return gate_result(
+            profile,
+            "real_cpc_definition_parser_smoke",
+            exit_code=0,
+            reason="skipped: real patent_CPCDefinition.sql not available in this environment",
+            file=rel,
+            gate_layer="validation",
+            gate_type="real_data_parser_smoke",
+            hard_fail=False,
+        )
+    out = candidate_dir / "validation"
+    script = r'''
+import json
+import os
+from pathlib import Path
+from adapters.patents.cpc_definition_parser import parse_cpc_definition_sql
+
+sql_path = Path(os.environ["META_AGENT_CPC_DEFINITION_SQL_PATH"])
+metadata = parse_cpc_definition_sql(sql_path)
+if not isinstance(metadata, dict):
+    raise AssertionError(f"parse_cpc_definition_sql must return dict, got {type(metadata).__name__}")
+for key in ("symbol_to_level", "symbol_to_parents"):
+    if key not in metadata:
+        raise AssertionError(f"metadata missing key: {key}")
+symbol_to_level = metadata.get("symbol_to_level")
+symbol_to_parents = metadata.get("symbol_to_parents")
+if not isinstance(symbol_to_level, dict) or not symbol_to_level:
+    raise AssertionError("symbol_to_level must be a non-empty dict for real patent_CPCDefinition.sql")
+if not isinstance(symbol_to_parents, dict) or not symbol_to_parents:
+    raise AssertionError("symbol_to_parents must be a non-empty dict for real patent_CPCDefinition.sql")
+print(json.dumps({
+    "status": "ok",
+    "sql_path": str(sql_path),
+    "symbol_to_level_count": len(symbol_to_level),
+    "symbol_to_parents_count": len(symbol_to_parents),
+}, ensure_ascii=False))
+'''
+    proc = run_cmd(
+        [str(ROOT / ".venv/bin/python"), "-c", script],
+        cwd=workspace,
+        env={**os.environ, "PYTHONPATH": str(workspace), "META_AGENT_CPC_DEFINITION_SQL_PATH": str(sql_path)},
+        stdout_path=out / "real_cpc_definition_parser_smoke.stdout",
+        stderr_path=out / "real_cpc_definition_parser_smoke.stderr",
+    )
+    return gate_result(
+        profile,
+        "real_cpc_definition_parser_smoke",
+        exit_code=proc.returncode,
+        reason="ok" if proc.returncode == 0 else "parse real patent_CPCDefinition.sql failed",
+        file=rel,
+        gate_layer="validation",
+        gate_type="real_data_parser_smoke",
+        hard_fail=False,
+        warning=proc.returncode != 0,
+        sql_path=str(sql_path),
+    )
 def run_validation(profile: RepairProfile, workspace: Path, candidate_dir: Path, repair_seed: Path | None = None) -> tuple[bool, list[dict[str, Any]]]:
     out = candidate_dir / "validation"
     out.mkdir(parents=True, exist_ok=True)
@@ -1650,22 +2459,52 @@ def run_validation(profile: RepairProfile, workspace: Path, candidate_dir: Path,
 
     if profile.name in {"data_agent_prompt_repair", "data_agent_project_repair", "data_agent_tool_repair"}:
         hardcode_ok, hardcode_reason = no_hardcoded_answer_check(spec)
-        results.append({"name": "no_obvious_answer_hardcoding", "exit_code": 0 if hardcode_ok else 1, "reason": hardcode_reason})
+        results.append(gate_result(profile, "no_obvious_answer_hardcoding", exit_code=0 if hardcode_ok else 1, reason=hardcode_reason))
         if not hardcode_ok:
             return False, results
 
     if profile.name == "data_agent_tool_repair":
         plan_ok, plan_reason = data_agent_tool_helper_plan_check(spec, repair_seed, candidate_dir)
-        results.append({"name": "data_agent_tool_helper_plan_alignment", "exit_code": 0 if plan_ok else 1, "reason": plan_reason})
-        if not plan_ok:
+        plan_soft = (not plan_ok) and data_agent_tool_gate_soft_warning(plan_reason)
+        results.append(
+            gate_result(
+                profile,
+                "data_agent_tool_helper_plan_alignment",
+                exit_code=0 if (plan_ok or plan_soft) else 1,
+                reason=plan_reason,
+                hard_fail=not plan_soft,
+                warning=plan_soft,
+            )
+        )
+        if not plan_ok and not plan_soft:
             return False, results
         integration_ok, integration_reason = data_agent_tool_helper_integration_check(spec)
-        results.append({"name": "data_agent_tool_helper_integration", "exit_code": 0 if integration_ok else 1, "reason": integration_reason})
-        if not integration_ok:
+        integration_soft = (not integration_ok) and data_agent_tool_gate_soft_warning(integration_reason)
+        results.append(
+            gate_result(
+                profile,
+                "data_agent_tool_helper_integration",
+                exit_code=0 if (integration_ok or integration_soft) else 1,
+                reason=integration_reason,
+                hard_fail=not integration_soft,
+                warning=integration_soft,
+            )
+        )
+        if not integration_ok and not integration_soft:
             return False, results
         quality_ok, quality_reason = data_agent_tool_helper_quality_check(spec)
-        results.append({"name": "data_agent_tool_helper_quality", "exit_code": 0 if quality_ok else 1, "reason": quality_reason})
-        if not quality_ok:
+        quality_soft = (not quality_ok) and data_agent_tool_gate_soft_warning(quality_reason)
+        results.append(
+            gate_result(
+                profile,
+                "data_agent_tool_helper_quality",
+                exit_code=0 if (quality_ok or quality_soft) else 1,
+                reason=quality_reason,
+                hard_fail=not quality_soft,
+                warning=quality_soft,
+            )
+        )
+        if not quality_ok and not quality_soft:
             return False, results
 
     if profile.name in {"data_agent_project_repair", "data_agent_tool_repair"}:
@@ -1682,7 +2521,7 @@ def run_validation(profile: RepairProfile, workspace: Path, candidate_dir: Path,
                 stdout_path=out / f"{name}.stdout",
                 stderr_path=out / f"{name}.stderr",
             )
-            results.append({"name": name, "file": rel, "exit_code": proc.returncode})
+            results.append(gate_result(profile, name, file=rel, exit_code=proc.returncode, gate_layer="validation", gate_type="syntax"))
             if proc.returncode != 0:
                 return False, results
 
@@ -1697,7 +2536,7 @@ def run_validation(profile: RepairProfile, workspace: Path, candidate_dir: Path,
             stdout_path=out / f"{name}.stdout",
             stderr_path=out / f"{name}.stderr",
         )
-        results.append({"name": name, "exit_code": proc.returncode})
+        results.append(gate_result(profile, name, exit_code=proc.returncode, gate_layer="validation", gate_type="syntax"))
         if proc.returncode != 0:
             return False, results
     for module in profile.import_modules:
@@ -1709,15 +2548,21 @@ def run_validation(profile: RepairProfile, workspace: Path, candidate_dir: Path,
             stdout_path=out / f"{name}.stdout",
             stderr_path=out / f"{name}.stderr",
         )
-        results.append({"name": name, "exit_code": proc.returncode})
+        results.append(gate_result(profile, name, exit_code=proc.returncode, gate_layer="validation", gate_type="module_import"))
         if proc.returncode != 0:
             return False, results
+    cpc_smoke = run_cpc_definition_parser_real_sql_smoke(profile, workspace, candidate_dir)
+    if cpc_smoke is not None:
+        results.append(cpc_smoke)
+        if should_block_validation(cpc_smoke):
+            return False, results
+
     if profile.name == "data_agent_prompt_repair":
-        results.append({"name": "static_prompt_repair_checks", "exit_code": 0})
+        results.append(gate_result(profile, "static_prompt_repair_checks", exit_code=0))
     if profile.name == "data_agent_project_repair":
-        results.append({"name": "static_project_repair_checks", "exit_code": 0})
+        results.append(gate_result(profile, "static_project_repair_checks", exit_code=0))
     if profile.name == "data_agent_tool_repair":
-        results.append({"name": "static_data_agent_tool_repair_checks", "exit_code": 0})
+        results.append(gate_result(profile, "static_data_agent_tool_repair_checks", exit_code=0))
     return True, results
 
 
@@ -1733,6 +2578,8 @@ def run_launcher(args: argparse.Namespace) -> int:
     candidate_id = args.candidate_id or os.environ.get("META_LOOP_CANDIDATE_ID") or f"{profile.name}_{utc_slug()}"
     candidate_dir = Path(args.candidate_dir or os.environ.get("META_LOOP_CANDIDATE_DIR") or ROOT / "candidates/dab" / candidate_id)
     candidate_dir.mkdir(parents=True, exist_ok=True)
+    gate_protocol = profile_gate_protocol(profile)
+    write_json(candidate_dir / "gate_protocol.json", gate_protocol)
 
     repair_seed = Path(args.repair_seed or os.environ.get("META_LOOP_REPAIR_SEED", "")) if (args.repair_seed or os.environ.get("META_LOOP_REPAIR_SEED")) else None
     repair_seed_override = os.environ.get("META_LOOP_REPAIR_SEED_OVERRIDE") == "1"
@@ -1766,6 +2613,8 @@ def run_launcher(args: argparse.Namespace) -> int:
                 "status": spec_status,
                 "reason": spec_reason,
                 "repair_profile": profile.name,
+                "profile_gate_version": gate_protocol["profile_gate_version"],
+                "gate_protocol": gate_protocol,
                 "workspace": str(workspace),
             },
         )
@@ -1774,13 +2623,13 @@ def run_launcher(args: argparse.Namespace) -> int:
     assert spec is not None
     apply_ok, apply_reason = apply_spec(spec, workspace, candidate_dir)
     if not apply_ok:
-        write_manifest(candidate_dir, {"candidate_id": candidate_id, "status": "patch_apply_failed", "reason": apply_reason, "repair_profile": profile.name, "workspace": str(workspace)})
+        write_manifest(candidate_dir, {"candidate_id": candidate_id, "status": "patch_apply_failed", "reason": apply_reason, "repair_profile": profile.name, "profile_gate_version": gate_protocol["profile_gate_version"], "gate_protocol": gate_protocol, "workspace": str(workspace)})
         return 71
 
     diff_info = diff_artifacts(workspace, candidate_dir)
     gate_ok, gate_status, gate_reason = post_apply_gate(profile, workspace, candidate_dir, diff_info)
     if not gate_ok:
-        write_manifest(candidate_dir, {"candidate_id": candidate_id, "status": gate_status, "reason": gate_reason, "repair_profile": profile.name, "workspace": str(workspace), **diff_info})
+        write_manifest(candidate_dir, {"candidate_id": candidate_id, "status": gate_status, "reason": gate_reason, "repair_profile": profile.name, "profile_gate_version": gate_protocol["profile_gate_version"], "gate_protocol": gate_protocol, "workspace": str(workspace), **diff_info})
         return 72
 
     validation_ok, validation_results = run_validation(profile, workspace, candidate_dir, repair_seed=repair_seed)
@@ -1791,6 +2640,8 @@ def run_launcher(args: argparse.Namespace) -> int:
             "candidate_id": candidate_id,
             "status": final_status,
             "repair_profile": profile.name,
+            "profile_gate_version": gate_protocol["profile_gate_version"],
+            "gate_protocol": gate_protocol,
             "workspace": str(workspace),
             "project_changed_files": [path for path in diff_info["changed_files"] if is_allowed_file(path, profile)],
             "total_changed_lines": diff_info["total_changed_lines"],
