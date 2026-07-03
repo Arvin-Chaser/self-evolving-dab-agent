@@ -1659,9 +1659,13 @@ def validate_spec(spec: dict[str, Any] | None, profile: RepairProfile, candidate
     for idx, edit in enumerate(edits):
         if not isinstance(edit, dict):
             return False, "protocol_failed_invalid_patch_spec", f"edit {idx} must be object"
-        for key in ("file", "operation", "anchor", "intended_change", "rationale"):
+        for key in ("file", "operation", "anchor", "intended_change"):
             if key not in edit or not isinstance(edit[key], str):
                 return False, "protocol_failed_invalid_patch_spec", f"edit {idx} missing string {key}"
+        if "rationale" not in edit:
+            edit["rationale"] = ""
+        elif not isinstance(edit["rationale"], str):
+            return False, "protocol_failed_invalid_patch_spec", f"edit {idx} rationale must be string when present"
         if not is_allowed_file(edit["file"], profile):
             return False, "protocol_failed_invalid_patch_spec", f"edit {idx} file not allowed: {edit['file']}"
         if edit["file"] not in targets:
