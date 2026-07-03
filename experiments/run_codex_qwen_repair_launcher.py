@@ -1314,7 +1314,7 @@ Otherwise output this schema:
       "caller_context": "where the local project will call this behavior, e.g. generated_solve.py via prompt glue",
       "callee": "module.function or prompt/API surface being introduced or changed",
       "expected_call_pattern": "the exact or representative local call pattern the patch expects",
-      "argument_contract": "runtime argument names and types/shapes the callee must accept, based on local evidence",
+      "argument_contract": "string or object describing runtime argument names and types/shapes the callee must accept, based on local evidence",
       "compatibility_behavior": "how the patch handles those actual local inputs without crashing or becoming a no-op",
       "target_files": ["files whose code/prompt must satisfy this local interface contract"],
       "validation_hint": "focused validation that exercises the local call pattern and argument types, not only an idealized unit call"
@@ -1709,13 +1709,23 @@ def validate_spec(spec: dict[str, Any] | None, profile: RepairProfile, candidate
                 "caller_context",
                 "callee",
                 "expected_call_pattern",
-                "argument_contract",
                 "compatibility_behavior",
                 "validation_hint",
             ):
                 value = contract.get(key)
                 if not isinstance(value, str) or not value.strip():
                     return False, "protocol_failed_invalid_patch_spec", f"local_interface_contracts[{idx}] missing non-empty {key}"
+            argument_contract = contract.get("argument_contract")
+            if isinstance(argument_contract, str):
+                argument_contract_ok = bool(argument_contract.strip())
+            elif isinstance(argument_contract, dict):
+                argument_contract_ok = bool(argument_contract)
+            elif isinstance(argument_contract, list):
+                argument_contract_ok = bool(argument_contract)
+            else:
+                argument_contract_ok = False
+            if not argument_contract_ok:
+                return False, "protocol_failed_invalid_patch_spec", f"local_interface_contracts[{idx}] missing non-empty argument_contract"
             files = contract.get("target_files") or contract.get("files") or []
             if isinstance(files, str):
                 files = [files]
