@@ -84,7 +84,7 @@ cleanup() {
 trap cleanup EXIT
 
 for _ in $(seq 1 80); do
-  if grep -q '"status": "listening"' "$PROXY_LOG"; then
+  if [[ -f "$PROXY_LOG" ]] && grep -q '"status": "listening"' "$PROXY_LOG"; then
     break
   fi
   if ! kill -0 "$PROXY_PID" >/dev/null 2>&1; then
@@ -95,7 +95,7 @@ for _ in $(seq 1 80); do
   sleep 0.25
 done
 
-if ! grep -q '"status": "listening"' "$PROXY_LOG"; then
+if [[ ! -f "$PROXY_LOG" ]] || ! grep -q '"status": "listening"' "$PROXY_LOG"; then
   echo "proxy did not become ready; see $PROXY_LOG" >&2
   write_manifest "proxy_start_timeout" 2
   exit 2
@@ -127,6 +127,17 @@ elif [[ -n "${CODEX_QWEN_PROXY_EXEC_CMD:-}" ]]; then
   COMMAND=(${CODEX_QWEN_PROXY_EXEC_CMD})
 else
   COMMAND=("$ROOT/experiments/run_codex_qwen_repair_launcher.sh")
+fi
+
+# In direct_qwen mode the child process uses llm_client/OpenAI Chat
+# Completions. Route only the child process to this already-started local
+# proxy. The proxy process itself has already captured the real upstream
+# DashScope key before these exports, so the local token does not replace the
+# upstream API key.
+if [[ "${META_AGENT_PATCH_SPEC_BACKEND:-}" == "direct_qwen" ]]; then
+  export META_AGENT_BASE_URL="http://$HOST:$PORT/v1"
+  export META_AGENT_API_KEY="$TOKEN"
+  export META_AGENT_MODEL="$MODEL"
 fi
 
 set +e

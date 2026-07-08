@@ -247,11 +247,32 @@ class QwenChatClient:
         if chat_tools:
             payload["tools"] = chat_tools
 
-        response = self.client.post(self.url, json=payload)
-        if response.status_code >= 400 and any(message.get("role") == "tool" for message in state.messages):
-            response = self.client.post(self.url, json=legacy_payload(payload, state.calls))
-        response.raise_for_status()
-        return response.json()
+        retries = max(1, int(os.getenv("CODEX_QWEN_UPSTREAM_RETRIES", "3")))
+        last_exc: BaseException | None = None
+        for attempt in range(1, retries + 1):
+            try:
+                response = self.client.post(self.url, json=payload)
+                if response.status_code >= 400 and any(message.get("role") == "tool" for message in state.messages):
+                    response = self.client.post(self.url, json=legacy_payload(payload, state.calls))
+                response.raise_for_status()
+                return response.json()
+            except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.RemoteProtocolError) as exc:
+                last_exc = exc
+            except httpx.HTTPStatusError as exc:
+                last_exc = exc
+                status = exc.response.status_code if exc.response is not None else 0
+                if status < 500:
+                    raise
+            if attempt < retries:
+                delay = min(8.0, 0.75 * attempt)
+                sys.stderr.write(
+                    f"[codex-qwen-proxy] upstream retry {attempt}/{retries} after "
+                    f"{type(last_exc).__name__}: {last_exc}\n"
+                )
+                sys.stderr.flush()
+                time.sleep(delay)
+        assert last_exc is not None
+        raise last_exc
 
 
 def qwen_message(payload: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -387,8 +408,8 @@ def in_progress_response(response: dict[str, Any]) -> dict[str, Any]:
     return value
 
 
-def sse_events(response: dict[str, Any]) -> list[dict[str, Any]]:
-    sequence = 0
+def sse_events(response: dict[str, Any], *, start_sequence: int = 0, include_initial: bool = True) -> list[dict[str, Any]]:
+    sequence = start_sequence
     events: list[dict[str, Any]] = []
 
     def add(event_type: str, **values: Any) -> None:
@@ -397,8 +418,9 @@ def sse_events(response: dict[str, Any]) -> list[dict[str, Any]]:
         sequence += 1
 
     progress = in_progress_response(response)
-    add("response.created", response=progress)
-    add("response.in_progress", response=progress)
+    if include_initial:
+        add("response.created", response=progress)
+        add("response.in_progress", response=progress)
     for output_index, item in enumerate(response["output"]):
         add("response.output_item.added", output_index=output_index, item=item)
         if item["type"] == "function_call":
@@ -427,13 +449,21 @@ def sse_events(response: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 @dataclass
+class PreparedResponse:
+    request: dict[str, Any]
+    state: ConversationState
+    chat_tools: list[dict[str, Any]]
+    response_id: str
+
+
+@dataclass
 class ProxyApplication:
     qwen: QwenChatClient
     store: ConversationStore
     default_model: str
     local_token: str
 
-    def create_response(self, request: dict[str, Any]) -> dict[str, Any]:
+    def prepare_response(self, request: dict[str, Any]) -> PreparedResponse:
         previous_response_id = request.get("previous_response_id")
         state = self.store.get(str(previous_response_id)) if previous_response_id else None
         if state is None:
@@ -447,15 +477,67 @@ class ProxyApplication:
             chat_tools, _ = responses_tools_to_chat(state.response_tools)
 
         append_responses_input(state, request.get("input"))
-        model = str(request.get("model") or self.default_model)
-        qwen_payload = self.qwen.complete(model, state, chat_tools)
+        return PreparedResponse(request=request, state=state, chat_tools=chat_tools, response_id=new_id("resp"))
+
+    def progress_response(self, prepared: PreparedResponse) -> dict[str, Any]:
+        return response_object(prepared.request, prepared.response_id, [], {})
+
+    def complete_prepared_response(self, prepared: PreparedResponse) -> dict[str, Any]:
+        model = str(prepared.request.get("model") or self.default_model)
+        qwen_payload = self.qwen.complete(model, prepared.state, prepared.chat_tools)
         message, usage = qwen_message(qwen_payload)
-        assistant, outputs, new_calls = assistant_message_and_outputs(message, state.tool_kinds)
-        state.messages.append(assistant)
-        state.calls.update(new_calls)
-        response_id = new_id("resp")
-        self.store.put(response_id, state)
-        return response_object(request, response_id, outputs, usage)
+        assistant, outputs, new_calls = assistant_message_and_outputs(message, prepared.state.tool_kinds)
+        prepared.state.messages.append(assistant)
+        prepared.state.calls.update(new_calls)
+        self.store.put(prepared.response_id, prepared.state)
+        return response_object(prepared.request, prepared.response_id, outputs, usage)
+
+    def failed_response(self, prepared: PreparedResponse, exc: BaseException) -> dict[str, Any]:
+        response = response_object(prepared.request, prepared.response_id, [], {})
+        response["status"] = "failed"
+        response["error"] = {"type": type(exc).__name__, "message": str(exc)}
+        return response
+
+    def create_response(self, request: dict[str, Any]) -> dict[str, Any]:
+        return self.complete_prepared_response(self.prepare_response(request))
+
+    def create_chat_completion(self, request: dict[str, Any]) -> dict[str, Any]:
+        """Forward an OpenAI-compatible chat completion request to Qwen.
+
+        This non-streaming endpoint is intentionally simple. It lets local
+        structured patch-spec generation use llm_client/OpenAI directly against
+        the local proxy, avoiding Codex CLI Responses streaming when no tool
+        continuation is needed.
+        """
+
+        messages = request.get("messages") or []
+        if not isinstance(messages, list):
+            raise ValueError("chat/completions request.messages must be a list")
+        normalized_messages: list[dict[str, Any]] = []
+        for item in messages:
+            if not isinstance(item, dict):
+                continue
+            role = normalized_role(item.get("role"))
+            content = item.get("content")
+            if isinstance(content, list):
+                content = text_content(content)
+            elif content is None:
+                content = ""
+            normalized: dict[str, Any] = {"role": role, "content": str(content)}
+            if item.get("name"):
+                normalized["name"] = str(item.get("name"))
+            if item.get("tool_calls"):
+                normalized["tool_calls"] = item.get("tool_calls")
+            if item.get("tool_call_id"):
+                normalized["tool_call_id"] = item.get("tool_call_id")
+            normalized_messages.append(normalized)
+
+        tools = request.get("tools") or []
+        if not isinstance(tools, list):
+            tools = []
+        state = ConversationState(messages=normalized_messages, response_tools=tools, tool_kinds={})
+        model = str(request.get("model") or self.default_model)
+        return self.qwen.complete(model, state, tools)
 
 
 class ProxyHandler(BaseHTTPRequestHandler):
@@ -476,6 +558,24 @@ class ProxyHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def send_sse_headers(self) -> None:
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache, no-transform")
+        self.send_header("Connection", "keep-alive")
+        self.send_header("X-Accel-Buffering", "no")
+        self.end_headers()
+
+    def write_sse_event(self, event: dict[str, Any]) -> None:
+        event_type = event["type"]
+        data = json.dumps(event, ensure_ascii=False)
+        self.wfile.write(f"event: {event_type}\ndata: {data}\n\n".encode("utf-8"))
+        self.wfile.flush()
+
+    def write_sse_comment(self, comment: str = "keep-alive") -> None:
+        self.wfile.write(f": {comment}\n\n".encode("utf-8"))
+        self.wfile.flush()
+
     def authorized(self) -> bool:
         if not self.app.local_token:
             return True
@@ -488,7 +588,8 @@ class ProxyHandler(BaseHTTPRequestHandler):
             self.send_json(HTTPStatus.NOT_FOUND, {"error": {"message": "Not found."}})
 
     def do_POST(self) -> None:  # noqa: N802
-        if self.path.rstrip("/") not in {"/responses", "/v1/responses"}:
+        path = self.path.rstrip("/")
+        if path not in {"/responses", "/v1/responses", "/chat/completions", "/v1/chat/completions"}:
             self.send_json(HTTPStatus.NOT_FOUND, {"error": {"message": "Not found."}})
             return
         if not self.authorized():
@@ -498,20 +599,44 @@ class ProxyHandler(BaseHTTPRequestHandler):
         try:
             content_length = int(self.headers.get("Content-Length") or "0")
             request = json.loads(self.rfile.read(content_length))
-            response = self.app.create_response(request)
+            if path in {"/chat/completions", "/v1/chat/completions"}:
+                if request.get("stream"):
+                    self.send_json(HTTPStatus.BAD_REQUEST, {"error": {"message": "chat/completions streaming is not implemented by this local proxy."}})
+                    return
+                response = self.app.create_chat_completion(request)
+                self.send_json(HTTPStatus.OK, response)
+                return
             if request.get("stream"):
-                self.send_response(HTTPStatus.OK)
-                self.send_header("Content-Type", "text/event-stream")
-                self.send_header("Cache-Control", "no-cache")
-                self.send_header("Connection", "close")
-                self.end_headers()
-                for event in sse_events(response):
-                    event_type = event["type"]
-                    data = json.dumps(event, ensure_ascii=False)
-                    self.wfile.write(f"event: {event_type}\ndata: {data}\n\n".encode("utf-8"))
-                    self.wfile.flush()
+                prepared = self.app.prepare_response(request)
+                self.send_sse_headers()
+                progress_response = self.app.progress_response(prepared)
+                for event in sse_events(progress_response, include_initial=True):
+                    if event["type"] in {"response.created", "response.in_progress"}:
+                        self.write_sse_event(event)
+                result: dict[str, Any] = {}
+
+                def run_upstream() -> None:
+                    try:
+                        result["response"] = self.app.complete_prepared_response(prepared)
+                    except BaseException as exc:  # noqa: BLE001 - returned as SSE failure event
+                        result["error"] = exc
+
+                worker = threading.Thread(target=run_upstream, daemon=True)
+                worker.start()
+                heartbeat_interval = float(os.getenv("CODEX_QWEN_PROXY_HEARTBEAT_SEC", "5"))
+                while worker.is_alive():
+                    worker.join(heartbeat_interval)
+                    if worker.is_alive():
+                        self.write_sse_comment("qwen-proxy upstream pending")
+                if "error" in result:
+                    failed = self.app.failed_response(prepared, result["error"])
+                    self.write_sse_event({"type": "response.failed", "sequence_number": 2, "response": failed})
+                else:
+                    for event in sse_events(result["response"], start_sequence=2, include_initial=False):
+                        self.write_sse_event(event)
                 self.close_connection = True
             else:
+                response = self.app.create_response(request)
                 self.send_json(HTTPStatus.OK, response)
         except Exception as exc:
             self.log_message("request failed: %s: %s", type(exc).__name__, exc)
