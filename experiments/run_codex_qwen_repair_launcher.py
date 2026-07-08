@@ -388,6 +388,11 @@ def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def load_json(path: Path) -> dict[str, Any]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    return value if isinstance(value, dict) else {}
+
+
 def read_text(path: Path, max_chars: int | None = None) -> str:
     text = path.read_text(encoding="utf-8", errors="replace")
     if max_chars is not None and len(text) > max_chars:
@@ -2812,7 +2817,115 @@ def run_validation(profile: RepairProfile, workspace: Path, candidate_dir: Path,
             )
         )
         if proc.returncode != 0:
-            return False, results
+            mediation_enabled = os.environ.get("META_AGENT_INTERFACE_MEDIATION", "0").lower() in {"1", "true", "yes", "on"}
+            if not mediation_enabled:
+                return False, results
+            mediator = workspace / "experiments/mediate_candidate_runtime_interface.py"
+            if not mediator.exists():
+                mediator = ROOT / "experiments/mediate_candidate_runtime_interface.py"
+            mediation_report = out / "interface_mediation_report.json"
+            mediation_cmd = [
+                str(ROOT / ".venv/bin/python"),
+                str(mediator),
+                "--workspace",
+                str(workspace),
+                "--candidate-dir",
+                str(candidate_dir),
+                "--contract-report",
+                str(local_contract_output),
+                "--changed-files-json",
+                json.dumps(changed_files),
+                "--output",
+                str(mediation_report),
+            ]
+            mediation_spec_file = os.environ.get("META_AGENT_INTERFACE_MEDIATION_SPEC_FILE")
+            if mediation_spec_file:
+                mediation_cmd.extend(["--spec-file", mediation_spec_file])
+            else:
+                mediation_cmd.append("--call-llm")
+            mediation_proc = run_cmd(
+                mediation_cmd,
+                cwd=workspace,
+                env={**os.environ, "PYTHONPATH": str(workspace)},
+                stdout_path=out / "interface_mediation.stdout",
+                stderr_path=out / "interface_mediation.stderr",
+            )
+            mediation_payload = load_json(mediation_report) if mediation_report.exists() else {}
+            results.append(
+                gate_result(
+                    profile,
+                    "interface_mediation",
+                    exit_code=mediation_proc.returncode,
+                    reason=str(mediation_payload.get("apply_reason") or mediation_payload.get("recoverability_reason") or "interface mediation failed"),
+                    gate_layer="validation",
+                    gate_type="interface_mediation",
+                    hard_fail=True,
+                    report=str(mediation_report),
+                    mediation_status=mediation_payload.get("status"),
+                    semantic_patch_changed=mediation_payload.get("semantic_patch_changed"),
+                )
+            )
+            if mediation_proc.returncode != 0:
+                return False, results
+
+            refreshed_info = diff_artifacts(workspace, candidate_dir)
+            post_ok, post_status, post_reason = post_apply_gate(profile, workspace, candidate_dir, refreshed_info)
+            results.append(
+                gate_result(
+                    profile,
+                    "interface_mediation_post_apply_gate",
+                    exit_code=0 if post_ok else 1,
+                    reason=post_reason,
+                    gate_layer="validation",
+                    gate_type="post_mediation_patch_scope",
+                    status=post_status,
+                    changed_files=refreshed_info.get("changed_files"),
+                    total_changed_lines=refreshed_info.get("total_changed_lines"),
+                )
+            )
+            if not post_ok:
+                return False, results
+
+            after_output = out / "patch_local_contract_checks_after_mediation.json"
+            after_proc = run_cmd(
+                [
+                    str(ROOT / ".venv/bin/python"),
+                    str(checker),
+                    "--workspace",
+                    str(workspace),
+                    "--changed-files-json",
+                    json.dumps(changed_project_files_from_numstat(candidate_dir)),
+                    "--output",
+                    str(after_output),
+                ],
+                cwd=workspace,
+                env={**os.environ, "PYTHONPATH": str(workspace)},
+                stdout_path=out / "patch_local_contract_checks_after_mediation.stdout",
+                stderr_path=out / "patch_local_contract_checks_after_mediation.stderr",
+            )
+            after_reason = "ok"
+            after_failed_checks: list[dict[str, Any]] = []
+            if after_output.exists():
+                after_report = load_json(after_output)
+                after_failed_checks = [item for item in after_report.get("checks", []) if isinstance(item, dict) and item.get("status") == "failed"]
+                if after_failed_checks:
+                    after_reason = "; ".join(str(item.get("name")) for item in after_failed_checks[:5])
+            elif after_proc.returncode != 0:
+                after_reason = "post-mediation local contract checker failed without JSON report"
+            results.append(
+                gate_result(
+                    profile,
+                    "patch_local_contract_checks_after_mediation",
+                    exit_code=after_proc.returncode,
+                    reason=after_reason,
+                    gate_layer="validation",
+                    gate_type="local_interface_contract",
+                    failed_checks=after_failed_checks[:8],
+                    report=str(after_output),
+                )
+            )
+            if after_proc.returncode != 0:
+                return False, results
 
     if profile.name == "data_agent_prompt_repair":
         results.append(gate_result(profile, "static_prompt_repair_checks", exit_code=0))
