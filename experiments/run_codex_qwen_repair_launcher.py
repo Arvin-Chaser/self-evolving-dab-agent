@@ -35,6 +35,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 META_AGENT_PROJECT_MEMORY_SKILL = ROOT / "skills/dab-meta-agent-project-memory/SKILL.md"
+DAB_TOOL_AGENT_ZERO_START_MEMORY_SKILL = ROOT / "skills/dab-tool-agent-zero-start-memory/SKILL.md"
+DAB_TOOL_AGENT_ZERO_START_REPAIR_SKILL = ROOT / "skills/dab-tool-agent-zero-start-repair/SKILL.md"
 
 PROFILE_SKILLS = {
     "data_agent_prompt_repair": ROOT / "skills/dab-data-agent-prompt-repair/SKILL.md",
@@ -181,7 +183,7 @@ PROFILES: dict[str, RepairProfile] = {
             ".venv/**",
             ".codex/**",
         ),
-        operations=("replace_text_once", "insert_after_anchor", "insert_before_anchor", "append_text"),
+        operations=("replace_text_once", "insert_after_anchor", "insert_before_anchor", "append_text", "create_file"),
         risk_scope="minimal/local/project_repair",
         required_ack=("no_control_artifact_changes", "no_benchmark_data_changes", "no_hardcoded_answer", "no_broad_refactor"),
         max_changed_lines=180,
@@ -665,6 +667,34 @@ def load_repair_seed_json(repair_seed: Path | None) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+def is_dab_tool_agent_zero_start_seed(seed: dict[str, Any]) -> bool:
+    if not isinstance(seed, dict):
+        return False
+    if seed.get("schema_version") == "dab_tool_agent_meta_agent_seed_v001":
+        return True
+    if seed.get("feedback_type") == "dab_tool_agent_workflow_feedback":
+        return True
+    fine = seed.get("fine_grained_feedback") if isinstance(seed.get("fine_grained_feedback"), dict) else {}
+    if fine.get("feedback_type") == "dab_tool_agent_workflow_feedback":
+        return True
+    paths = fine.get("full_evidence_pack_paths") if isinstance(fine.get("full_evidence_pack_paths"), dict) else {}
+    return any("dab_tool_agent" in str(value) for value in paths.values())
+
+
+def memory_skill_for_seed(repair_seed: Path | None) -> Path:
+    seed = load_repair_seed_json(repair_seed)
+    if is_dab_tool_agent_zero_start_seed(seed) and DAB_TOOL_AGENT_ZERO_START_MEMORY_SKILL.exists():
+        return DAB_TOOL_AGENT_ZERO_START_MEMORY_SKILL
+    return META_AGENT_PROJECT_MEMORY_SKILL
+
+
+def repair_skill_for_seed(profile: RepairProfile, repair_seed: Path | None) -> Path | None:
+    seed = load_repair_seed_json(repair_seed)
+    if is_dab_tool_agent_zero_start_seed(seed) and DAB_TOOL_AGENT_ZERO_START_REPAIR_SKILL.exists():
+        return DAB_TOOL_AGENT_ZERO_START_REPAIR_SKILL
+    return PROFILE_SKILLS.get(profile.name)
+
+
 def load_repair_routing(repair_seed: Path | None) -> dict[str, Any]:
     seed = load_repair_seed_json(repair_seed)
     routing = seed.get("repair_routing")
@@ -830,6 +860,21 @@ def compact_repair_seed_summary(seed: dict[str, Any]) -> dict[str, Any]:
     fine_grained_feedback.  The context pack should expose a compact index and
     artifact paths, not the entire nested seed.
     """
+    if is_dab_tool_agent_zero_start_seed(seed):
+        feedback_summary = seed.get("feedback_summary") if isinstance(seed.get("feedback_summary"), dict) else {}
+        observations = seed.get("top_observations") if isinstance(seed.get("top_observations"), list) else []
+        return {
+            "schema_version": seed.get("schema_version"),
+            "created_at": seed.get("created_at"),
+            "run_dir": seed.get("run_dir"),
+            "zero_start_profile": seed.get("zero_start_profile"),
+            "allowed_initial_tools": seed.get("allowed_initial_tools") or [],
+            "forbidden_initial_domain_helpers": seed.get("forbidden_initial_domain_helpers") or [],
+            "feedback_summary": feedback_summary,
+            "top_observations": observations[:8],
+            "instruction": seed.get("instruction"),
+        }
+
     keys = (
         "seed_id",
         "created_at",
@@ -946,14 +991,26 @@ def recommended_context_source_files(profile: RepairProfile, repair_seed: Path |
             "adapters/patents/patent_query_utils.py",
         ]
     elif profile.name == "data_agent_project_repair":
-        defaults = [
-            "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
-            "experiments/run_dab_agent.py",
-            "adapters/runtime_observer.py",
-            "adapters/patents/cpc_mapping.py",
-            "adapters/patents/ema.py",
-            "adapters/patents/patent_query_utils.py",
-        ]
+        if is_dab_tool_agent_zero_start_seed(seed):
+            defaults = [
+                "prompts/dab/dab_tool_agent_policy_zero_start.txt",
+                "experiments/run_dab_tool_agent.py",
+                "experiments/analyze_dab_tool_agent_trace.py",
+                "experiments/build_dab_tool_agent_evidence_pack.py",
+                "adapters/workflow_observer.py",
+                "adapters/dab_tool_agent_helpers/README.md",
+                "adapters/dab_tool_agent_helpers/registry.py",
+                "meta_agent/zero_start_data_agent_profile.md",
+            ]
+        else:
+            defaults = [
+                "prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt",
+                "experiments/run_dab_agent.py",
+                "adapters/runtime_observer.py",
+                "adapters/patents/cpc_mapping.py",
+                "adapters/patents/ema.py",
+                "adapters/patents/patent_query_utils.py",
+            ]
     elif profile.name == "analyzer_infra_repair":
         defaults = list(profile.allowed_patterns)
     else:
@@ -970,6 +1027,10 @@ def source_excerpt_limit(profile: RepairProfile, rel: str) -> int:
         return 6500
     if rel in {"experiments/run_dab_agent.py", "adapters/runtime_observer.py"}:
         return 4500
+    if rel in {"experiments/run_dab_tool_agent.py", "experiments/analyze_dab_tool_agent_trace.py", "experiments/build_dab_tool_agent_evidence_pack.py", "adapters/workflow_observer.py"}:
+        return 6500
+    if rel in {"meta_agent/zero_start_data_agent_profile.md", "prompts/dab/dab_tool_agent_policy_zero_start.txt", "adapters/dab_tool_agent_helpers/README.md", "adapters/dab_tool_agent_helpers/registry.py"}:
+        return 6000
     return 3000
 
 
@@ -1008,17 +1069,18 @@ def build_context_pack(
             "If no minimal prompt repair can address the override seed, output no_op_failed instead of repairing a different issue.",
             "",
         ]
-    if META_AGENT_PROJECT_MEMORY_SKILL.exists():
+    memory_skill_path = memory_skill_for_seed(repair_seed)
+    if memory_skill_path.exists():
         lines += [
             "## Active project memory skill",
-            f"Path: `{META_AGENT_PROJECT_MEMORY_SKILL.relative_to(ROOT)}`",
+            f"Path: `{memory_skill_path.relative_to(ROOT)}`",
             "This project memory skill has priority over generic repair heuristics when they conflict.",
             "```markdown",
-            read_text(META_AGENT_PROJECT_MEMORY_SKILL, 12000),
+            read_text(memory_skill_path, 12000),
             "```",
             "",
         ]
-    skill_path = PROFILE_SKILLS.get(profile.name)
+    skill_path = repair_skill_for_seed(profile, repair_seed)
     if skill_path and skill_path.exists():
         lines += [
             "## Active repair skill",
@@ -1226,7 +1288,15 @@ Profile-specific hard rules for data_agent_project_repair:
 8. If `repair_routing.prompt_only_policy.status` is `weak_allowed`, a prompt-only patch must explicitly explain why it prevents the concrete traceback/signal; otherwise prefer a project-source guardrail.
 9. Do not hardcode expected CPC answers, exact expected counts, or benchmark ground-truth lists.
 10. If editing Python, preserve public APIs used by existing callers and keep imports coherent.
-11. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
+11. For DAB tool-agent zero-start seeds, remember that zero-start applies to the DataAgent capability state, not to the meta-agent scaffold. You may use the injected skills, archive evidence, and fine-grained workflow observations to choose a stronger repair target.
+12. For DAB tool-agent zero-start seeds, do not default to prompt-only policy edits when the evidence shows repeated SQL/schema/data-processing or local-interface failures. Prefer a reusable project script/tool, tool registration/glue, or evidence/logging improvement when that is the causal layer. If you still choose prompt-only, explicitly justify it with the phrase `prompt-only fallback` and cite why no safe reusable tool/script is appropriate.
+13. For DAB tool-agent zero-start seeds, a useful reusable tool/script patch should include a child-observable integration path: how the DataAgent discovers or calls it, what inputs it accepts, and what next-run evidence should prove it was used.
+14. The default new-tool target is `adapters/dab_tool_agent_helpers/`: create an import-safe helper module and update `adapters/dab_tool_agent_helpers/registry.py`. Registered helpers are exposed to the DataAgent as the `run_evolved_helper` tool by `experiments/run_dab_tool_agent.py`.
+15. If creating a new helper module that is not shown in the source excerpts, use operation `create_file`. Do not use `append_text` for a new helper file; append_text requires the target file to already exist and will fail deterministically.
+16. When updating `adapters/dab_tool_agent_helpers/registry.py` from its empty baseline, prefer `replace_text_once` on the exact anchor `HELPERS: list[dict[str, str]] = []` so the registry has a single authoritative HELPERS assignment.
+17. A helper/tool patch must include a `proposed_contracts` item whose expected_observable_effect mentions `run_evolved_helper` or the registered helper name appearing in child `tool_calls.jsonl`; otherwise choose no_op_failed or prompt-only fallback.
+18. Do not say new domain helpers are forbidden merely because the zero-start DataAgent did not start with them. Forbidden initial helpers are allowed evolution targets when created from current evidence and integrated safely.
+18. Output strict JSON only: no markdown fences, no comments, no raw multiline strings. Use valid JSON escaping for all quote and newline characters inside JSON strings.
 """
     if profile.name == "data_agent_prompt_repair":
         return """
@@ -1637,6 +1707,116 @@ def validate_tool_repair_policy(spec: dict[str, Any], profile: RepairProfile) ->
         return True, "ok"
     return False, "data_agent_tool_repair must include at least one adapters/patents/*.py helper target or explicitly justify a prompt-only fallback"
 
+
+def validate_dab_tool_agent_zero_start_helper_integration(
+    spec: dict[str, Any],
+    *,
+    profile: RepairProfile,
+    repair_seed: Path | None,
+) -> tuple[bool, str]:
+    if profile.name != "data_agent_project_repair":
+        return True, "ok"
+    seed = load_repair_seed_json(repair_seed)
+    if not is_dab_tool_agent_zero_start_seed(seed):
+        return True, "ok"
+    targets = [normalize_rel(str(path)) for path in spec.get("target_files") or []]
+    helper_targets = [
+        path for path in targets
+        if path.startswith("adapters/dab_tool_agent_helpers/") and path.endswith(".py") and not path.endswith("/__init__.py")
+    ]
+    if not helper_targets:
+        return True, "ok"
+    if "adapters/dab_tool_agent_helpers/registry.py" not in targets:
+        return False, "DAB tool-agent helper patches must update adapters/dab_tool_agent_helpers/registry.py so the DataAgent can discover the helper"
+    combined = json.dumps({
+        "open_diagnosis": spec.get("open_diagnosis"),
+        "edits": spec.get("edits"),
+        "proposed_contracts": spec.get("proposed_contracts"),
+        "behavior_change_contract": spec.get("behavior_change_contract"),
+    }, ensure_ascii=False).lower()
+    if "run_evolved_helper" not in combined and "evolved_helper" not in combined:
+        return False, "DAB tool-agent helper patches must include a child-observable contract mentioning run_evolved_helper/tool_calls integration"
+    return True, "ok"
+
+
+def validate_dab_tool_agent_zero_start_prompt_only_policy(
+    spec: dict[str, Any],
+    *,
+    profile: RepairProfile,
+    repair_seed: Path | None,
+    candidate_dir: Path,
+) -> tuple[bool, str]:
+    """Prevent repeated DAB tool-agent workflow failures from being hidden by prompt-only patches.
+
+    The DataAgent is zero-start, but the MetaAgent is not. If fine-grained
+    workflow evidence already shows SQL/schema/data-processing/tool-interface
+    failures, a prompt-only patch is still allowed only when Qwen explicitly
+    justifies it as a fallback instead of a reusable helper/tool/script repair.
+    """
+    if profile.name != "data_agent_project_repair":
+        return True, "ok"
+    seed = load_repair_seed_json(repair_seed)
+    if not is_dab_tool_agent_zero_start_seed(seed):
+        return True, "ok"
+    targets = [normalize_rel(str(path)) for path in spec.get("target_files") or []]
+    prompt_only = bool(targets) and all(is_prompt_path(path) for path in targets)
+    if not prompt_only:
+        return True, "ok"
+
+    feedback = seed.get("feedback_summary") if isinstance(seed.get("feedback_summary"), dict) else {}
+    problem_types = feedback.get("problem_types") if isinstance(feedback.get("problem_types"), dict) else {}
+    tool_counts = feedback.get("tool_counts") if isinstance(feedback.get("tool_counts"), dict) else {}
+    observations = seed.get("top_observations") if isinstance(seed.get("top_observations"), list) else []
+    observation_text = json.dumps(observations[:8], ensure_ascii=False).lower()
+    has_tool_or_data_failure = (
+        int(problem_types.get("tool_failure") or 0) > 0
+        or int(problem_types.get("empty_result") or 0) > 0
+        or "keyerror" in observation_text
+        or "nameerror" in observation_text
+        or "undefinedcolumn" in observation_text
+        or "column" in observation_text and "does not exist" in observation_text
+    )
+    repeated_processing_context = (
+        int(tool_counts.get("query_db") or 0) >= 2
+        or int(tool_counts.get("execute_python") or 0) >= 2
+        or int(feedback.get("tool_call_count") or 0) >= 4
+    )
+    if not (has_tool_or_data_failure and repeated_processing_context):
+        return True, "ok"
+
+    combined = "\n".join(
+        "\n".join(str(edit.get(key, "")) for key in ("intended_change", "rationale"))
+        for edit in spec.get("edits") or []
+        if isinstance(edit, dict)
+    ).lower()
+    open_diag = spec.get("open_diagnosis") if isinstance(spec.get("open_diagnosis"), dict) else {}
+    combined += "\n" + json.dumps(open_diag, ensure_ascii=False).lower()
+    fallback_markers = (
+        "prompt-only fallback",
+        "no safe reusable helper",
+        "no safe reusable tool",
+        "no safe reusable script",
+        "helper/tool is not appropriate",
+        "script/tool is not appropriate",
+    )
+    if any(marker in combined for marker in fallback_markers):
+        return True, "ok"
+
+    out = candidate_dir / "validation" / "dab_tool_agent_prompt_only_fallback_gate.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    write_json(out, {
+        "status": "failed",
+        "reason": "prompt_only_without_fallback_justification",
+        "target_files": targets,
+        "problem_types": problem_types,
+        "tool_counts": tool_counts,
+        "required_phrase": "prompt-only fallback",
+    })
+    return False, (
+        "DAB tool-agent zero-start seed shows repeated SQL/schema/data-processing/tool failures; "
+        "prompt-only patches must explicitly justify `prompt-only fallback` or target reusable script/tool/glue"
+    )
+
 def validate_spec(spec: dict[str, Any] | None, profile: RepairProfile, candidate_dir: Path, repair_seed: Path | None = None, repair_seed_override: bool = False) -> tuple[bool, str, str]:
     if spec is None:
         return False, "protocol_failed_invalid_patch_spec", "patch_spec JSON could not be parsed"
@@ -1767,6 +1947,21 @@ def validate_spec(spec: dict[str, Any] | None, profile: RepairProfile, candidate
     tool_ok, tool_reason = validate_tool_repair_policy(spec, profile)
     if not tool_ok:
         return False, "protocol_failed_seed_mismatch", tool_reason
+    zero_start_helper_ok, zero_start_helper_reason = validate_dab_tool_agent_zero_start_helper_integration(
+        spec,
+        profile=profile,
+        repair_seed=repair_seed,
+    )
+    if not zero_start_helper_ok:
+        return False, "protocol_failed_seed_mismatch", zero_start_helper_reason
+    zero_start_prompt_ok, zero_start_prompt_reason = validate_dab_tool_agent_zero_start_prompt_only_policy(
+        spec,
+        profile=profile,
+        repair_seed=repair_seed,
+        candidate_dir=candidate_dir,
+    )
+    if not zero_start_prompt_ok:
+        return False, "protocol_failed_seed_mismatch", zero_start_prompt_reason
     write_json(candidate_dir / "validated_patch_spec.json", spec)
     return True, "patch_spec_valid", "ok"
 
@@ -2569,6 +2764,54 @@ def run_validation(profile: RepairProfile, workspace: Path, candidate_dir: Path,
     if cpc_smoke is not None:
         results.append(cpc_smoke)
         if should_block_validation(cpc_smoke):
+            return False, results
+
+    if profile.name in {"data_agent_project_repair", "data_agent_tool_repair"}:
+        changed_files = changed_project_files_from_numstat(candidate_dir)
+        local_contract_output = out / "patch_local_contract_checks.json"
+        local_contract_stdout = out / "patch_local_contract_checks.stdout"
+        local_contract_stderr = out / "patch_local_contract_checks.stderr"
+        checker = workspace / "experiments/check_patch_local_contracts.py"
+        if not checker.exists():
+            checker = ROOT / "experiments/check_patch_local_contracts.py"
+        proc = run_cmd(
+            [
+                str(ROOT / ".venv/bin/python"),
+                str(checker),
+                "--workspace",
+                str(workspace),
+                "--changed-files-json",
+                json.dumps(changed_files),
+                "--output",
+                str(local_contract_output),
+            ],
+            cwd=workspace,
+            env={**os.environ, "PYTHONPATH": str(workspace)},
+            stdout_path=local_contract_stdout,
+            stderr_path=local_contract_stderr,
+        )
+        reason = "ok"
+        failed_checks: list[dict[str, Any]] = []
+        if local_contract_output.exists():
+            report = load_json(local_contract_output)
+            failed_checks = [item for item in report.get("checks", []) if isinstance(item, dict) and item.get("status") == "failed"]
+            if failed_checks:
+                reason = "; ".join(str(item.get("name")) for item in failed_checks[:5])
+        elif proc.returncode != 0:
+            reason = "patch local contract checker failed without JSON report"
+        results.append(
+            gate_result(
+                profile,
+                "patch_local_contract_checks",
+                exit_code=proc.returncode,
+                reason=reason,
+                gate_layer="validation",
+                gate_type="local_interface_contract",
+                failed_checks=failed_checks[:8],
+                report=str(local_contract_output),
+            )
+        )
+        if proc.returncode != 0:
             return False, results
 
     if profile.name == "data_agent_prompt_repair":
