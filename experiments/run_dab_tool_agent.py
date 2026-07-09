@@ -10,6 +10,7 @@ our later analyzers/archive code can consume.
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import logging
 import os
@@ -23,9 +24,12 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 DEFAULT_DAB_DATA_ROOT = Path("/home/m0st1ma/research/DataAgentBench")
 DEFAULT_DAB_UPSTREAM_ROOT = Path("/home/m0st1ma/research/DataAgentBench_upstream")
 DEFAULT_OUTPUT_ROOT = ROOT / "logs" / "dab_tool_agent"
+DEFAULT_TOOL_AGENT_POLICY = ROOT / "prompts" / "dab" / "dab_tool_agent_policy_zero_start.txt"
 DEFAULT_BAILIAN_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 QWEN_MODEL_MARKERS = ("qwen", "qwq", "qvq")
 
@@ -75,6 +79,7 @@ def resolve_defaults(args: argparse.Namespace) -> argparse.Namespace:
     args.db_config = db_config
     args.dab_upstream_root = Path(args.dab_upstream_root).resolve()
     args.output_root = Path(args.output_root).resolve()
+    args.tool_agent_policy = Path(args.tool_agent_policy).resolve() if args.tool_agent_policy else None
     if not args.run_id:
         args.run_id = f"dab_tool_agent_{utc_slug()}"
     return args
@@ -144,11 +149,284 @@ def qwen_bailian_config(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def load_evolved_helper_specs() -> list[dict[str, str]]:
+    """Load meta-agent-created DAB tool-agent helper registry entries.
+
+    An empty registry is the zero-start baseline. Non-empty entries are exposed
+    as choices under the generic run_evolved_helper tool.
+    """
+    registry_path = ROOT / "adapters" / "dab_tool_agent_helpers" / "registry.py"
+    if not registry_path.exists():
+        return []
+    module_name = "adapters.dab_tool_agent_helpers.registry"
+    importlib.invalidate_caches()
+    try:
+        module = importlib.import_module(module_name)
+    except Exception as exc:
+        raise RuntimeError(f"Failed to import evolved helper registry {module_name}: {type(exc).__name__}: {exc}") from exc
+    helpers = getattr(module, "HELPERS", [])
+    if not isinstance(helpers, list):
+        raise RuntimeError("adapters.dab_tool_agent_helpers.registry.HELPERS must be a list")
+    normalized: list[dict[str, str]] = []
+    for idx, item in enumerate(helpers):
+        if not isinstance(item, dict):
+            raise RuntimeError(f"HELPERS[{idx}] must be a dict")
+        name = str(item.get("name") or "").strip()
+        function = str(item.get("function") or "").strip()
+        description = str(item.get("description") or "").strip()
+        input_contract = str(item.get("input_contract") or "").strip()
+        if not name or not function or ":" not in function:
+            raise RuntimeError(f"HELPERS[{idx}] must define non-empty name and module:function")
+        normalized.append({
+            "name": name,
+            "function": function,
+            "description": description or name,
+            "input_contract": input_contract or "payload dict plus selected prior tool outputs",
+        })
+    return normalized
+
+
+def install_evolved_helper_tool(data_agent_module: Any, args: argparse.Namespace) -> list[dict[str, str]]:
+    """Patch upstream DataAgent to expose registered local helpers as a real tool."""
+    if getattr(args, "disable_evolved_helper_tools", False):
+        return []
+    helper_specs = load_evolved_helper_specs()
+    if not helper_specs:
+        return []
+
+    BaseTool = data_agent_module.BaseTool
+    original_data_agent = data_agent_module.DataAgent
+    tool_name = getattr(args, "evolved_helper_tool_name", "run_evolved_helper")
+
+    class EvolvedHelperTool(BaseTool):
+        def __init__(self, log_path, name: str, helpers: list[dict[str, str]]):
+            super().__init__(log_path, name)
+            self.helpers = {item["name"]: item for item in helpers}
+            self.result_storage_ref: dict[str, Any] = {}
+
+        def to_dict(self):
+            return {
+                "name": self.name,
+                "log_path": str(self.log_path),
+                "helpers": list(self.helpers.values()),
+            }
+
+        def get_spec(self):
+            helper_descriptions = "\n".join(
+                f"- {name}: {item.get('description')} Input: {item.get('input_contract')}"
+                for name, item in sorted(self.helpers.items())
+            )
+            return {
+                "type": "function",
+                "function": {
+                    "name": self.name,
+                    "description": (
+                        "Run a registered local helper created by the meta-agent. "
+                        "Use this when repeated SQL/schema/date/CPC/data-processing failures require reusable local logic. "
+                        "Available helpers:\n" + helper_descriptions
+                    ),
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "helper_name": {
+                                "type": "string",
+                                "description": "Name of the registered helper to run."
+                            },
+                            "payload_json": {
+                                "type": "string",
+                                "description": "JSON object string with helper-specific options or small inline inputs."
+                            },
+                            "input_keys": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Optional result-storage keys from prior tool calls, e.g. var_call_..., to pass into the helper."
+                            },
+                        },
+                        "required": ["helper_name", "payload_json"],
+                    },
+                },
+            }
+
+        def _check_args(self, args: dict):
+            args = super()._check_args(args)
+            helper_name = args.get("helper_name")
+            if not isinstance(helper_name, str) or helper_name not in self.helpers:
+                raise ValueError(f"Unknown helper_name: {helper_name!r}. Available: {sorted(self.helpers)}")
+            payload_json = args.get("payload_json", "{}")
+            if not isinstance(payload_json, str):
+                raise ValueError("payload_json must be a JSON object string")
+            try:
+                payload = json.loads(payload_json or "{}")
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"payload_json is not valid JSON: {exc}") from exc
+            if not isinstance(payload, dict):
+                raise ValueError("payload_json must decode to a JSON object")
+            input_keys = args.get("input_keys", [])
+            if input_keys is None:
+                input_keys = []
+            if not isinstance(input_keys, list) or not all(isinstance(item, str) for item in input_keys):
+                raise ValueError("input_keys must be a list of strings")
+            return {"helper_name": helper_name, "payload": payload, "input_keys": input_keys}
+
+        def _exec(self, args: dict):
+            super()._exec(args)
+            spec = self.helpers[args["helper_name"]]
+            module_name, function_name = spec["function"].split(":", 1)
+            module = importlib.import_module(module_name)
+            func = getattr(module, function_name)
+            inputs = {key: self.result_storage_ref.get(key) for key in args["input_keys"]}
+            missing = [key for key, value in inputs.items() if value is None]
+            if missing:
+                raise ValueError(f"input_keys not found in result storage: {missing}")
+            result = func(payload=args["payload"], inputs=inputs)
+            json.dumps(result, ensure_ascii=False)
+            return result
+
+        def clean_up(self):
+            return None
+
+    class DataAgentWithEvolvedHelpers(original_data_agent):
+        def __init__(self, *da_args: Any, **da_kwargs: Any):
+            super().__init__(*da_args, **da_kwargs)
+            helper_tool = EvolvedHelperTool(self.tool_log_path, tool_name, helper_specs)
+            helper_tool.result_storage_ref = self.result_storage
+            self.tools[tool_name] = helper_tool
+
+    data_agent_module.DataAgent = DataAgentWithEvolvedHelpers
+    return helper_specs
+
+
+def install_configurable_llm_retry(data_agent_module: Any, args: argparse.Namespace) -> None:
+    """Patch upstream DataAgent.call_llm with local timeout/retry controls.
+
+    The upstream scaffold has a hard-coded 3-attempt loop with sleep(80) and
+    timeout=600.  That is painful for our evolution loop: transient DashScope
+    failures either waste minutes or terminate without enough structured
+    diagnostics.  Keep the same semantics, but make retry/timeout/sleep local
+    runner knobs so Codex-native child eval can be stable and inspectable.
+    """
+
+    retry_count = max(1, int(getattr(args, "llm_retries", 4)))
+    retry_sleep = max(0.0, float(getattr(args, "llm_retry_sleep", 20.0)))
+    request_timeout = max(1.0, float(getattr(args, "llm_timeout", 600.0)))
+    prompt_builder = data_agent_module.prompt_builder
+
+    def configurable_call_llm(self):
+        start = time.time()
+        response = None
+        last_error = None
+        for attempt in range(1, retry_count + 1):
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.deployment_name,
+                    messages=self.messages,
+                    tools=[tool.get_spec() for tool in self.tools.values()],
+                    timeout=request_timeout,
+                )
+                break
+            except Exception as exc:  # upstream catches all here too
+                response = None
+                last_error = exc
+                self.terminate_reason = (
+                    f"llm_response_failed attempt {attempt}/{retry_count} "
+                    f"({type(exc).__name__}): {str(exc)}"
+                )
+                self.logger.warning(
+                    "LLM call failed on attempt %s/%s: %s: %s",
+                    attempt,
+                    retry_count,
+                    type(exc).__name__,
+                    exc,
+                )
+                if attempt < retry_count and retry_sleep > 0:
+                    time.sleep(retry_sleep)
+        end = time.time()
+
+        if response is None:
+            self.final_result = ""
+            if self.terminate_reason is None:
+                self.terminate_reason = "llm_response_failed"
+            self.logger.info("Terminating (%s)...", self.terminate_reason)
+            assert self.final_result is not None
+
+        self.llm_call_count += 1
+        log_entry = {
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "start_time": start,
+            "end_time": end,
+            "duration": end - start,
+            "model": self.deployment_name,
+            "response": response.to_dict() if response is not None else None,
+            "messages": self.messages,
+            "local_retry_config": {
+                "retry_count": retry_count,
+                "retry_sleep_sec": retry_sleep,
+                "request_timeout_sec": request_timeout,
+            },
+            "last_error": f"{type(last_error).__name__}: {last_error}" if last_error is not None else None,
+        }
+        with open(self.llm_log_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(log_entry) + "\n")
+
+        response_msg = response.choices[0].message if response is not None else None
+        if response_msg is not None:
+            self.logger.debug("LLM response message: %s", response_msg.to_dict())
+        return response_msg
+
+    data_agent_module.DataAgent.call_llm = configurable_call_llm
+
+
 def import_upstream_data_agent(upstream_root: Path, args: argparse.Namespace | None = None):
     sys.path.insert(0, str(upstream_root))
     import importlib
 
     data_agent_module = importlib.import_module("common_scaffold.DataAgent")
+
+    if args is not None and getattr(args, "disable_exec_python_tool", False):
+        BaseTool = data_agent_module.BaseTool
+
+        class DisabledExecTool(BaseTool):
+            def __init__(self, log_path, name, work_dir: Path, timeout=600):
+                super().__init__(log_path, name)
+                self.work_dir = work_dir
+                self.timeout = timeout
+
+            def to_dict(self):
+                base = super().to_dict()
+                base.update({
+                    "disabled": True,
+                    "work_dir": str(self.work_dir),
+                    "timeout": self.timeout,
+                    "reason": "Disabled by run_dab_tool_agent.py --disable-exec-python-tool smoke mode.",
+                })
+                return base
+
+            def get_spec(self):
+                return {
+                    "type": "function",
+                    "function": {
+                        "name": self.name,
+                        "description": "Smoke-mode placeholder. Python execution is disabled in this run because Docker SDK is unavailable.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "code": {"type": "string", "description": "Python code that would be executed in a full run."}
+                            },
+                            "required": ["code"],
+                        },
+                    },
+                }
+
+            def _check_args(self, args: dict):
+                return args
+
+            def _exec(self, args: dict):
+                raise RuntimeError("execute_python is disabled in smoke mode; fix WSL Docker integration for full workflow runs.")
+
+            def clean_up(self):
+                return None
+
+        data_agent_module.ExecTool = DisabledExecTool
 
     if args is not None and is_qwen_like_model(args.deployment_name):
         config = qwen_bailian_config(args)
@@ -160,10 +438,16 @@ def import_upstream_data_agent(upstream_root: Path, args: argparse.Namespace | N
 
         original_openai = data_agent_module.OpenAI
 
+        policy_overlay = ""
+        if getattr(args, "tool_agent_policy", None) and Path(args.tool_agent_policy).exists():
+            policy_overlay = Path(args.tool_agent_policy).read_text(encoding="utf-8", errors="replace").strip()
+
         def bailian_openai_factory(*factory_args: Any, **factory_kwargs: Any):
             if factory_kwargs.get("base_url") == "https://api.together.xyz/v1":
                 factory_kwargs["api_key"] = config["api_key"]
                 factory_kwargs["base_url"] = config["base_url"]
+                factory_kwargs.setdefault("timeout", float(getattr(args, "llm_timeout", 600.0)))
+                factory_kwargs.setdefault("max_retries", int(getattr(args, "client_max_retries", 2)))
             return original_openai(*factory_args, **factory_kwargs)
 
         data_agent_module.OpenAI = bailian_openai_factory
@@ -172,11 +456,17 @@ def import_upstream_data_agent(upstream_root: Path, args: argparse.Namespace | N
         original_init_messages = prompt_builder.init_messages
 
         def qwen_init_messages(user_query: str, db_description: str, deployment_name: str, system_prompt=prompt_builder.SYSTEM_PROMPT):
+            if policy_overlay:
+                system_prompt = system_prompt.rstrip() + "\n\n# LOCAL ZERO-START POLICY OVERLAY\n" + policy_overlay + "\n"
             if is_qwen_like_model(deployment_name):
                 return original_init_messages(user_query, db_description, "gpt-qwen-compatible", system_prompt)
             return original_init_messages(user_query, db_description, deployment_name, system_prompt)
 
         prompt_builder.init_messages = qwen_init_messages
+
+    if args is not None:
+        install_configurable_llm_retry(data_agent_module, args)
+        args.evolved_helper_specs = install_evolved_helper_tool(data_agent_module, args)
 
     return data_agent_module.DataAgent
 
@@ -187,6 +477,80 @@ def command_succeeds(command: list[str], timeout: int = 10) -> bool:
     except (FileNotFoundError, subprocess.SubprocessError):
         return False
     return proc.returncode == 0
+
+
+def command_result(command: list[str], timeout: int = 10) -> dict[str, Any]:
+    try:
+        proc = subprocess.run(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=timeout,
+        )
+    except FileNotFoundError as exc:
+        return {"command": command, "ok": False, "error": f"FileNotFoundError: {exc}"}
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "command": command,
+            "ok": False,
+            "returncode": None,
+            "stdout": exc.stdout,
+            "stderr": exc.stderr,
+            "error": f"TimeoutExpired after {timeout}s",
+        }
+    except subprocess.SubprocessError as exc:
+        return {"command": command, "ok": False, "error": f"{type(exc).__name__}: {exc}"}
+    return {
+        "command": command,
+        "ok": proc.returncode == 0,
+        "returncode": proc.returncode,
+        "stdout": proc.stdout.strip(),
+        "stderr": proc.stderr.strip(),
+    }
+
+
+def docker_environment_diagnostics() -> dict[str, Any]:
+    candidates = [
+        ["docker", "info", "--format", "{{.ServerVersion}}"],
+        ["docker.exe", "info", "--format", "{{.ServerVersion}}"],
+    ]
+    diagnostics: dict[str, Any] = {
+        "docker_cli": command_result(["which", "docker"], timeout=5),
+        "docker_exe_cli": command_result(["which", "docker.exe"], timeout=5),
+        "docker_context": command_result(["docker", "context", "ls"], timeout=10),
+        "docker_info_candidates": [command_result(command, timeout=15) for command in candidates],
+    }
+    socket_paths = [
+        "/var/run/docker.sock",
+        "/mnt/wsl/docker-desktop/shared-sockets/host-services/docker.proxy.sock",
+        "/mnt/wsl/docker-desktop/shared-sockets/guest-services/docker.proxy.sock",
+    ]
+    socket_info: dict[str, Any] = {}
+    for socket_path in socket_paths:
+        path = Path(socket_path)
+        try:
+            stat_result = path.stat()
+            socket_info[socket_path] = {
+                "exists": True,
+                "mode": oct(stat_result.st_mode),
+                "uid": stat_result.st_uid,
+                "gid": stat_result.st_gid,
+            }
+        except FileNotFoundError:
+            socket_info[socket_path] = {"exists": False}
+        except OSError as exc:
+            socket_info[socket_path] = {"exists": path.exists(), "error": f"{type(exc).__name__}: {exc}"}
+    diagnostics["socket_paths"] = socket_info
+    return diagnostics
+
+
+def docker_failure_message() -> str:
+    return (
+        "Docker is not available from WSL. Start Docker Desktop and enable WSL integration for Ubuntu, "
+        "then rerun this command. The DAB execute_python tool requires Docker. If Windows docker.exe works "
+        "but WSL docker does not, enable Docker Desktop -> Settings -> Resources -> WSL Integration -> Ubuntu."
+    )
 
 
 def ensure_docker_ready(args: argparse.Namespace) -> str:
@@ -204,10 +568,7 @@ def ensure_docker_ready(args: argparse.Namespace) -> str:
                 return "started_docker_desktop"
             time.sleep(5)
 
-    raise RuntimeError(
-        "Docker is not available from WSL. Start Docker Desktop and enable WSL integration for Ubuntu, "
-        "then rerun this command. The DAB execute_python tool requires Docker."
-    )
+    raise RuntimeError(docker_failure_message())
 
 
 def db_config_uses_postgres(db_config: Path) -> bool:
@@ -228,6 +589,28 @@ def docker_container_running(name: str) -> bool:
     return proc.returncode == 0 and proc.stdout.strip().lower() == "true"
 
 
+def docker_cli_for_postgres() -> list[str]:
+    if command_succeeds(["docker", "info"], timeout=10):
+        return ["docker"]
+    if command_succeeds(["docker.exe", "info"], timeout=10):
+        return ["docker.exe"]
+    return ["docker"]
+
+
+def docker_container_running_with(cli: list[str], name: str) -> bool:
+    try:
+        proc = subprocess.run(
+            cli + ["inspect", "-f", "{{.State.Running}}", name],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            timeout=10,
+        )
+    except (FileNotFoundError, subprocess.SubprocessError):
+        return False
+    return proc.returncode == 0 and proc.stdout.strip().lower() == "true"
+
+
 def ensure_postgres_ready(args: argparse.Namespace) -> str:
     if args.skip_postgres_check or not db_config_uses_postgres(args.db_config):
         return "skipped"
@@ -237,22 +620,23 @@ def ensure_postgres_ready(args: argparse.Namespace) -> str:
         os.environ["PG_CLIENT"] = str(psql_wrapper)
 
     container = args.postgres_container
-    if docker_container_running(container):
+    docker_cli = docker_cli_for_postgres()
+    if docker_container_running_with(docker_cli, container):
         status = "already_running"
     else:
         exists = subprocess.run(
-            ["docker", "inspect", container],
+            docker_cli + ["inspect", container],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             timeout=10,
         ).returncode == 0
         if exists:
-            subprocess.run(["docker", "start", container], check=True, stdout=subprocess.DEVNULL, timeout=30)
+            subprocess.run(docker_cli + ["start", container], check=True, stdout=subprocess.DEVNULL, timeout=30)
             status = "started_existing"
         else:
             subprocess.run(
-                [
-                    "docker", "run", "-d",
+                docker_cli + [
+                    "run", "-d",
                     "--name", container,
                     "-e", "POSTGRES_HOST_AUTH_METHOD=trust",
                     "-p", "5432:5432",
@@ -267,8 +651,8 @@ def ensure_postgres_ready(args: argparse.Namespace) -> str:
 
     deadline = time.time() + args.postgres_start_timeout
     while time.time() < deadline:
-        if command_succeeds(["docker", "exec", container, "pg_isready", "-U", "postgres"], timeout=10):
-            return status
+        if command_succeeds(docker_cli + ["exec", container, "pg_isready", "-U", "postgres"], timeout=10):
+            return f"{status}_via_{docker_cli[0]}"
         time.sleep(2)
     raise RuntimeError(f"PostgreSQL container {container!r} did not become ready before timeout.")
 
@@ -359,6 +743,12 @@ def normalize_run_artifacts(*, args: argparse.Namespace, upstream_run_dir: Path,
     qwen_config = qwen_bailian_config(args) if is_qwen_like_model(args.deployment_name) else None
     if qwen_config is not None:
         qwen_config = {key: value for key, value in qwen_config.items() if key != "api_key"}
+    llm_retry_config = {
+        "request_timeout_sec": args.llm_timeout,
+        "retry_count": args.llm_retries,
+        "retry_sleep_sec": args.llm_retry_sleep,
+        "client_max_retries": args.client_max_retries,
+    }
 
     summary = {
         "schema_version": "dab_tool_agent_run_v001",
@@ -367,12 +757,16 @@ def normalize_run_artifacts(*, args: argparse.Namespace, upstream_run_dir: Path,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "deployment_name": args.deployment_name,
         "qwen_client_config": qwen_config,
+        "llm_retry_config": llm_retry_config,
         "docker_status": getattr(args, "docker_status", None),
         "postgres_status": getattr(args, "postgres_status", None),
         "pg_client": os.getenv("PG_CLIENT"),
         "query_dir": str(args.query_dir),
         "db_description": str(args.db_description),
         "db_config": str(args.db_config),
+        "tool_agent_policy": str(args.tool_agent_policy) if args.tool_agent_policy else None,
+        "evolved_helper_tool_enabled": bool(getattr(args, "evolved_helper_specs", [])),
+        "evolved_helper_specs": getattr(args, "evolved_helper_specs", []),
         "dab_upstream_root": str(args.dab_upstream_root),
         "upstream_run_dir": str(upstream_run_dir),
         "normalized_run_dir": str(normalized_dir),
@@ -388,6 +782,29 @@ def normalize_run_artifacts(*, args: argparse.Namespace, upstream_run_dir: Path,
     }
     write_json(normalized_dir / "summary.json", summary)
     return normalized_dir
+
+
+def write_startup_failure_artifact(
+    *,
+    args: argparse.Namespace,
+    upstream_logs_dir: Path,
+    normalized_dir: Path,
+    exc: Exception,
+) -> Path:
+    run_error = f"{type(exc).__name__}: {exc}"
+    normalized = normalize_run_artifacts(
+        args=args,
+        upstream_run_dir=upstream_logs_dir if upstream_logs_dir.exists() else normalized_dir,
+        final_result="",
+        run_error=run_error,
+    )
+    summary_path = normalized / "summary.json"
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    summary["startup_failure"] = True
+    if "Docker is not available" in run_error or "docker" in run_error.lower():
+        summary["docker_diagnostics"] = docker_environment_diagnostics()
+    write_json(summary_path, summary)
+    return normalized
 
 
 def run_agent(args: argparse.Namespace) -> int:
@@ -442,9 +859,21 @@ def run_agent(args: argparse.Namespace) -> int:
         print(json.dumps(summary, indent=2, ensure_ascii=False))
         return 0
 
-    args.docker_status = ensure_docker_ready(args)
-    args.postgres_status = ensure_postgres_ready(args)
-    DataAgent = import_upstream_data_agent(args.dab_upstream_root, args)
+    try:
+        args.docker_status = ensure_docker_ready(args)
+        args.postgres_status = ensure_postgres_ready(args)
+        DataAgent = import_upstream_data_agent(args.dab_upstream_root, args)
+    except Exception as exc:
+        normalized = write_startup_failure_artifact(
+            args=args,
+            upstream_logs_dir=upstream_logs_dir,
+            normalized_dir=normalized_dir,
+            exc=exc,
+        )
+        summary = json.loads((normalized / "summary.json").read_text(encoding="utf-8"))
+        print(json.dumps(summary, indent=2, ensure_ascii=False))
+        return 1
+
     final_result: str | None = None
     run_error: str | None = None
     try:
@@ -485,13 +914,21 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--bailian-base-url", default=os.environ.get("DAB_TOOL_AGENT_BASE_URL"))
     parser.add_argument("--max-iterations", type=int, default=int(os.environ.get("DAB_TOOL_AGENT_MAX_ITERATIONS", "20")))
     parser.add_argument("--exec-python-timeout", type=int, default=int(os.environ.get("DAB_TOOL_AGENT_EXEC_TIMEOUT", "300")))
+    parser.add_argument("--llm-timeout", type=float, default=float(os.environ.get("DAB_TOOL_AGENT_LLM_TIMEOUT", "600")), help="Per LLM request timeout passed to the upstream DataAgent chat completion call.")
+    parser.add_argument("--llm-retries", type=int, default=int(os.environ.get("DAB_TOOL_AGENT_LLM_RETRIES", "4")), help="Number of DataAgent LLM retry attempts per turn.")
+    parser.add_argument("--llm-retry-sleep", type=float, default=float(os.environ.get("DAB_TOOL_AGENT_LLM_RETRY_SLEEP", "20")), help="Seconds to sleep between DataAgent LLM retry attempts.")
+    parser.add_argument("--client-max-retries", type=int, default=int(os.environ.get("DAB_TOOL_AGENT_CLIENT_MAX_RETRIES", "2")), help="OpenAI SDK internal retry count for the patched Qwen/DashScope client.")
     parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
+    parser.add_argument("--tool-agent-policy", default=os.environ.get("DAB_TOOL_AGENT_POLICY", str(DEFAULT_TOOL_AGENT_POLICY)), help="Local prompt-policy overlay appended to the upstream DAB DataAgent system prompt.")
+    parser.add_argument("--disable-evolved-helper-tools", action="store_true", help="Do not expose registered adapters/dab_tool_agent_helpers as DataAgent tools.")
+    parser.add_argument("--evolved-helper-tool-name", default=os.environ.get("DAB_EVOLVED_HELPER_TOOL_NAME", "run_evolved_helper"), help="Tool name used to expose registered meta-agent-created helpers.")
     parser.add_argument("--run-id")
     parser.add_argument("--prepare-only", action="store_true", help="Resolve paths and write summary without calling the LLM/tools.")
     parser.add_argument("--check-dependencies", action="store_true", help="Try importing the upstream DataAgent and report missing Python dependencies.")
     parser.add_argument("--skip-docker-check", action="store_true", help="Do not check or start Docker Desktop before a real agent run.")
     parser.add_argument("--docker-start-timeout", type=int, default=int(os.environ.get("DAB_TOOL_AGENT_DOCKER_START_TIMEOUT", "120")))
     parser.add_argument("--skip-postgres-check", action="store_true", help="Do not auto-start the DAB PostgreSQL container for postgres-backed queries.")
+    parser.add_argument("--disable-exec-python-tool", action="store_true", help="Smoke-test only: replace execute_python with a disabled placeholder so Qwen/list_db logging can be tested without WSL Docker SDK.")
     parser.add_argument("--postgres-container", default=os.environ.get("DAB_POSTGRES_CONTAINER", "dab-postgres"))
     parser.add_argument("--postgres-start-timeout", type=int, default=int(os.environ.get("DAB_TOOL_AGENT_POSTGRES_START_TIMEOUT", "120")))
     parser.add_argument("--log-level", default=os.environ.get("DAB_TOOL_AGENT_LOG_LEVEL", "INFO"))
