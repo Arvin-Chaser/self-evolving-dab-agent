@@ -67,6 +67,8 @@ def codex_native_eval_instructions(
 ) -> str:
     case_dir = os.environ.get("META_LOOP_CASE_DIR")
     dab_root = os.environ.get("META_LOOP_DAB_ROOT")
+    parent_agent_id = os.environ.get("META_LOOP_PARENT_AGENT_ID")
+    parent_prompt = os.environ.get("META_LOOP_PARENT_PROMPT")
     max_iterations = os.environ.get(
         "CODEX_NATIVE_DATA_AGENT_MAX_ITERATIONS",
         os.environ.get("DAB_TOOL_AGENT_CHILD_MAX_ITERATIONS", "4"),
@@ -89,6 +91,7 @@ def codex_native_eval_instructions(
         "- You leave the tree unchanged because no safe repair is possible, and explain the no-op reason.",
         "",
         "If an inner run shows the helper/prompt/script is not actually used by generated code, continue debugging inside this same Codex task instead of stopping.",
+        "Before your final response, run the patch replay self-check below. If it fails, inspect the reported file conflicts and revise your patch in this same Codex task.",
         "",
         "### Interface-alignment observations to perform yourself",
         "",
@@ -100,6 +103,20 @@ def codex_native_eval_instructions(
         "### Suggested existing commands",
         "",
         "Use these as templates; adapt run ids and output dirs as needed.",
+        "",
+        "Patch replay self-check against a fresh child baseline; this should pass before you finish:",
+        "",
+        "```bash",
+        (
+            ".venv/bin/python experiments/check_candidate_patch_replay.py "
+            f"--source-root {quote(ROOT)} "
+            "--candidate-workspace . "
+            f"--report {quote(candidate_dir / 'codex_native_patch_replay_report.json')} "
+            f"--patch-out {quote(candidate_dir / 'codex_native_patch_replay.patch')}"
+            + (f" --parent-agent-id {quote(parent_agent_id)}" if parent_agent_id else "")
+            + (f" --parent-prompt {quote(parent_prompt)}" if parent_prompt else "")
+        ),
+        "```",
     ]
     if case_dir and dab_root and profile.name in {"data_agent_project_repair", "data_agent_tool_repair", "data_agent_prompt_repair"}:
         lines.extend(

@@ -19,6 +19,7 @@ Human merge approval remains outside this script.
 from __future__ import annotations
 
 import argparse
+import ast
 import contextlib
 import io
 import json
@@ -36,9 +37,11 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from experiments.analyze_agent_error import analyze_run
+from experiments.archive_selector import select_from_archive
 from experiments.build_meta_agent_evidence_pack import build_fine_grained_feedback_pack, write_pack
 from experiments.extract_primary_signal import extract_primary_signal
 from experiments.helper_repair_planner import plan_helper_repair
+from experiments.open_diagnosis import build_open_diagnosis_evidence, compact_open_diagnosis_evidence
 from experiments.run_dab_agent import run_dab_agent
 
 
@@ -73,34 +76,238 @@ def candidate_patents_helper_modules(candidate_dir: Path) -> list[dict[str, str]
     return modules
 
 
+def _call_name(node: ast.AST) -> str | None:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        parts = [node.attr]
+        value = node.value
+        while isinstance(value, ast.Attribute):
+            parts.append(value.attr)
+            value = value.value
+        if isinstance(value, ast.Name):
+            parts.append(value.id)
+            return ".".join(reversed(parts))
+    return None
+
+
+def _ast_name_refs(node: ast.AST) -> set[str]:
+    refs: set[str] = set()
+    for child in ast.walk(node):
+        if isinstance(child, ast.Name):
+            refs.add(child.id)
+    return refs
+
+
+def _target_names(target: ast.AST) -> set[str]:
+    names: set[str] = set()
+    if isinstance(target, ast.Name):
+        names.add(target.id)
+    elif isinstance(target, (ast.Tuple, ast.List)):
+        for elt in target.elts:
+            names |= _target_names(elt)
+    elif isinstance(target, ast.Attribute):
+        full = _call_name(target)
+        if full:
+            names.add(full)
+    return names
+
+
+def _expr_has_helper_call(node: ast.AST, helper_call_names: set[str]) -> bool:
+    for child in ast.walk(node):
+        if isinstance(child, ast.Call):
+            call = _call_name(child.func)
+            if call and (call in helper_call_names or any(call.endswith(f".{name}") for name in helper_call_names)):
+                return True
+    return False
+
+
+def _helper_output_final_answer_dependency(tree: ast.AST, details: list[dict[str, Any]]) -> dict[str, Any]:
+    helper_call_names: set[str] = set()
+    action_required = False
+    for detail in details:
+        module = str(detail.get("module") or "")
+        stem = module.rsplit(".", 1)[-1]
+        called_names = {str(name) for name in detail.get("called_names") or []}
+        helper_call_names |= called_names
+        if stem in {"candidate_filtering", "answer_diagnostics"}:
+            action_required = True
+        if any("rank_or_filter" in name or "summarize_candidate" in name for name in called_names):
+            action_required = True
+    if not action_required:
+        return {"required": False, "status": "not_required"}
+    if not helper_call_names:
+        return {"required": True, "status": "helper_not_called"}
+
+    tainted: set[str] = set()
+    assignment_events: list[dict[str, Any]] = []
+    # Small fixed-point pass: helper output may be assigned to summary, then
+    # selected_symbols/result_codes/final_answer_lines in a later statement.
+    for _ in range(5):
+        changed = False
+        for node in ast.walk(tree):
+            targets: set[str] = set()
+            value: ast.AST | None = None
+            if isinstance(node, ast.Assign):
+                value = node.value
+                for target in node.targets:
+                    targets |= _target_names(target)
+            elif isinstance(node, ast.AnnAssign):
+                value = node.value
+                targets |= _target_names(node.target)
+            elif isinstance(node, ast.AugAssign):
+                value = node.value
+                targets |= _target_names(node.target)
+            if value is None or not targets:
+                continue
+            if _expr_has_helper_call(value, helper_call_names) or bool(_ast_name_refs(value) & tainted):
+                new_targets = targets - tainted
+                if new_targets:
+                    tainted |= new_targets
+                    changed = True
+                    assignment_events.append({"targets": sorted(targets), "line": getattr(node, "lineno", None)})
+        if not changed:
+            break
+
+    final_sinks: list[dict[str, Any]] = []
+    log_sinks: list[dict[str, Any]] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        call = _call_name(node.func) or ""
+        arg_refs: set[str] = set()
+        for arg in list(node.args) + [kw.value for kw in node.keywords if kw.value is not None]:
+            arg_refs |= _ast_name_refs(arg)
+        helper_in_args = _expr_has_helper_call(node, helper_call_names) or bool(arg_refs & tainted)
+        if call.endswith("log_event") and helper_in_args:
+            log_sinks.append({"call": call, "line": getattr(node, "lineno", None), "tainted_refs": sorted(arg_refs & tainted)})
+        is_write_text = call.endswith(".write_text")
+        receiver = _call_name(node.func.value) if isinstance(node.func, ast.Attribute) else ""
+        receiver_low = (receiver or "").lower()
+        call_low = call.lower()
+        final_receiver = "final_answer" in receiver_low or "final_answer" in call_low or receiver == "FINAL_ANSWER_PATH"
+        if is_write_text and final_receiver and helper_in_args:
+            final_sinks.append({"call": call, "line": getattr(node, "lineno", None), "tainted_refs": sorted(arg_refs & tainted)})
+
+    status = "helper_output_used_for_final_answer" if final_sinks else "helper_called_but_output_not_used_for_final_answer"
+    return {
+        "required": True,
+        "status": status,
+        "helper_call_names": sorted(helper_call_names),
+        "tainted_vars": sorted(tainted),
+        "assignment_events": assignment_events[:20],
+        "final_answer_sinks": final_sinks,
+        "log_sinks": log_sinks[:20],
+    }
+
+
 def generated_code_uses_helper(generated_code_path: Path, helpers: list[dict[str, str]]) -> dict[str, Any]:
+    """Check whether generated_solve.py actually calls changed helper APIs.
+
+    Older logic treated an import as usage.  That created false positives for
+    patches that only added prompt glue/imports but did not change the decision
+    path.  This checker records imports separately and requires an AST call to a
+    helper function/module attribute before marking the helper as used.
+    """
     if not helpers:
         return {"required": False, "status": "not_required", "helpers": []}
     code = generated_code_path.read_text(encoding="utf-8", errors="replace") if generated_code_path.exists() else ""
     code_low = code.lower()
+    try:
+        tree = ast.parse(code)
+    except SyntaxError as exc:
+        return {
+            "required": True,
+            "status": "helper_usage_parse_failed",
+            "helpers": helpers,
+            "observed_modules": [],
+            "called_modules": [],
+            "missing_modules": [helper["module"] for helper in helpers],
+            "parse_error": str(exc),
+            "generated_solve_path": str(generated_code_path),
+        }
+
+    imports_by_module: dict[str, set[str]] = {}
+    module_aliases: dict[str, set[str]] = {}
+    calls = {name for name in (_call_name(node.func) for node in ast.walk(tree) if isinstance(node, ast.Call)) if name}
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module:
+            imported = imports_by_module.setdefault(node.module.lower(), set())
+            for alias in node.names:
+                local = alias.asname or alias.name
+                imported.add(local)
+                imported.add(alias.name)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                local = alias.asname or alias.name.split(".")[0]
+                module_aliases.setdefault(alias.name.lower(), set()).add(local)
+
     observed: list[str] = []
+    called: list[str] = []
     missing: list[str] = []
+    details: list[dict[str, Any]] = []
     for helper in helpers:
-        full = helper["module"].lower()
-        stem = helper["stem"].lower()
-        used = (
-            full in code_low
-            or f"from adapters.patents import {stem}" in code_low
-            or f"import adapters.patents.{stem}" in code_low
-            or f"from {stem} import" in code_low
-            or f"import {stem}" in code_low
-        )
-        if used:
-            observed.append(helper["module"])
+        module = helper["module"]
+        module_low = module.lower()
+        stem = helper["stem"]
+        import_locals = set(imports_by_module.get(module_low, set()))
+        import_locals |= set(imports_by_module.get("adapters.patents", set()) & {stem})
+        import_locals |= set(module_aliases.get(module_low, set()))
+        import_seen = bool(import_locals) or module_low in code_low or f"import adapters.patents.{stem}" in code_low
+
+        call_seen = False
+        called_names: list[str] = []
+        # from adapters.patents.foo import bar -> bar(...)
+        for local in import_locals:
+            if local == "*":
+                continue
+            if local in calls:
+                call_seen = True
+                called_names.append(local)
+            for call in calls:
+                if call.startswith(f"{local}."):
+                    call_seen = True
+                    called_names.append(call)
+        # import adapters.patents.foo / import foo -> module.function(...)
+        module_tail = module.split(".")[-1]
+        for call in calls:
+            if call.startswith(f"{module}.") or call.startswith(f"{module_tail}.") or call.startswith(f"{stem}."):
+                call_seen = True
+                called_names.append(call)
+
+        if import_seen:
+            observed.append(module)
+        if call_seen:
+            called.append(module)
         else:
-            missing.append(helper["module"])
-    status = "helper_used_by_child_generated_code" if observed else "helper_not_used_by_child_generated_code"
+            missing.append(module)
+        details.append(
+            {
+                "module": module,
+                "import_seen": import_seen,
+                "call_seen": call_seen,
+                "imported_names_or_aliases": sorted(import_locals),
+                "called_names": sorted(set(called_names)),
+            }
+        )
+
+    if called:
+        status = "helper_called_by_child_generated_code"
+    elif observed:
+        status = "helper_imported_but_not_called_by_child_generated_code"
+    else:
+        status = "helper_not_used_by_child_generated_code"
+    final_answer_dependency = _helper_output_final_answer_dependency(tree, details)
     return {
         "required": True,
         "status": status,
         "helpers": helpers,
         "observed_modules": observed,
+        "called_modules": called,
         "missing_modules": missing,
+        "details": details,
+        "final_answer_dependency": final_answer_dependency,
         "generated_solve_path": str(generated_code_path),
     }
 
@@ -387,9 +594,48 @@ def select_parent_agent(
     repeated_parent_ids: list[str] | None = None,
     repeated_parent_penalty: float = 0.0,
 ) -> dict[str, Any]:
+    if requested:
+        return select_archive_agent(
+            archive_root,
+            requested=requested,
+            agent_type="data_agent",
+            require_prompt=True,
+            max_age_hours=max_age_hours,
+            repeated_parent_ids=repeated_parent_ids,
+            repeated_parent_penalty=repeated_parent_penalty,
+        )
+
+    selection = select_from_archive(
+        candidates_index_path=archive_root / "indexes/candidates.jsonl",
+        agents_index_path=archive_root / "indexes/agents.jsonl",
+        recent_parent_ids=repeated_parent_ids or [],
+        parent_limit=10,
+        evidence_limit=0,
+        parent_agent_type="data_agent",
+    )
+    for row in selection.get("parent_pool") or []:
+        card_ref = row.get("card")
+        if not card_ref:
+            continue
+        card_path = Path(card_ref)
+        if not card_path.is_absolute():
+            card_path = ROOT / card_path
+        if not archive_card_is_recent(card_path, max_age_hours):
+            continue
+        card = load_json(card_path)
+        if card.get("agent_type") != "data_agent":
+            continue
+        if not card.get("source_refs", {}).get("prompt"):
+            continue
+        if not card.get("evolve_policy", {}).get("can_use_as_parent") and not row.get("can_use_as_parent"):
+            continue
+        row = dict(row)
+        row["selection_policy"] = "archive_selector_v001_parent_pool"
+        return {"index": row, "card": card, "selection_score": row}
+
     return select_archive_agent(
         archive_root,
-        requested=requested,
+        requested=None,
         agent_type="data_agent",
         require_prompt=True,
         max_age_hours=max_age_hours,
@@ -428,15 +674,89 @@ def run_parent_case(
     version: str,
     dab_root: Path,
     timeout_sec: int,
+    parent_agent_card: dict[str, Any] | None = None,
+    loop_dir: Path | None = None,
 ) -> Path:
-    result = run_dab_agent(
-        case_dir=case_dir,
-        prompt_path=prompt_path,
-        version=version,
-        dab_root=dab_root,
-        timeout_sec=timeout_sec,
+    """Run the selected parent with its archived source patches materialized.
+
+    Archive agents may include prompt changes plus project-source helper patches.
+    Running only the archived prompt against the current main workspace can create
+    fake parent failures (for example imports of helpers that exist only in the
+    parent lineage).  When a parent agent card is available, run the parent in an
+    isolated snapshot with its lineage patches applied, matching child eval.
+    """
+    patch_paths = resolve_parent_candidate_patches(parent_agent_card)
+    if not patch_paths:
+        result = run_dab_agent(
+            case_dir=case_dir,
+            prompt_path=prompt_path,
+            version=version,
+            dab_root=dab_root,
+            timeout_sec=timeout_sec,
+        )
+        if loop_dir:
+            write_json(loop_dir / "parent_source_materialization.json", {"status": "skipped", "reason": "no parent source patches declared"})
+        return Path(result["run_dir"])
+
+    parent_root = Path(tempfile.mkdtemp(prefix="meta_loop_parent_eval."))
+    parent_ws = parent_root / "workspace"
+    shutil.copytree(ROOT, parent_ws, ignore=ignore_workspace, symlinks=True)
+    run_cmd(["git", "init", "--quiet"], cwd=parent_ws)
+    run_cmd(["git", "config", "user.name", "meta-loop-parent-eval"], cwd=parent_ws)
+    run_cmd(["git", "config", "user.email", "meta-loop-parent-eval@localhost"], cwd=parent_ws)
+    run_cmd(["git", "add", "."], cwd=parent_ws)
+    run_cmd(["git", "commit", "--quiet", "-m", "baseline"], cwd=parent_ws)
+
+    parent_source_materialization = materialize_child_parent_source(parent_ws, parent_agent_card)
+    if parent_source_materialization.get("status") == "failed":
+        if loop_dir:
+            write_json(loop_dir / "parent_source_materialization.json", {**parent_source_materialization, "workspace": str(parent_ws)})
+        raise RuntimeError(f"parent source materialization failed: {parent_source_materialization}")
+    try:
+        materialized_prompt = materialize_child_parent_prompt(parent_ws, prompt_path)
+    except FileNotFoundError:
+        materialized_prompt = prompt_path
+    run_cmd(["git", "add", "."], cwd=parent_ws)
+    run_cmd(["git", "commit", "--quiet", "--amend", "--no-edit"], cwd=parent_ws)
+
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(parent_ws)
+    parent_version = f"{version}_materialized"
+    proc = run_cmd(
+        [
+            str(ROOT / ".venv/bin/python"),
+            str(parent_ws / "experiments/run_dab_agent.py"),
+            "--case-dir",
+            str(case_dir),
+            "--prompt",
+            str(materialized_prompt),
+            "--version",
+            parent_version,
+            "--dab-root",
+            str(dab_root),
+            "--timeout-sec",
+            str(timeout_sec),
+        ],
+        cwd=parent_ws,
+        env=env,
+        stdout_path=(loop_dir / "parent_run.stdout") if loop_dir else None,
+        stderr_path=(loop_dir / "parent_run.stderr") if loop_dir else None,
     )
-    return Path(result["run_dir"])
+    run_dirs = sorted((parent_ws / "logs/dab_agent").glob(f"*{parent_version}*"), key=lambda p: p.stat().st_mtime)
+    if not run_dirs:
+        if loop_dir:
+            write_json(
+                loop_dir / "parent_source_materialization.json",
+                {**parent_source_materialization, "workspace": str(parent_ws), "run_status": "failed_no_run_dir", "exit_code": proc.returncode},
+            )
+        raise RuntimeError(f"materialized parent run produced no run_dir; exit_code={proc.returncode}")
+    run_dir = run_dirs[-1]
+    if loop_dir:
+        write_json(
+            loop_dir / "parent_source_materialization.json",
+            {**parent_source_materialization, "workspace": str(parent_ws), "run_status": "completed", "exit_code": proc.returncode, "run_dir": str(run_dir)},
+        )
+    return run_dir
 
 
 def analyze_run_quiet(run_dir: Path, stdout_path: Path, stderr_path: Path) -> dict[str, Any]:
@@ -448,6 +768,150 @@ def analyze_run_quiet(run_dir: Path, stdout_path: Path, stderr_path: Path) -> di
     finally:
         stdout_path.write_text(stdout.getvalue(), encoding="utf-8")
         stderr_path.write_text(stderr.getvalue(), encoding="utf-8")
+
+
+def current_failure_tags_from_seed(seed: dict[str, Any]) -> list[str]:
+    tags: list[str] = []
+
+    def add(tag: str | None) -> None:
+        if tag and tag not in tags:
+            tags.append(tag)
+
+    add(str(seed.get("selected_stage") or ""))
+    text = json.dumps(seed, ensure_ascii=False).lower()[:20000]
+    if "missing_final_answer_file_or_empty_answer" in text or ("line_count" in text and "0" in text) or "empty answer" in text:
+        add("empty_final_answer")
+    if "helper_called_but_output_not_used_for_final_answer" in text or "helper_output_sink_mismatch" in text:
+        add("helper_output_sink_mismatch")
+        add("helper_output_not_used_for_final_answer")
+    if "data_agent_tool_helper_integration" in text or "helper_glue_too_weak" in text:
+        add("data_agent_tool_helper_integration")
+    if "severe_child_answer_regression" in text:
+        add("severe_child_answer_regression")
+    if "granularity" in text:
+        add("granularity_mapping")
+    if "schema_grounding" in text:
+        add("schema_grounding")
+    return tags
+
+
+def compact_archive_evidence_item(row: dict[str, Any]) -> dict[str, Any]:
+    card_ref = row.get("card")
+    observation: dict[str, Any] = {}
+    if card_ref:
+        card_path = Path(str(card_ref))
+        if not card_path.is_absolute():
+            card_path = ROOT / card_path
+        obs_path = card_path.parent / "archive_observation.json"
+        if obs_path.exists():
+            try:
+                observation = json.loads(obs_path.read_text(encoding="utf-8"))
+            except Exception:
+                observation = {}
+    obs_body = observation.get("observations") if isinstance(observation.get("observations"), dict) else {}
+    return {
+        "candidate_id": row.get("candidate_id"),
+        "status": row.get("status"),
+        "card": row.get("card"),
+        "archive_observation": str((Path(str(row.get("card"))).parent / "archive_observation.json")) if row.get("card") else None,
+        "selection_score": row.get("selection_score"),
+        "selection_reasons": row.get("selection_reasons"),
+        "promotion_reason": row.get("promotion_reason"),
+        "metric_delta_f1": row.get("metric_delta_f1"),
+        "failure_observation_tags": row.get("failure_observation_tags") or [],
+        "contract_eval_status": row.get("contract_eval_status"),
+        "open_diagnosis": obs_body.get("open_diagnosis"),
+        "soft_gate_observations": (obs_body.get("soft_gate_observations") or [])[:4],
+        "interface_mismatch_evidence": (obs_body.get("interface_mismatch_evidence") or [])[:4],
+        "contract_failure_evidence": (obs_body.get("contract_failure_evidence") or [])[:4],
+        "not_to_repeat": (obs_body.get("not_to_repeat") or [])[:8],
+    }
+
+
+def archive_priority_observations_from_selection(selection: dict[str, Any]) -> list[dict[str, Any]]:
+    priority: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+
+    def add(candidate_id: str | None, kind: str, detail: Any, why: str) -> None:
+        key = (str(candidate_id), kind + ":" + str(detail)[:160])
+        if key in seen:
+            return
+        seen.add(key)
+        priority.append({
+            "candidate_id": candidate_id,
+            "kind": kind,
+            "detail": detail,
+            "why_it_matters": why,
+        })
+
+    for item in selection.get("evidence_pool") or []:
+        candidate_id = item.get("candidate_id")
+        for tag in item.get("failure_observation_tags") or []:
+            if tag in {
+                "helper_output_sink_mismatch",
+                "helper_output_not_used_for_final_answer",
+                "data_agent_tool_helper_integration",
+                "data_agent_tool_helper_quality",
+                "weak_filtering_warning",
+                "empty_final_answer",
+                "severe_child_answer_regression",
+            }:
+                add(candidate_id, "failure_tag", tag, "Prior candidate failed with this exact observation; the next patch should not repeat it.")
+        for obs in item.get("soft_gate_observations") or []:
+            reason = str(obs.get("reason") or "")
+            name = str(obs.get("name") or "")
+            lowered = reason.lower()
+            if any(token in lowered for token in ("weak_filtering", "helper_glue_too_weak", "helper_plan_target_mismatch", "diagnostics_only")):
+                add(candidate_id, "soft_gate_observation", {"name": name, "reason": reason}, "Soft gate identified a likely ineffective patch shape; require the next patch contract to avoid it.")
+        for obs in item.get("interface_mismatch_evidence") or []:
+            add(candidate_id, "interface_mismatch", obs, "Prior helper output did not reach final answer construction; next patch must specify and satisfy the output sink contract.")
+        for obs in item.get("contract_failure_evidence") or []:
+            add(candidate_id, "contract_failure", obs, "Prior candidate violated an inferred behavior contract; next patch must state a concrete proposed_contract and validation hint.")
+    return priority[:12]
+
+
+def attach_archive_selection_to_seed(
+    *,
+    seed: dict[str, Any],
+    seed_path: Path,
+    archive_root: Path,
+    loop_dir: Path,
+    repeated_parent_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    current_tags = current_failure_tags_from_seed(seed)
+    selection = select_from_archive(
+        candidates_index_path=archive_root / "indexes/candidates.jsonl",
+        agents_index_path=archive_root / "indexes/agents.jsonl",
+        current_failure_tags=current_tags,
+        recent_parent_ids=repeated_parent_ids or [],
+        parent_limit=5,
+        evidence_limit=5,
+        parent_agent_type="data_agent",
+    )
+    loop_selection_path = loop_dir / "archive_selection.json"
+    write_json(loop_selection_path, selection)
+    priority_observations = archive_priority_observations_from_selection(selection)
+    seed["archive_selection"] = {
+        "schema_version": selection.get("schema_version"),
+        "selection_path": str(loop_selection_path),
+        "current_failure_tags": current_tags,
+        "parent_pool_preview": [
+            {
+                "agent_id": item.get("agent_id"),
+                "selection_score": item.get("selection_score"),
+                "selection_reasons": item.get("selection_reasons"),
+                "best_f1": item.get("best_f1"),
+                "card": item.get("card"),
+            }
+            for item in (selection.get("parent_pool") or [])[:3]
+        ],
+        "evidence_pool": [compact_archive_evidence_item(item) for item in (selection.get("evidence_pool") or [])[:5]],
+    }
+    seed["archive_evidence_priority_observations"] = priority_observations
+    seed.setdefault("fine_grained_feedback", {})["archive_evidence_pool"] = seed["archive_selection"]["evidence_pool"]
+    seed["fine_grained_feedback"]["archive_evidence_priority_observations"] = priority_observations
+    write_json(seed_path, seed)
+    return selection
 
 
 def analyze_and_seed(
@@ -517,6 +981,7 @@ def analyze_and_seed(
         "base_repair_routing": seed_feedback.get("base_repair_routing"),
         "repair_profile_adaptation": seed_feedback.get("repair_profile_adaptation"),
         "helper_repair_plan": seed_feedback.get("helper_repair_plan"),
+        "patch_generation_feedback": seed_feedback.get("patch_generation_feedback"),
         "parent_capabilities": seed_feedback.get("parent_capabilities"),
         "answer_delta": seed_feedback.get("answer_delta"),
         "runtime_trace_evidence": (seed_feedback.get("runtime_trace_evidence") or [])[:8],
@@ -544,6 +1009,7 @@ def analyze_and_seed(
         "base_repair_routing": compact_feedback.get("base_repair_routing"),
         "repair_profile_adaptation": compact_feedback.get("repair_profile_adaptation"),
         "helper_repair_plan": compact_feedback.get("helper_repair_plan"),
+        "patch_generation_feedback": compact_feedback.get("patch_generation_feedback"),
         "answer_delta": compact_feedback.get("answer_delta"),
         "parent_capabilities": compact_feedback.get("parent_capabilities"),
         "fine_grained_feedback": compact_feedback,
@@ -698,13 +1164,295 @@ def materialize_child_parent_source(child_ws: Path, parent_agent_card: dict[str,
         applied_patches.append(str(patch_path))
     if not applied_patches:
         return {"status": "skipped", "reason": "parent candidate patches empty", "patch_paths": [str(path) for path in patch_paths]}
-    changed = run_cmd(["git", "diff", "--name-only"], cwd=child_ws)
+    changed = run_cmd(["git", "status", "--short"], cwd=child_ws)
+    changed_files: list[str] = []
+    for line in changed.stdout.splitlines():
+        if not line.strip():
+            continue
+        path = line[3:].strip() if len(line) > 3 else line.strip()
+        if " -> " in path:
+            path = path.split(" -> ", 1)[1].strip()
+        if path and path not in changed_files:
+            changed_files.append(path)
     return {
         "status": "applied",
         "patch_paths": applied_patches,
         "excluded_prompt": DATA_AGENT_CANONICAL_PROMPT.as_posix(),
-        "changed_files": [line for line in changed.stdout.splitlines() if line.strip()],
+        "changed_files": changed_files,
     }
+
+
+
+def is_dab_tool_agent_workflow_seed(seed: dict[str, Any]) -> bool:
+    if not isinstance(seed, dict):
+        return False
+    if seed.get("schema_version") == "dab_tool_agent_meta_agent_seed_v001":
+        return True
+    if seed.get("feedback_type") == "dab_tool_agent_workflow_feedback":
+        return True
+    fine = seed.get("fine_grained_feedback") if isinstance(seed.get("fine_grained_feedback"), dict) else {}
+    if fine.get("feedback_type") == "dab_tool_agent_workflow_feedback":
+        return True
+    paths = seed.get("artifact_paths") if isinstance(seed.get("artifact_paths"), dict) else {}
+    return any("dab_tool_agent" in str(value) for value in paths.values())
+
+
+def answer_quality_from_feedback(value: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    direct = value.get("answer_quality")
+    if isinstance(direct, dict) and direct:
+        return direct
+    feedback = value.get("feedback_summary") if isinstance(value.get("feedback_summary"), dict) else {}
+    direct = feedback.get("answer_quality")
+    if isinstance(direct, dict) and direct:
+        return direct
+    workflow = value.get("workflow_feedback_summary") if isinstance(value.get("workflow_feedback_summary"), dict) else {}
+    direct = workflow.get("answer_quality")
+    if isinstance(direct, dict) and direct:
+        return direct
+    fine = value.get("fine_grained_feedback") if isinstance(value.get("fine_grained_feedback"), dict) else {}
+    direct = fine.get("answer_quality")
+    if isinstance(direct, dict) and direct:
+        return direct
+    return {}
+
+
+def run_dab_tool_agent_child_eval(
+    *,
+    candidate_dir: Path,
+    case_dir: Path,
+    dab_root: Path,
+    loop_dir: Path,
+    iteration: int,
+    parent_agent_card: dict[str, Any] | None = None,
+    parent_prompt: Path | None = None,
+    repair_seed: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    patch_path = candidate_dir / "patch.diff"
+    if not patch_path.exists() or not patch_path.read_text(encoding="utf-8", errors="replace").strip():
+        return {"status": "skipped", "reason": "candidate patch.diff missing or empty", "eval_kind": "dab_tool_agent"}
+
+    child_root = Path(tempfile.mkdtemp(prefix="meta_loop_dab_tool_child_eval."))
+    child_ws = child_root / "workspace"
+    shutil.copytree(ROOT, child_ws, ignore=ignore_workspace, symlinks=True)
+    run_cmd(["git", "init", "--quiet"], cwd=child_ws)
+    run_cmd(["git", "config", "user.name", "meta-loop-dab-tool-child-eval"], cwd=child_ws)
+    run_cmd(["git", "config", "user.email", "meta-loop-dab-tool-child-eval@localhost"], cwd=child_ws)
+    run_cmd(["git", "add", "."], cwd=child_ws)
+    run_cmd(["git", "commit", "--quiet", "-m", "baseline"], cwd=child_ws)
+
+    parent_source_materialization = materialize_child_parent_source(child_ws, parent_agent_card)
+    if parent_source_materialization.get("status") == "failed":
+        return {
+            "status": "parent_source_materialization_failed",
+            "eval_kind": "dab_tool_agent",
+            "parent_source_materialization": parent_source_materialization,
+            "workspace": str(child_ws),
+        }
+
+    parent_prompt_materialization: dict[str, Any] | None = None
+    if parent_prompt is not None:
+        try:
+            materialized_prompt = materialize_child_parent_prompt(child_ws, parent_prompt)
+            parent_prompt_materialization = {
+                "status": "materialized_parent_prompt",
+                "source_prompt": str(parent_prompt),
+                "canonical_target": str(materialized_prompt),
+            }
+        except Exception as exc:
+            parent_prompt_materialization = {"status": "failed", "reason": f"{type(exc).__name__}: {exc}"}
+            report = {
+                "status": "parent_prompt_materialization_failed",
+                "final_status": "candidate_child_eval_failed",
+                "eval_kind": "dab_tool_agent",
+                "parent_source_materialization": parent_source_materialization,
+                "parent_prompt_materialization": parent_prompt_materialization,
+                "workspace": str(child_ws),
+            }
+            child_eval_dir = candidate_dir / "child_eval"
+            child_eval_dir.mkdir(parents=True, exist_ok=True)
+            write_json(child_eval_dir / "child_eval_report.json", report)
+            write_json(child_eval_dir / "generic_child_eval_report.json", report)
+            return report
+
+    run_cmd(["git", "add", "."], cwd=child_ws)
+    run_cmd(["git", "commit", "--quiet", "--amend", "--no-edit"], cwd=child_ws)
+    apply_proc = run_cmd(["git", "apply", str(patch_path)], cwd=child_ws)
+    child_eval_dir = candidate_dir / "child_eval"
+    child_eval_dir.mkdir(parents=True, exist_ok=True)
+    if apply_proc.returncode != 0:
+        report = {
+            "status": "patch_apply_failed",
+            "final_status": "candidate_child_eval_failed",
+            "eval_kind": "dab_tool_agent",
+            "stderr": apply_proc.stderr,
+            "workspace": str(child_ws),
+            "parent_source_materialization": parent_source_materialization,
+            "parent_prompt_materialization": parent_prompt_materialization,
+        }
+        write_json(child_eval_dir / "child_eval_report.json", report)
+        write_json(child_eval_dir / "generic_child_eval_report.json", report)
+        return report
+    child_version = f"dab_tool_agent_child_iter{iteration:03d}_{utc_now_slug()}"
+    child_output_root = child_ws / "logs/dab_tool_agent"
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(child_ws)
+    env.setdefault("DAB_TOOL_AGENT_API_KEY_ENV", "DASHSCOPE_API_KEY")
+    max_iterations = str(env.get("DAB_TOOL_AGENT_CHILD_MAX_ITERATIONS") or env.get("DAB_TOOL_AGENT_MAX_ITERATIONS") or "10")
+    proc = run_cmd(
+        [
+            str(ROOT / ".venv/bin/python"),
+            str(child_ws / "experiments/run_dab_tool_agent.py"),
+            "--query-dir",
+            str(case_dir),
+            "--dab-data-root",
+            str(dab_root),
+            "--output-root",
+            str(child_output_root),
+            "--run-id",
+            child_version,
+            "--max-iterations",
+            max_iterations,
+        ],
+        cwd=child_ws,
+        env=env,
+        stdout_path=loop_dir / "child_dab_tool_run.stdout",
+        stderr_path=loop_dir / "child_dab_tool_run.stderr",
+    )
+    child_run_dir = child_output_root / child_version
+    if not child_run_dir.exists():
+        run_dirs = sorted(child_output_root.glob(f"*{child_version}*"), key=lambda path: path.stat().st_mtime)
+        child_run_dir = run_dirs[-1] if run_dirs else child_run_dir
+    if not child_run_dir.exists():
+        report = {
+            "status": "child_run_failed_no_run_dir",
+            "final_status": "candidate_child_eval_failed",
+            "eval_kind": "dab_tool_agent",
+            "workspace": str(child_ws),
+            "child_run_exit_code": proc.returncode,
+            "child_run_dir": str(child_run_dir),
+        }
+        write_json(child_eval_dir / "child_eval_report.json", report)
+        write_json(child_eval_dir / "generic_child_eval_report.json", report)
+        return report
+
+    analyzer_proc = run_cmd(
+        [
+            str(ROOT / ".venv/bin/python"),
+            str(child_ws / "experiments/analyze_dab_tool_agent_trace.py"),
+            "--run-dir",
+            str(child_run_dir),
+            "--output-dir",
+            str(child_eval_dir),
+        ],
+        cwd=child_ws,
+        env=env,
+        stdout_path=loop_dir / "child_dab_tool_analyze.stdout",
+        stderr_path=loop_dir / "child_dab_tool_analyze.stderr",
+    )
+    feedback_summary = load_json(child_eval_dir / "feedback_summary.json")
+    observations = load_json(child_eval_dir / "observations.json")
+    meta_agent_seed = load_json(child_eval_dir / "meta_agent_seed.json")
+
+    evidence_json = child_eval_dir / "child_dab_tool_agent_evidence_pack.json"
+    evidence_md = child_eval_dir / "child_dab_tool_agent_evidence_pack.md"
+    evidence_proc = run_cmd(
+        [
+            str(ROOT / ".venv/bin/python"),
+            str(child_ws / "experiments/build_dab_tool_agent_evidence_pack.py"),
+            "--run-dir",
+            str(child_run_dir),
+            "--output-json",
+            str(evidence_json),
+            "--output-md",
+            str(evidence_md),
+        ],
+        cwd=child_ws,
+        env=env,
+        stdout_path=loop_dir / "child_dab_tool_evidence.stdout",
+        stderr_path=loop_dir / "child_dab_tool_evidence.stderr",
+    )
+    child_answer_quality = answer_quality_from_feedback(feedback_summary)
+    parent_answer_quality = answer_quality_from_feedback(repair_seed or {})
+    helper_usage_summary = feedback_summary.get("helper_usage_summary") if isinstance(feedback_summary.get("helper_usage_summary"), dict) else {}
+    child_failure_gates: list[str] = []
+    if proc.returncode != 0:
+        child_failure_gates.append("child_run_exit_nonzero")
+    if analyzer_proc.returncode != 0:
+        child_failure_gates.append("child_analyzer_exit_nonzero")
+    if evidence_proc.returncode != 0:
+        child_failure_gates.append("child_evidence_pack_exit_nonzero")
+    if feedback_summary.get("final_answer_nonempty") is False:
+        child_failure_gates.append("missing_final_answer")
+    if child_answer_quality.get("strict_match_passed") is False:
+        child_failure_gates.append("answer_quality_mismatch")
+    helper_status = helper_usage_summary.get("status")
+    if helper_status and helper_status not in {"no_evolved_helper_registered", "helper_tool_called_before_final_answer"}:
+        child_failure_gates.append(str(helper_status))
+
+    child_passed = bool(child_answer_quality.get("strict_match_passed") is True and proc.returncode == 0 and analyzer_proc.returncode == 0)
+    next_seed = dict(meta_agent_seed) if isinstance(meta_agent_seed, dict) else {}
+    next_seed.update(
+        {
+            "seed_id": f"next_dab_tool_agent_repair_seed_iter{iteration:03d}",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "source": "child_eval_dab_tool_agent_workflow_feedback",
+            "parent_candidate_dir": str(candidate_dir),
+            "child_run_dir": str(child_run_dir),
+            "repair_profile": "data_agent_project_repair",
+            "answer_quality": child_answer_quality,
+            "helper_usage_summary": helper_usage_summary,
+            "full_evidence_pack_paths": {"json": str(evidence_json), "markdown": str(evidence_md)},
+        }
+    )
+    next_seed_path = child_eval_dir / "next_data_agent_repair_seed.json"
+    write_json(next_seed_path, next_seed)
+
+    report = {
+        "status": "completed",
+        "final_status": "candidate_child_eval_passed" if child_passed and not child_failure_gates else "candidate_child_eval_failed",
+        "eval_kind": "dab_tool_agent",
+        "workspace": str(child_ws),
+        "parent_source_materialization": parent_source_materialization,
+        "child_run_dir": str(child_run_dir),
+        "child_run_exit_code": proc.returncode,
+        "child_analyzer_exit_code": analyzer_proc.returncode,
+        "child_evidence_pack_exit_code": evidence_proc.returncode,
+        "child_answer_quality": child_answer_quality,
+        "parent_answer_quality": parent_answer_quality,
+        "child_answer_metrics": child_answer_quality,
+        "parent_answer_metrics": parent_answer_quality,
+        "helper_usage_summary": helper_usage_summary,
+        "helper_usage": helper_usage_summary,
+        "child_failure_gates": child_failure_gates,
+        "child_passed": child_passed and not child_failure_gates,
+        "child_original_dab_passed": child_answer_quality.get("strict_match_passed"),
+        "child_validation_reason": child_answer_quality.get("strict_match_reason"),
+        "child_selected_stage": feedback_summary.get("selected_stage"),
+        "child_selected_signal": feedback_summary.get("selected_signal"),
+        "candidate_repair_layers": feedback_summary.get("candidate_repair_layers") or [],
+        "routing_policy": feedback_summary.get("routing_policy") or {},
+        "meta_agent_decision_required": feedback_summary.get("meta_agent_decision_required"),
+        "workflow_feedback_summary": feedback_summary,
+        "structured_observations": observations if isinstance(observations, list) else [],
+        "child_dab_tool_agent_evidence_pack": {"json": str(evidence_json), "markdown": str(evidence_md)},
+        "next_data_agent_repair_seed": str(next_seed_path),
+        "child_status": {
+            "status": "completed",
+            "passed_original_dab_validation": child_answer_quality.get("strict_match_passed"),
+            "validation_reason": child_answer_quality.get("strict_match_reason"),
+            "selected_stage": feedback_summary.get("selected_stage"),
+            "selected_signal": feedback_summary.get("selected_signal"),
+            "answer_quality": child_answer_quality,
+            "helper_usage_summary": helper_usage_summary,
+            "candidate_repair_layers": feedback_summary.get("candidate_repair_layers") or [],
+            "meta_agent_decision_required": feedback_summary.get("meta_agent_decision_required"),
+        },
+    }
+    write_json(child_eval_dir / "generic_child_eval_report.json", report)
+    write_json(child_eval_dir / "child_eval_report.json", report)
+    return report
 
 
 def run_generic_child_eval(
@@ -841,17 +1589,75 @@ def run_generic_child_eval(
         child_run_dir / "generated_solve.py",
         candidate_patents_helper_modules(candidate_dir),
     )
-    child_failure_gate = None
-    if helper_usage.get("status") == "helper_not_used_by_child_generated_code":
-        child_failure_gate = "helper_not_used_by_child_generated_code"
+    child_failure_gates: list[str] = []
+    if helper_usage.get("status") != "helper_called_by_child_generated_code" and helper_usage.get("required"):
+        child_failure_gates.append(str(helper_usage.get("status") or "helper_not_used_by_child_generated_code"))
+    final_answer_dependency = helper_usage.get("final_answer_dependency") if isinstance(helper_usage.get("final_answer_dependency"), dict) else {}
+    if (
+        final_answer_dependency.get("required")
+        and final_answer_dependency.get("status") != "helper_output_used_for_final_answer"
+    ):
+        child_failure_gates.append(str(final_answer_dependency.get("status") or "helper_output_not_used_for_final_answer"))
+    try:
+        from experiments.meta_agent_cycle import compute_answer_metrics
+
+        child_answer_metrics = compute_answer_metrics(child_analysis.get("validation_reason"))
+    except Exception:
+        child_answer_metrics = {"status": "unavailable"}
+    parent_answer_metrics = {}
+    evals = (parent_agent_card or {}).get("evals") if isinstance((parent_agent_card or {}).get("evals"), dict) else {}
+    for item in evals.values() if isinstance(evals, dict) else []:
+        if isinstance(item, dict) and isinstance(item.get("answer_metrics"), dict):
+            parent_answer_metrics = item.get("answer_metrics") or {}
+            break
+    try:
+        child_f1 = float(child_answer_metrics.get("f1") or 0.0)
+        parent_f1 = float(parent_answer_metrics.get("f1") or 0.0)
+        child_pred = int(child_answer_metrics.get("predicted_count") or 0)
+        parent_pred = int(parent_answer_metrics.get("predicted_count") or 0)
+    except Exception:
+        child_f1 = parent_f1 = 0.0
+        child_pred = parent_pred = 0
+    if parent_f1 > 0 and (child_f1 <= 0 or (parent_pred > 0 and child_pred > max(parent_pred * 5, parent_pred + 100))):
+        child_failure_gates.append("severe_child_answer_regression")
+    child_failure_gate = child_failure_gates[0] if child_failure_gates else None
+    changed_files_for_open_diagnosis: list[str] = []
+    patch_numstat = candidate_dir / "patch_numstat.txt"
+    if patch_numstat.exists():
+        for line in patch_numstat.read_text(encoding="utf-8", errors="replace").splitlines():
+            parts = line.split("\t", 2)
+            if len(parts) == 3:
+                changed_files_for_open_diagnosis.append(parts[2])
+    open_diagnosis_evidence = build_open_diagnosis_evidence(
+        candidate_dir=candidate_dir,
+        parent_candidate_dir=Path(str(parent_agent_card.get("candidate_dir"))) if isinstance(parent_agent_card, dict) and parent_agent_card.get("candidate_dir") else None,
+        child_run_dir=child_run_dir,
+        child_analysis=child_analysis,
+        child_signal=child_signal,
+        child_feedback=child_feedback,
+        child_answer_metrics=child_answer_metrics,
+        parent_answer_metrics=parent_answer_metrics,
+        helper_usage=helper_usage,
+        child_failure_gates=child_failure_gates,
+        changed_files=changed_files_for_open_diagnosis,
+    )
+    next_repair_seed["open_diagnosis_evidence"] = open_diagnosis_evidence
+    if isinstance(next_repair_seed.get("fine_grained_feedback"), dict):
+        next_repair_seed["fine_grained_feedback"]["open_diagnosis_evidence"] = compact_open_diagnosis_evidence(open_diagnosis_evidence)
+    write_json(next_repair_seed_path, next_repair_seed)
+    child_eval_passed = bool(child_analysis.get("passed")) and not child_failure_gates
     report = {
         "status": "completed",
-        "final_status": "candidate_child_eval_passed" if child_analysis.get("passed") else "candidate_child_eval_failed",
+        "final_status": "candidate_child_eval_passed" if child_eval_passed else "candidate_child_eval_failed",
         "workspace": str(child_ws),
         "parent_source_materialization": parent_source_materialization,
         "child_run_dir": str(child_run_dir),
         "child_run_exit_code": proc.returncode,
-        "child_passed": child_analysis.get("passed"),
+        "child_answer_metrics": child_answer_metrics,
+        "parent_answer_metrics": parent_answer_metrics,
+        "child_failure_gates": child_failure_gates,
+        "child_passed": child_eval_passed,
+        "child_original_dab_passed": child_analysis.get("passed"),
         "child_validation_reason": child_analysis.get("validation_reason"),
         "child_selected_stage": child_signal.get("selected_component"),
         "child_selected_signal": child_signal.get("selected_signal"),
@@ -862,6 +1668,7 @@ def run_generic_child_eval(
         "next_data_agent_repair_seed": str(next_repair_seed_path),
         "child_helper_repair_plan": child_helper_repair_plan,
         "helper_usage": helper_usage,
+        "open_diagnosis_evidence": open_diagnosis_evidence,
         "child_failure_gate": child_failure_gate,
         "child_status": {
             "status": "completed",
@@ -954,12 +1761,13 @@ def run_loop(args: argparse.Namespace) -> int:
         "repair_profile": args.repair_profile,
         "parent_selection_policy": {
             "initial_parent_override": args.parent_agent_id,
-            "subsequent_iterations": "select current top-ranked recent data_agent from archive after candidate postprocess",
+            "subsequent_iterations": "select parent_pool via archive_selector after candidate postprocess",
             "archive_max_parent_age_hours": args.archive_max_parent_age_hours,
             "repeated_parent_penalty": args.repeated_parent_penalty,
         },
         "stages": [
-            "select_parent_from_archive",
+            "select_parent_pool_from_archive_selector",
+            "select_evidence_pool_from_archive_selector",
             "select_meta_agent_protocol_from_archive",
             "run_or_reuse_parent_data_agent",
             "analyze_parent_and_seed_repair",
@@ -986,6 +1794,7 @@ def run_loop(args: argparse.Namespace) -> int:
                 "meta_agent_protocol_id": meta_agent_id,
                 "data_parent_card": parent["card"],
                 "meta_agent_card": meta_agent["card"] if meta_agent else None,
+                "parent_selection_score": parent.get("selection_score"),
             },
         )
         if parent_run is None or args.rerun_parent_each_iteration:
@@ -995,25 +1804,45 @@ def run_loop(args: argparse.Namespace) -> int:
                 version=f"meta_loop_parent_iter{iteration:03d}_{utc_now_slug()}",
                 dab_root=dab_root,
                 timeout_sec=args.timeout_sec,
+                parent_agent_card=parent["card"],
+                loop_dir=iteration_dir,
             )
-        seed, seed_path = analyze_and_seed(
-            run_dir=parent_run,
-            loop_dir=iteration_dir,
-            candidate_context={"parent_agent_id": parent_agent_id, "iteration": iteration, "repair_profile": args.repair_profile},
-        )
         if args.repair_seed:
             seed_path = Path(args.repair_seed).resolve()
             if not seed_path.exists():
                 raise SystemExit(f"repair_seed not found: {seed_path}")
             seed = load_json(seed_path) or {}
+            archive_selection = attach_archive_selection_to_seed(
+                seed=seed,
+                seed_path=seed_path,
+                archive_root=archive_root,
+                loop_dir=iteration_dir,
+                repeated_parent_ids=parent_history,
+            )
             write_json(
                 iteration_dir / "repair_seed_override.json",
                 {
-                    "status": "using_repair_seed_override",
+                    "status": "using_repair_seed_override_skip_parent_analysis",
                     "override_seed_path": str(seed_path),
                     "override_seed": seed,
-                    "parent_analysis_seed_path": str(iteration_dir / "repair_seed.json"),
+                    "parent_analysis_seed_path": None,
+                    "parent_run": str(parent_run),
+                    "archive_selection_path": str(iteration_dir / "archive_selection.json"),
+                    "reason": "Explicit repair_seed is authoritative; skip legacy parent analyzer so DAB tool-agent runs without result.json are supported.",
                 },
+            )
+        else:
+            seed, seed_path = analyze_and_seed(
+                run_dir=parent_run,
+                loop_dir=iteration_dir,
+                candidate_context={"parent_agent_id": parent_agent_id, "iteration": iteration, "repair_profile": args.repair_profile},
+            )
+            archive_selection = attach_archive_selection_to_seed(
+                seed=seed,
+                seed_path=seed_path,
+                archive_root=archive_root,
+                loop_dir=iteration_dir,
+                repeated_parent_ids=parent_history,
             )
         candidate_id = candidate_id_for(args.candidate_id_prefix, iteration)
         candidate_dir = ROOT / "candidates/dab" / candidate_id
@@ -1058,16 +1887,28 @@ def run_loop(args: argparse.Namespace) -> int:
 
         child_eval = None
         if launcher_exit == 0 and args.run_generic_child_eval:
-            child_eval = run_generic_child_eval(
-                candidate_dir=candidate_dir,
-                case_dir=case_dir,
-                prompt_path=prompt_path,
-                dab_root=dab_root,
-                timeout_sec=args.timeout_sec,
-                loop_dir=iteration_dir,
-                iteration=iteration,
-                parent_agent_card=parent["card"],
-            )
+            if is_dab_tool_agent_workflow_seed(seed):
+                child_eval = run_dab_tool_agent_child_eval(
+                    candidate_dir=candidate_dir,
+                    case_dir=case_dir,
+                    dab_root=dab_root,
+                    loop_dir=iteration_dir,
+                    iteration=iteration,
+                    parent_agent_card=parent["card"],
+                    parent_prompt=prompt_path,
+                    repair_seed=seed,
+                )
+            else:
+                child_eval = run_generic_child_eval(
+                    candidate_dir=candidate_dir,
+                    case_dir=case_dir,
+                    prompt_path=prompt_path,
+                    dab_root=dab_root,
+                    timeout_sec=args.timeout_sec,
+                    loop_dir=iteration_dir,
+                    iteration=iteration,
+                    parent_agent_card=parent["card"],
+                )
 
         postprocess_exit = None
         if candidate_dir.exists():
@@ -1088,6 +1929,7 @@ def run_loop(args: argparse.Namespace) -> int:
                 "meta_agent_protocol_id": meta_agent_id,
                 "parent_run": str(parent_run),
                 "seed": seed,
+                "archive_selection_path": str(iteration_dir / "archive_selection.json"),
                 "launcher_exit_code": launcher_exit,
                 "child_eval": child_eval,
                 "postprocess_exit_code": postprocess_exit,
@@ -1106,12 +1948,12 @@ def run_loop(args: argparse.Namespace) -> int:
             write_json(
                 iteration_dir / "next_parent_selection.json",
                 {
-                    "status": "selected_from_archive_top_ranked_recent_with_repeated_penalty",
+                    "status": "selected_from_archive_selector_parent_pool",
                     "previous_parent_agent_id": parent_agent_id,
                     "next_parent_agent_id": next_parent["card"]["agent_id"],
                     "selection_score": next_parent.get("selection_score"),
                     "parent_history": parent_history,
-                    "policy": "archive_top_ranked_recent_after_candidate_postprocess_with_repeated_parent_penalty",
+                    "policy": "archive_selector_parent_pool_after_candidate_postprocess_with_repeated_parent_penalty",
                     "archive_max_parent_age_hours": args.archive_max_parent_age_hours,
                     "repeated_parent_penalty": args.repeated_parent_penalty,
                 },
@@ -1212,4 +2054,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
