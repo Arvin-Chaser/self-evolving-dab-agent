@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -54,6 +55,108 @@ def profile_scope_text(profile: base.RepairProfile) -> str:
     )
 
 
+def quote(value: Path | str) -> str:
+    return shlex.quote(str(value))
+
+
+def codex_native_eval_instructions(
+    *,
+    profile: base.RepairProfile,
+    candidate_dir: Path,
+    parent_run: Path | None,
+) -> str:
+    case_dir = os.environ.get("META_LOOP_CASE_DIR")
+    dab_root = os.environ.get("META_LOOP_DAB_ROOT")
+    max_iterations = os.environ.get(
+        "CODEX_NATIVE_DATA_AGENT_MAX_ITERATIONS",
+        os.environ.get("DAB_TOOL_AGENT_CHILD_MAX_ITERATIONS", "4"),
+    )
+    child_run_id = f"codex_native_inner_child_{base.utc_slug()}"
+    inner_output_root = candidate_dir / "codex_native_inner_runs"
+
+    lines = [
+        "## Codex-native self-debug loop",
+        "",
+        "Codex itself is the looping meta-agent. Do not stop merely because a patch compiles.",
+        "After making a candidate edit, use your own tool calls to run the existing data-agent/evidence tools, inspect the result, and revise the patch if the child did not improve.",
+        "The outer Python launcher is only a sandbox/archiver/final auditor; it is not the debugging loop.",
+        "",
+        "### Completion condition",
+        "",
+        "You may finish only when one of these is true:",
+        "- You produced a real source diff and local checks plus an inner data-agent/evidence run indicate the repair is wired into the generated child behavior.",
+        "- You produced a real source diff and explain why full child improvement could not be confirmed within the local budget, with concrete evidence.",
+        "- You leave the tree unchanged because no safe repair is possible, and explain the no-op reason.",
+        "",
+        "If an inner run shows the helper/prompt/script is not actually used by generated code, continue debugging inside this same Codex task instead of stopping.",
+        "",
+        "### Interface-alignment observations to perform yourself",
+        "",
+        "- Inspect the generated child `generated_solve.py` after any inner data-agent run.",
+        "- If you add a helper/tool/script, verify generated code imports it, calls it with the intended full inputs, and uses its output to construct the final answer or next workflow state.",
+        "- Treat patterns such as `helper_called_but_output_not_used_for_final_answer`, passing pre-filtered data where full evidence is required, or logging-only helper use as failed wiring that needs another edit attempt.",
+        "- Prefer changing the reusable helper/tool/script plus minimal prompt glue over adding more ungrounded prompt text.",
+        "",
+        "### Suggested existing commands",
+        "",
+        "Use these as templates; adapt run ids and output dirs as needed.",
+    ]
+    if case_dir and dab_root and profile.name in {"data_agent_project_repair", "data_agent_tool_repair", "data_agent_prompt_repair"}:
+        lines.extend(
+            [
+                "",
+                "Run a child data-agent attempt from this isolated workspace:",
+                "",
+                "```bash",
+                "mkdir -p " + quote(inner_output_root),
+                (
+                    ".venv/bin/python experiments/run_dab_tool_agent.py "
+                    f"--dab-data-root {quote(dab_root)} "
+                    f"--query-dir {quote(case_dir)} "
+                    f"--output-root {quote(inner_output_root)} "
+                    f"--run-id {quote(child_run_id)} "
+                    f"--max-iterations {quote(max_iterations)}"
+                ),
+                "```",
+                "",
+                "Then analyze its trace/fine-grained feedback:",
+                "",
+                "```bash",
+                (
+                    ".venv/bin/python experiments/analyze_dab_tool_agent_trace.py "
+                    f"--run-dir {quote(inner_output_root / child_run_id)} "
+                    f"--output-dir {quote(inner_output_root / child_run_id)}"
+                ),
+                "```",
+                "",
+                "Useful follow-up inspections:",
+                "",
+                "```bash",
+                f"sed -n '1,260p' {quote(inner_output_root / child_run_id / 'generated_solve.py')}",
+                f"find {quote(inner_output_root / child_run_id)} -maxdepth 2 -type f | sort",
+                "git diff --stat",
+                "git diff --check",
+                "```",
+            ]
+        )
+    else:
+        lines.extend(
+            [
+                "",
+                "- The loop did not provide META_LOOP_CASE_DIR/META_LOOP_DAB_ROOT, so do focused local checks and inspect parent evidence instead of a full child run.",
+            ]
+        )
+    if parent_run:
+        lines.extend(
+            [
+                "",
+                "Parent evidence run available for comparison:",
+                f"- `{parent_run}`",
+            ]
+        )
+    return "\n".join(lines)
+
+
 def build_codex_task_prompt(
     *,
     profile: base.RepairProfile,
@@ -89,8 +192,11 @@ def build_codex_task_prompt(
         "2. Inspect only the files needed to make a minimal repair.",
         "3. Make real source edits in the workspace if a safe repair exists.",
         "4. Run focused checks proportional to the change. At minimum, run `python -m py_compile` on changed Python files when applicable.",
-        "5. If you create or modify `adapters/dab_tool_agent_helpers`, ensure `registry.py` uses entries with `name`, `function`, `description`, and `input_contract`, and helper functions accept `(payload, inputs)`.",
-        "6. Do not spend time on broad refactors. If the task is not safely repairable, no-op rather than fabricating a patch.",
+        "5. Use the Codex-native self-debug loop below: run the relevant existing data-agent/evidence commands, inspect generated child behavior, and revise if your patch is not actually wired into the child.",
+        "6. If you create or modify `adapters/dab_tool_agent_helpers`, ensure `registry.py` uses entries with `name`, `function`, `description`, and `input_contract`, and helper functions accept `(payload, inputs)`.",
+        "7. Do not spend time on broad refactors. If the task is not safely repairable, no-op rather than fabricating a patch.",
+        "",
+        codex_native_eval_instructions(profile=profile, candidate_dir=candidate_dir, parent_run=parent_run),
         "",
         "## Final response format",
         "",
