@@ -49,6 +49,7 @@ DEFAULT_ARCHIVE = ROOT / "archive"
 DEFAULT_CASE_DIR = Path("/home/m0st1ma/research/DataAgentBench/query_PATENTS/query1")
 DEFAULT_DAB_ROOT = Path("/home/m0st1ma/research/DataAgentBench")
 DATA_AGENT_CANONICAL_PROMPT = Path("prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt")
+DAB_TOOL_AGENT_CANONICAL_POLICY = Path("prompts/dab/dab_tool_agent_policy_zero_start.txt")
 
 
 def utc_now_slug() -> str:
@@ -326,6 +327,264 @@ def load_jsonl(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def safe_load_json(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        value = json.loads(path.read_text(encoding="utf-8", errors="replace"))
+    except Exception:
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def upsert_jsonl(path: Path, key: str, row: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rows = load_jsonl(path)
+    replaced = False
+    for idx, existing in enumerate(rows):
+        if existing.get(key) == row.get(key):
+            rows[idx] = row
+            replaced = True
+            break
+    if not replaced:
+        rows.append(row)
+    with path.open("w", encoding="utf-8") as handle:
+        for item in rows:
+            handle.write(json.dumps(item, ensure_ascii=False) + "\n")
+
+
+def answer_quality_summary(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    out: dict[str, Any] = {}
+    for key in (
+        "available",
+        "metric_type",
+        "strict_match_passed",
+        "expected_count",
+        "predicted_count",
+        "true_positive_count",
+        "missing_count",
+        "extra_count",
+        "precision",
+        "recall",
+        "f1",
+    ):
+        if key in value:
+            out[key] = value.get(key)
+    if "true_positive_count" not in out and "true_positive" in value:
+        out["true_positive_count"] = value.get("true_positive")
+    if "missing_count" not in out and "false_negative" in value:
+        out["missing_count"] = value.get("false_negative")
+    if "extra_count" not in out and "false_positive" in value:
+        out["extra_count"] = value.get("false_positive")
+    for key in ("missing_codes_sample", "extra_codes_sample", "predicted_codes_sample"):
+        sample = value.get(key)
+        if isinstance(sample, list):
+            out[key] = sample[:12]
+    reason = value.get("strict_match_reason")
+    if isinstance(reason, str) and reason:
+        out["strict_match_reason_excerpt"] = reason[:500]
+    return out
+
+
+def first_answer_quality_from_report(report: dict[str, Any], *, role: str) -> dict[str, Any]:
+    keys = (
+        ("child_answer_quality", "child_answer_metrics", "answer_quality")
+        if role == "child"
+        else ("parent_answer_quality", "parent_answer_metrics")
+    )
+    for key in keys:
+        value = report.get(key)
+        if isinstance(value, dict) and value:
+            return value
+    child_status = report.get("child_status") if isinstance(report.get("child_status"), dict) else {}
+    if role == "child" and isinstance(child_status.get("answer_quality"), dict):
+        return child_status["answer_quality"]
+    return {}
+
+
+def compact_helper_usage(report: dict[str, Any]) -> dict[str, Any]:
+    helper = report.get("helper_usage") if isinstance(report.get("helper_usage"), dict) else {}
+    child_status = report.get("child_status") if isinstance(report.get("child_status"), dict) else {}
+    if not helper and isinstance(child_status.get("helper_usage_summary"), dict):
+        helper = child_status["helper_usage_summary"]
+    if not helper:
+        return {}
+    return {
+        "helper_tool_enabled": helper.get("helper_tool_enabled"),
+        "helper_tool_called": helper.get("helper_tool_called"),
+        "helper_call_count": helper.get("helper_call_count"),
+        "registered_helper_names": helper.get("registered_helper_names"),
+        "return_answer_after_helper": helper.get("return_answer_after_helper"),
+        "status": helper.get("status"),
+        "final_answer_dependency_status": helper.get("final_answer_dependency_status"),
+    }
+
+
+def f1_from_quality(value: dict[str, Any]) -> float | None:
+    try:
+        if value.get("f1") is None:
+            return None
+        return float(value.get("f1"))
+    except Exception:
+        return None
+
+
+def build_iteration_handoff(
+    *,
+    archive_root: Path,
+    loop_dir: Path,
+    iteration_dir: Path,
+    iteration: int,
+    candidate_dir: Path,
+    candidate_id: str,
+    parent_agent_id: str,
+    meta_agent_id: str | None,
+    parent_run: Path,
+    seed_path: Path,
+    launcher_exit: int | None,
+    child_eval: dict[str, Any] | None,
+    postprocess_exit: int | None,
+) -> dict[str, Any]:
+    manifest = safe_load_json(candidate_dir / "manifest.json")
+    state = safe_load_json(candidate_dir / "candidate_state.json")
+    report = child_eval if isinstance(child_eval, dict) else safe_load_json(candidate_dir / "child_eval/child_eval_report.json")
+    patch_numstat = (candidate_dir / "patch_numstat.txt").read_text(encoding="utf-8", errors="replace") if (candidate_dir / "patch_numstat.txt").exists() else ""
+    child_quality_raw = first_answer_quality_from_report(report, role="child")
+    parent_quality_raw = first_answer_quality_from_report(report, role="parent")
+    child_quality = answer_quality_summary(child_quality_raw)
+    parent_quality = answer_quality_summary(parent_quality_raw)
+    child_f1 = f1_from_quality(child_quality_raw)
+    parent_f1 = f1_from_quality(parent_quality_raw)
+    delta_f1 = round(child_f1 - parent_f1, 6) if child_f1 is not None and parent_f1 is not None else None
+    evolution = state.get("evolution_assessment") if isinstance(state.get("evolution_assessment"), dict) else {}
+    child_status = report.get("child_status") if isinstance(report.get("child_status"), dict) else {}
+    child_failure_gates = report.get("child_failure_gates") if isinstance(report.get("child_failure_gates"), list) else []
+    selected_stage = child_status.get("selected_stage") or report.get("child_selected_stage") or manifest.get("selected_stage")
+    selected_signal = child_status.get("selected_signal") or report.get("child_selected_signal") or manifest.get("selected_signal")
+    if evolution.get("evolution_parent_eligible"):
+        handoff_role = "candidate_can_seed_parent_selection"
+    elif delta_f1 is not None and delta_f1 < 0:
+        handoff_role = "negative_evidence_for_next_repair"
+    elif child_quality:
+        handoff_role = "diagnostic_evidence_for_next_repair"
+    else:
+        handoff_role = "protocol_or_validation_evidence"
+    lessons: list[str] = []
+    if delta_f1 is not None:
+        direction = "improved" if delta_f1 > 0 else "regressed" if delta_f1 < 0 else "unchanged"
+        lessons.append(f"child_f1 {direction} relative to materialized parent: delta_f1={delta_f1}")
+    if child_failure_gates:
+        lessons.append("child_failure_gates=" + ",".join(str(item) for item in child_failure_gates[:6]))
+    helper_usage = compact_helper_usage(report)
+    helper_status = helper_usage.get("status")
+    if helper_status:
+        lessons.append(f"helper_usage_status={helper_status}")
+    if selected_signal:
+        lessons.append(f"selected_signal={selected_signal}")
+    return {
+        "schema_version": "meta_loop_handoff_v001",
+        "handoff_id": f"{loop_dir.name}_iter{iteration:03d}_{candidate_id}",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "loop_dir": str(loop_dir),
+        "iteration_dir": str(iteration_dir),
+        "iteration": iteration,
+        "candidate_id": candidate_id,
+        "candidate_dir": str(candidate_dir),
+        "parent_agent_id": parent_agent_id,
+        "meta_agent_id": meta_agent_id,
+        "parent_run": str(parent_run),
+        "repair_seed_path": str(seed_path),
+        "candidate_status": state.get("status") or report.get("final_status") or manifest.get("status"),
+        "manifest_status": manifest.get("status"),
+        "launcher_exit_code": launcher_exit,
+        "postprocess_exit_code": postprocess_exit,
+        "changed_files": manifest.get("project_changed_files") or [],
+        "total_changed_lines": manifest.get("total_changed_lines"),
+        "patch_numstat": patch_numstat.strip().splitlines()[:12],
+        "child_eval_status": report.get("final_status") or report.get("status"),
+        "selected_stage": selected_stage,
+        "selected_signal": selected_signal,
+        "parent_answer_quality": parent_quality,
+        "child_answer_quality": child_quality,
+        "delta_f1": delta_f1,
+        "child_failure_gates": child_failure_gates,
+        "helper_usage_summary": helper_usage,
+        "evolution_assessment": {
+            "evolution_status": evolution.get("evolution_status"),
+            "evolution_parent_eligible": evolution.get("evolution_parent_eligible"),
+            "reward": evolution.get("reward"),
+            "selection_rationale": evolution.get("selection_rationale"),
+            "comparison_baseline": (evolution.get("parent_comparison_metrics") or {}).get("comparison_baseline") if isinstance(evolution.get("parent_comparison_metrics"), dict) else None,
+        },
+        "handoff_role": handoff_role,
+        "objective_lessons": lessons,
+        "meta_agent_interpretation_required": True,
+        "next_loop_usage": "Inject this handoff into the next repair seed as recent loop memory, regardless of whether this candidate becomes the selected parent.",
+        "artifact_paths": {
+            "manifest": str(candidate_dir / "manifest.json"),
+            "candidate_state": str(candidate_dir / "candidate_state.json"),
+            "child_eval_report": str(candidate_dir / "child_eval/child_eval_report.json"),
+            "archive_candidate_card": str(archive_root / "candidates" / candidate_id / "candidate_card.json"),
+            "archive_observation": str(archive_root / "candidates" / candidate_id / "archive_observation.json"),
+            "patch": str(candidate_dir / "patch.diff"),
+        },
+    }
+
+
+def record_iteration_handoff(archive_root: Path, handoff: dict[str, Any], iteration_dir: Path) -> Path:
+    handoff_path = iteration_dir / "next_iteration_handoff.json"
+    write_json(handoff_path, handoff)
+    upsert_jsonl(archive_root / "indexes/loop_handoffs.jsonl", "handoff_id", handoff)
+    return handoff_path
+
+
+def recent_loop_handoffs(archive_root: Path, limit: int = 5) -> list[dict[str, Any]]:
+    rows = load_jsonl(archive_root / "indexes/loop_handoffs.jsonl")
+    rows.sort(key=lambda item: str(item.get("created_at") or ""), reverse=True)
+    compact: list[dict[str, Any]] = []
+    for row in rows[:limit]:
+        compact.append(
+            {
+                "handoff_id": row.get("handoff_id"),
+                "created_at": row.get("created_at"),
+                "candidate_id": row.get("candidate_id"),
+                "parent_agent_id": row.get("parent_agent_id"),
+                "candidate_status": row.get("candidate_status"),
+                "handoff_role": row.get("handoff_role"),
+                "selected_stage": row.get("selected_stage"),
+                "selected_signal": row.get("selected_signal"),
+                "delta_f1": row.get("delta_f1"),
+                "parent_answer_quality": row.get("parent_answer_quality"),
+                "child_answer_quality": row.get("child_answer_quality"),
+                "child_failure_gates": row.get("child_failure_gates"),
+                "helper_usage_summary": row.get("helper_usage_summary"),
+                "changed_files": row.get("changed_files"),
+                "objective_lessons": row.get("objective_lessons"),
+                "artifact_paths": row.get("artifact_paths"),
+            }
+        )
+    return compact
+
+
+def attach_recent_loop_handoffs_to_seed(seed: dict[str, Any], seed_path: Path, archive_root: Path, loop_dir: Path, *, limit: int = 5) -> list[dict[str, Any]]:
+    handoffs = recent_loop_handoffs(archive_root, limit=limit)
+    if not handoffs:
+        return []
+    payload = {
+        "schema_version": "recent_loop_handoff_memory_v001",
+        "source": str(archive_root / "indexes/loop_handoffs.jsonl"),
+        "usage": "Recent loop outcomes are objective memory for the meta-agent. Interpret them, but do not treat them as fixed human repair instructions.",
+        "handoffs": handoffs,
+    }
+    seed["recent_loop_handoff_memory"] = payload
+    seed.setdefault("fine_grained_feedback", {})["recent_loop_handoff_memory"] = payload
+    write_json(loop_dir / "recent_loop_handoffs.json", payload)
+    write_json(seed_path, seed)
+    return handoffs
+
+
 def repo_rel(path: Path) -> str:
     try:
         return str(path.resolve().relative_to(ROOT))
@@ -481,6 +740,25 @@ def archive_card_age_hours(card_path: Path) -> float | None:
     return max(0.0, (now_ts - card_path.stat().st_mtime) / 3600.0)
 
 
+def card_lineage_family(card: dict[str, Any]) -> str:
+    value = card.get("source_lineage_family") or card.get("lineage_family")
+    if value:
+        return str(value)
+    source_refs = card.get("source_refs") if isinstance(card.get("source_refs"), dict) else {}
+    runner = str(source_refs.get("runner") or "")
+    if runner == "experiments/run_dab_tool_agent.py":
+        return "dab_tool_agent_workflow"
+    if runner == "experiments/run_dab_agent.py":
+        return "generated_solve_legacy"
+    return "unknown"
+
+
+def card_matches_lineage_family(card: dict[str, Any], requested: str | None) -> bool:
+    if not requested:
+        return True
+    return card_lineage_family(card) == requested
+
+
 def archive_card_is_recent(card_path: Path, max_age_hours: float | None) -> bool:
     if max_age_hours is None or max_age_hours <= 0:
         return True
@@ -515,6 +793,7 @@ def select_archive_agent(
     max_age_hours: float | None = None,
     repeated_parent_ids: list[str] | None = None,
     repeated_parent_penalty: float = 0.0,
+    source_lineage_family: str | None = None,
 ) -> dict[str, Any]:
     agents = {row["agent_id"]: row for row in load_jsonl(archive_root / "indexes/agents.jsonl")}
     if requested:
@@ -550,6 +829,8 @@ def select_archive_agent(
                 card = load_json(card_path)
                 if agent_type and card.get("agent_type") != agent_type:
                     continue
+                if not card_matches_lineage_family(card, source_lineage_family):
+                    continue
                 if require_prompt and not card.get("source_refs", {}).get("prompt"):
                     continue
                 if card.get("evolve_policy", {}).get("can_use_as_parent"):
@@ -563,6 +844,8 @@ def select_archive_agent(
             continue
         card = load_json(card_path)
         if agent_type and card.get("agent_type") != agent_type:
+            continue
+        if not card_matches_lineage_family(card, source_lineage_family):
             continue
         if require_prompt and not card.get("source_refs", {}).get("prompt"):
             continue
@@ -593,6 +876,7 @@ def select_parent_agent(
     max_age_hours: float | None = None,
     repeated_parent_ids: list[str] | None = None,
     repeated_parent_penalty: float = 0.0,
+    source_lineage_family: str | None = None,
 ) -> dict[str, Any]:
     if requested:
         return select_archive_agent(
@@ -603,6 +887,7 @@ def select_parent_agent(
             max_age_hours=max_age_hours,
             repeated_parent_ids=repeated_parent_ids,
             repeated_parent_penalty=repeated_parent_penalty,
+            source_lineage_family=source_lineage_family,
         )
 
     selection = select_from_archive(
@@ -612,6 +897,7 @@ def select_parent_agent(
         parent_limit=10,
         evidence_limit=0,
         parent_agent_type="data_agent",
+        source_lineage_family=source_lineage_family,
     )
     for row in selection.get("parent_pool") or []:
         card_ref = row.get("card")
@@ -624,6 +910,8 @@ def select_parent_agent(
             continue
         card = load_json(card_path)
         if card.get("agent_type") != "data_agent":
+            continue
+        if not card_matches_lineage_family(card, source_lineage_family):
             continue
         if not card.get("source_refs", {}).get("prompt"):
             continue
@@ -641,6 +929,7 @@ def select_parent_agent(
         max_age_hours=max_age_hours,
         repeated_parent_ids=repeated_parent_ids,
         repeated_parent_penalty=repeated_parent_penalty,
+        source_lineage_family=source_lineage_family,
     )
 
 
@@ -667,6 +956,28 @@ def prompt_for_parent(parent: dict[str, Any], override: Path | None = None) -> P
     return ROOT / prompt
 
 
+def preflight_parent_materialization(parent_agent_card: dict[str, Any] | None) -> dict[str, Any]:
+    """Check whether selected parent source patches can be materialized.
+
+    Clean current-mainline parents have no candidate_patch and return skipped.
+    Historical shadow parents with stale patches are caught before expensive
+    parent/data-agent runs start.
+    """
+    patch_paths = resolve_parent_candidate_patches(parent_agent_card)
+    if not patch_paths:
+        return {"status": "skipped", "reason": "no parent source patches declared"}
+    parent_root = Path(tempfile.mkdtemp(prefix="meta_loop_parent_preflight."))
+    parent_ws = parent_root / "workspace"
+    shutil.copytree(ROOT, parent_ws, ignore=ignore_workspace, symlinks=True)
+    run_cmd(["git", "init", "--quiet"], cwd=parent_ws)
+    run_cmd(["git", "config", "user.name", "meta-loop-parent-preflight"], cwd=parent_ws)
+    run_cmd(["git", "config", "user.email", "meta-loop-parent-preflight@localhost"], cwd=parent_ws)
+    run_cmd(["git", "add", "."], cwd=parent_ws)
+    run_cmd(["git", "commit", "--quiet", "-m", "baseline"], cwd=parent_ws)
+    result = materialize_child_parent_source(parent_ws, parent_agent_card)
+    return {**result, "workspace": str(parent_ws), "preflight": True}
+
+
 def run_parent_case(
     *,
     case_dir: Path,
@@ -677,26 +988,39 @@ def run_parent_case(
     parent_agent_card: dict[str, Any] | None = None,
     loop_dir: Path | None = None,
 ) -> Path:
-    """Run the selected parent with its archived source patches materialized.
+    """Run the selected parent with archived source patches materialized.
 
     Archive agents may include prompt changes plus project-source helper patches.
-    Running only the archived prompt against the current main workspace can create
-    fake parent failures (for example imports of helpers that exist only in the
-    parent lineage).  When a parent agent card is available, run the parent in an
+    Running only an archived prompt against the current main workspace can create
+    fake parent failures, because helpers/policies may only exist in the parent
+    lineage.  When a parent agent card is available, run the parent in an
     isolated snapshot with its lineage patches applied, matching child eval.
+
+    The active research mainline is now the DAB multi-turn tool-agent workflow.
+    The old generated_solve.py parent runner is intentionally not used here: it
+    can create parent evidence about one-shot code generation failures that is
+    not aligned with the new DataAgent workflow.
     """
     patch_paths = resolve_parent_candidate_patches(parent_agent_card)
     if not patch_paths:
-        result = run_dab_agent(
+        run_dir = run_dab_tool_agent_parent_case(
+            workspace=ROOT,
             case_dir=case_dir,
-            prompt_path=prompt_path,
             version=version,
             dab_root=dab_root,
-            timeout_sec=timeout_sec,
+            loop_dir=loop_dir,
         )
         if loop_dir:
-            write_json(loop_dir / "parent_source_materialization.json", {"status": "skipped", "reason": "no parent source patches declared"})
-        return Path(result["run_dir"])
+            write_json(
+                loop_dir / "parent_source_materialization.json",
+                {
+                    "status": "skipped",
+                    "reason": "no parent source patches declared",
+                    "active_workflow": "dab_tool_agent",
+                    "run_dir": str(run_dir),
+                },
+            )
+        return run_dir
 
     parent_root = Path(tempfile.mkdtemp(prefix="meta_loop_parent_eval."))
     parent_ws = parent_root / "workspace"
@@ -713,50 +1037,201 @@ def run_parent_case(
             write_json(loop_dir / "parent_source_materialization.json", {**parent_source_materialization, "workspace": str(parent_ws)})
         raise RuntimeError(f"parent source materialization failed: {parent_source_materialization}")
     try:
-        materialized_prompt = materialize_child_parent_prompt(parent_ws, prompt_path)
+        materialize_child_parent_prompt(parent_ws, prompt_path)
     except FileNotFoundError:
-        materialized_prompt = prompt_path
+        pass
     run_cmd(["git", "add", "."], cwd=parent_ws)
     run_cmd(["git", "commit", "--quiet", "--amend", "--no-edit"], cwd=parent_ws)
 
-    env = os.environ.copy()
-    env["PYTHONPATH"] = str(parent_ws)
     parent_version = f"{version}_materialized"
-    proc = run_cmd(
-        [
-            str(ROOT / ".venv/bin/python"),
-            str(parent_ws / "experiments/run_dab_agent.py"),
-            "--case-dir",
-            str(case_dir),
-            "--prompt",
-            str(materialized_prompt),
-            "--version",
-            parent_version,
-            "--dab-root",
-            str(dab_root),
-            "--timeout-sec",
-            str(timeout_sec),
-        ],
-        cwd=parent_ws,
-        env=env,
-        stdout_path=(loop_dir / "parent_run.stdout") if loop_dir else None,
-        stderr_path=(loop_dir / "parent_run.stderr") if loop_dir else None,
+    run_dir = run_dab_tool_agent_parent_case(
+        workspace=parent_ws,
+        case_dir=case_dir,
+        version=parent_version,
+        dab_root=dab_root,
+        loop_dir=loop_dir,
     )
-    run_dirs = sorted((parent_ws / "logs/dab_agent").glob(f"*{parent_version}*"), key=lambda p: p.stat().st_mtime)
-    if not run_dirs:
-        if loop_dir:
-            write_json(
-                loop_dir / "parent_source_materialization.json",
-                {**parent_source_materialization, "workspace": str(parent_ws), "run_status": "failed_no_run_dir", "exit_code": proc.returncode},
-            )
-        raise RuntimeError(f"materialized parent run produced no run_dir; exit_code={proc.returncode}")
-    run_dir = run_dirs[-1]
     if loop_dir:
         write_json(
             loop_dir / "parent_source_materialization.json",
-            {**parent_source_materialization, "workspace": str(parent_ws), "run_status": "completed", "exit_code": proc.returncode, "run_dir": str(run_dir)},
+            {
+                **parent_source_materialization,
+                "workspace": str(parent_ws),
+                "run_status": "completed",
+                "active_workflow": "dab_tool_agent",
+                "run_dir": str(run_dir),
+            },
         )
     return run_dir
+
+
+def run_dab_tool_agent_parent_case(
+    *,
+    workspace: Path,
+    case_dir: Path,
+    version: str,
+    dab_root: Path,
+    loop_dir: Path | None,
+) -> Path:
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(workspace)
+    env.setdefault("DAB_TOOL_AGENT_API_KEY_ENV", "DASHSCOPE_API_KEY")
+    max_iterations = str(
+        env.get("DAB_TOOL_AGENT_PARENT_MAX_ITERATIONS")
+        or env.get("CODEX_NATIVE_DATA_AGENT_MAX_ITERATIONS")
+        or env.get("DAB_TOOL_AGENT_MAX_ITERATIONS")
+        or "10"
+    )
+    output_root = workspace / "logs" / "dab_tool_agent"
+    policy_path = workspace / DAB_TOOL_AGENT_CANONICAL_POLICY
+    cmd = [
+        str(ROOT / ".venv/bin/python"),
+        str(workspace / "experiments/run_dab_tool_agent.py"),
+        "--query-dir",
+        str(case_dir),
+        "--dab-data-root",
+        str(dab_root),
+        "--output-root",
+        str(output_root),
+        "--run-id",
+        version,
+        "--max-iterations",
+        max_iterations,
+    ]
+    if policy_path.exists():
+        cmd += ["--tool-agent-policy", str(policy_path)]
+    proc = run_cmd(
+        cmd,
+        cwd=workspace,
+        env=env,
+        stdout_path=(loop_dir / "parent_dab_tool_run.stdout") if loop_dir else None,
+        stderr_path=(loop_dir / "parent_dab_tool_run.stderr") if loop_dir else None,
+    )
+    run_dir = output_root / version
+    if not run_dir.exists():
+        run_dirs = sorted(output_root.glob(f"*{version}*"), key=lambda path: path.stat().st_mtime)
+        run_dir = run_dirs[-1] if run_dirs else run_dir
+    if not run_dir.exists():
+        raise RuntimeError(f"DAB tool-agent parent run produced no run_dir; exit_code={proc.returncode}; expected={run_dir}")
+    if loop_dir:
+        write_json(
+            loop_dir / "parent_workflow_runner.json",
+            {
+                "status": "completed" if proc.returncode == 0 else "completed_with_nonzero_exit",
+                "workflow": "dab_tool_agent",
+                "exit_code": proc.returncode,
+                "run_dir": str(run_dir),
+                "max_iterations": max_iterations,
+                "policy_path": str(policy_path) if policy_path.exists() else None,
+            },
+        )
+    return run_dir
+
+
+def is_dab_tool_agent_run_dir(run_dir: Path) -> bool:
+    try:
+        summary = load_json(run_dir / "summary.json")
+    except Exception:
+        summary = {}
+    if isinstance(summary, dict) and summary.get("schema_version") == "dab_tool_agent_run_v001":
+        return True
+    return (run_dir / "workflow_trace.jsonl").exists() or (run_dir / "tool_calls.jsonl").exists()
+
+
+def analyze_dab_tool_agent_and_seed(
+    *,
+    run_dir: Path,
+    loop_dir: Path,
+    candidate_context: dict[str, Any],
+) -> tuple[dict[str, Any], Path]:
+    env = os.environ.copy()
+    analyzer_proc = run_cmd(
+        [
+            str(ROOT / ".venv/bin/python"),
+            str(ROOT / "experiments/analyze_dab_tool_agent_trace.py"),
+            "--run-dir",
+            str(run_dir),
+            "--output-dir",
+            str(loop_dir),
+        ],
+        cwd=ROOT,
+        env=env,
+        stdout_path=loop_dir / "parent_dab_tool_analyze.stdout",
+        stderr_path=loop_dir / "parent_dab_tool_analyze.stderr",
+    )
+    fine_grained_json_path = loop_dir / "fine_grained_evidence_pack.json"
+    fine_grained_md_path = loop_dir / "fine_grained_evidence_pack.md"
+    evidence_proc = run_cmd(
+        [
+            str(ROOT / ".venv/bin/python"),
+            str(ROOT / "experiments/build_dab_tool_agent_evidence_pack.py"),
+            "--run-dir",
+            str(run_dir),
+            "--output-json",
+            str(fine_grained_json_path),
+            "--output-md",
+            str(fine_grained_md_path),
+        ],
+        cwd=ROOT,
+        env=env,
+        stdout_path=loop_dir / "parent_dab_tool_evidence.stdout",
+        stderr_path=loop_dir / "parent_dab_tool_evidence.stderr",
+    )
+    feedback_summary = load_json(loop_dir / "feedback_summary.json")
+    observations = load_json(loop_dir / "observations.json")
+    meta_agent_seed = load_json(loop_dir / "meta_agent_seed.json")
+    evidence_pack = load_json(fine_grained_json_path)
+    obs_top = observations[:8] if isinstance(observations, list) else []
+    seed = dict(meta_agent_seed) if isinstance(meta_agent_seed, dict) else {}
+    seed.update(
+        {
+            "seed_id": f"repair_seed_{loop_dir.name}",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "parent_run_dir": str(run_dir),
+            "feedback_type": "dab_tool_agent_workflow_feedback",
+            "repair_profile": candidate_context.get("repair_profile"),
+            "candidate_context": candidate_context,
+            "analysis_commands": {
+                "analyzer_exit_code": analyzer_proc.returncode,
+                "evidence_pack_exit_code": evidence_proc.returncode,
+            },
+            "fine_grained_feedback": {
+                "feedback_type": "dab_tool_agent_workflow_feedback",
+                "source_run_dir": str(run_dir),
+                "selected_stage": feedback_summary.get("selected_stage"),
+                "selected_signal": feedback_summary.get("selected_signal"),
+                "selected_problem_type": feedback_summary.get("selected_problem_type"),
+                "answer_quality": feedback_summary.get("answer_quality"),
+                "helper_usage_summary": feedback_summary.get("helper_usage_summary"),
+                "candidate_repair_layers": feedback_summary.get("candidate_repair_layers"),
+                "routing_policy": feedback_summary.get("routing_policy"),
+                "meta_agent_decision_required": feedback_summary.get("meta_agent_decision_required"),
+                "primary_signal": feedback_summary.get("primary_signal"),
+                "top_observations": obs_top,
+                "structured_observations": evidence_pack.get("structured_observations"),
+                "repair_guidance": evidence_pack.get("repair_guidance"),
+                "artifact_paths": evidence_pack.get("artifact_paths"),
+                "full_evidence_pack_paths": {
+                    "json": str(fine_grained_json_path),
+                    "markdown": str(fine_grained_md_path),
+                },
+            },
+            "full_evidence_pack_paths": {
+                "json": str(fine_grained_json_path),
+                "markdown": str(fine_grained_md_path),
+            },
+        }
+    )
+    seed.setdefault("selected_stage", feedback_summary.get("selected_stage"))
+    seed.setdefault("selected_signal", feedback_summary.get("selected_signal"))
+    seed.setdefault("answer_quality", feedback_summary.get("answer_quality"))
+    seed.setdefault("helper_usage_summary", feedback_summary.get("helper_usage_summary"))
+    seed.setdefault("candidate_repair_layers", feedback_summary.get("candidate_repair_layers") or [])
+    seed.setdefault("routing_policy", feedback_summary.get("routing_policy") or {})
+    seed.setdefault("top_observations", obs_top)
+    seed_path = loop_dir / "repair_seed.json"
+    write_json(seed_path, seed)
+    return seed, seed_path
 
 
 def analyze_run_quiet(run_dir: Path, stdout_path: Path, stderr_path: Path) -> dict[str, Any]:
@@ -920,6 +1395,16 @@ def analyze_and_seed(
     loop_dir: Path,
     candidate_context: dict[str, Any],
 ) -> tuple[dict[str, Any], Path]:
+    if is_dab_tool_agent_run_dir(run_dir):
+        return analyze_dab_tool_agent_and_seed(
+            run_dir=run_dir,
+            loop_dir=loop_dir,
+            candidate_context=candidate_context,
+        )
+
+    # Legacy generated_solve.py fallback.  This branch is kept only for
+    # historical run directories explicitly supplied through --parent-run; the
+    # active loop no longer creates this format.
     analysis = analyze_run_quiet(
         run_dir,
         loop_dir / "parent_analyze.stdout",
@@ -1111,6 +1596,17 @@ def resolve_parent_candidate_patches(parent_agent_card: dict[str, Any] | None) -
     patches: list[Path] = []
     seen: set[str] = set()
 
+    def compatible_source_lineage(card: dict[str, Any], parent_card: dict[str, Any] | None) -> bool:
+        if not parent_card:
+            return False
+        source_refs = card.get("source_refs") if isinstance(card.get("source_refs"), dict) else {}
+        parent_refs = parent_card.get("source_refs") if isinstance(parent_card.get("source_refs"), dict) else {}
+        runner = str(source_refs.get("runner") or "")
+        parent_runner = str(parent_refs.get("runner") or "")
+        if runner and parent_runner and runner != parent_runner:
+            return False
+        return True
+
     def collect(card: dict[str, Any] | None) -> None:
         if not card:
             return
@@ -1121,7 +1617,8 @@ def resolve_parent_candidate_patches(parent_agent_card: dict[str, Any] | None) -
             seen.add(agent_id)
         lineage = card.get("lineage") if isinstance(card.get("lineage"), dict) else {}
         parent_card = load_archive_agent_card(str(lineage.get("parent_agent_id") or ""))
-        collect(parent_card)
+        if compatible_source_lineage(card, parent_card):
+            collect(parent_card)
         source_refs = card.get("source_refs") if isinstance(card.get("source_refs"), dict) else {}
         patch_ref = source_refs.get("candidate_patch")
         if not patch_ref:
@@ -1738,6 +2235,7 @@ def run_loop(args: argparse.Namespace) -> int:
         max_age_hours=args.archive_max_parent_age_hours,
         repeated_parent_ids=parent_history,
         repeated_parent_penalty=args.repeated_parent_penalty,
+        source_lineage_family=args.source_lineage_family or None,
     )
     parent_agent_id = parent["card"]["agent_id"]
     initial_parent_agent_id = parent_agent_id
@@ -1746,6 +2244,7 @@ def run_loop(args: argparse.Namespace) -> int:
     prompt_path = prompt_for_parent(parent, Path(args.prompt) if args.prompt else None)
     case_dir = Path(args.case_dir).resolve()
     dab_root = Path(args.dab_root).resolve()
+    parent_materialization_preflight = preflight_parent_materialization(parent["card"])
     plan = {
         "status": "planned",
         "mode": args.mode,
@@ -1759,25 +2258,29 @@ def run_loop(args: argparse.Namespace) -> int:
         "candidate_launcher": args.candidate_launcher,
         "candidate_id_prefix": args.candidate_id_prefix,
         "repair_profile": args.repair_profile,
+        "parent_materialization_preflight": parent_materialization_preflight,
         "parent_selection_policy": {
             "initial_parent_override": args.parent_agent_id,
             "subsequent_iterations": "select parent_pool via archive_selector after candidate postprocess",
             "archive_max_parent_age_hours": args.archive_max_parent_age_hours,
             "repeated_parent_penalty": args.repeated_parent_penalty,
+            "source_lineage_family": args.source_lineage_family or None,
         },
         "stages": [
             "select_parent_pool_from_archive_selector",
             "select_evidence_pool_from_archive_selector",
             "select_meta_agent_protocol_from_archive",
-            "run_or_reuse_parent_data_agent",
-            "analyze_parent_and_seed_repair",
+            "run_or_reuse_parent_dab_tool_agent",
+            "analyze_parent_tool_agent_trace_and_seed_repair",
             "invoke_candidate_launcher",
-            "optional_generic_child_eval",
+            "optional_dab_tool_agent_child_eval",
             "postprocess_candidate_archive",
             "select_next_parent_from_archive_top_ranked",
         ],
     }
     write_json(loop_dir / "loop_plan.json", plan)
+    if parent_materialization_preflight.get("status") == "failed":
+        raise RuntimeError(f"selected parent materialization preflight failed: {parent_materialization_preflight}")
     if args.mode == "dry-run":
         print(json.dumps(plan, indent=2, ensure_ascii=False))
         return 0
@@ -1819,6 +2322,7 @@ def run_loop(args: argparse.Namespace) -> int:
                 loop_dir=iteration_dir,
                 repeated_parent_ids=parent_history,
             )
+            attach_recent_loop_handoffs_to_seed(seed, seed_path, archive_root, iteration_dir)
             write_json(
                 iteration_dir / "repair_seed_override.json",
                 {
@@ -1844,6 +2348,7 @@ def run_loop(args: argparse.Namespace) -> int:
                 loop_dir=iteration_dir,
                 repeated_parent_ids=parent_history,
             )
+            attach_recent_loop_handoffs_to_seed(seed, seed_path, archive_root, iteration_dir)
         candidate_id = candidate_id_for(args.candidate_id_prefix, iteration)
         candidate_dir = ROOT / "candidates/dab" / candidate_id
         launcher_exit = None
@@ -1920,6 +2425,25 @@ def run_loop(args: argparse.Namespace) -> int:
                 case_id=args.case_id,
             )
 
+        handoff_path = None
+        if candidate_dir.exists():
+            handoff = build_iteration_handoff(
+                archive_root=archive_root,
+                loop_dir=loop_dir,
+                iteration_dir=iteration_dir,
+                iteration=iteration,
+                candidate_dir=candidate_dir,
+                candidate_id=candidate_id,
+                parent_agent_id=parent_agent_id,
+                meta_agent_id=meta_agent_id,
+                parent_run=parent_run,
+                seed_path=seed_path,
+                launcher_exit=launcher_exit,
+                child_eval=child_eval,
+                postprocess_exit=postprocess_exit,
+            )
+            handoff_path = record_iteration_handoff(archive_root, handoff, iteration_dir)
+
         results.append(
             {
                 "iteration": iteration,
@@ -1933,6 +2457,7 @@ def run_loop(args: argparse.Namespace) -> int:
                 "launcher_exit_code": launcher_exit,
                 "child_eval": child_eval,
                 "postprocess_exit_code": postprocess_exit,
+                "next_iteration_handoff": str(handoff_path) if handoff_path else None,
             }
         )
 
@@ -2028,6 +2553,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--parent-agent-id", help="Initial parent override for the first iteration only; later iterations reselect the current top-ranked archive parent.")
     parser.add_argument("--archive-max-parent-age-hours", type=float, default=24.0, help="Only auto-select data-agent parents whose archive agent_card was modified within this many hours; <=0 disables the freshness filter. Explicit --parent-agent-id bypasses this for the first iteration.")
     parser.add_argument("--repeated-parent-penalty", type=float, default=0.15, help="Subtract this score per prior use of the same parent inside the current loop when selecting the next parent.")
+    parser.add_argument("--source-lineage-family", default=os.environ.get("META_LOOP_SOURCE_LINEAGE_FAMILY", "dab_tool_agent_workflow"), help="Restrict automatic parent selection to one source lineage family; use empty string to disable.")
     parser.add_argument("--meta-agent-id")
     parser.add_argument("--prompt")
     parser.add_argument("--case-id", default="PATENTS_query1")
@@ -2042,7 +2568,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--candidate-id-env", default="ITER004_CANDIDATE_ID")
     parser.add_argument("--candidate-type", default="data_agent_repair")
     parser.add_argument("--repair-profile", default="data_agent_prompt_repair", choices=["data_agent_prompt_repair", "data_agent_project_repair", "data_agent_tool_repair", "analyzer_infra_repair"], help="Repair profile passed to the candidate launcher. Use data_agent_tool_repair to prefer reusable adapters/patents helper scripts, or data_agent_project_repair for broader safe project-source edits.")
-    parser.add_argument("--run-generic-child-eval", action="store_true")
+    parser.add_argument("--run-generic-child-eval", action="store_true", help="Run child eval after candidate generation. For DAB tool-agent seeds this uses the DAB tool-agent child eval; legacy generated_solve eval is only used for legacy seeds.")
     parser.set_defaults(func=run_loop)
     return parser
 

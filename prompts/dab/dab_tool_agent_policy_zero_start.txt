@@ -1,0 +1,8 @@
+# DAB Tool-Agent Zero-Start Policy Overlay
+
+This local overlay is appended to the upstream DAB DataAgent system prompt by `experiments/run_dab_tool_agent.py`.
+It is intentionally generic and domain-neutral at seed time.
+
+Meta-agent evolution may edit this file to improve multi-turn tool workflow behavior, tool failure recovery, bounded data retrieval, local Python execution discipline, answer submission behavior, or logging/evidence quality.
+
+Do not hardcode benchmark answers, expected counts, query-specific output lists, or prior non-zero-start helper assumptions here.

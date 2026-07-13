@@ -1,0 +1,40 @@
+{
+  "agent_id": "dab_tool_agent_zero_start_current",
+  "agent_type": "data_agent",
+  "source_lineage_family": "dab_tool_agent_workflow",
+  "status": "active_zero_start_parent",
+  "created_or_observed_at": "2026-07-13",
+  "source_refs": {
+    "runner": "experiments/run_dab_tool_agent.py",
+    "prompt": "prompts/dab/dab_tool_agent_policy_zero_start.txt",
+    "base_prompt": "prompts/dab/dab_tool_agent_policy_zero_start.txt",
+    "candidate_patch": null
+  },
+  "capabilities": [
+    "DAB multi-turn tool workflow",
+    "zero-start tool-agent policy overlay",
+    "workflow trace/tool/LLM logging",
+    "fine-grained feedback compatible parent baseline"
+  ],
+  "known_failures": [
+    {
+      "case": "PATENTS_query1",
+      "status": "not_yet_solved",
+      "reason": "zero-start baseline for archive-aware evolution; no helper/domain-specific patch preloaded"
+    }
+  ],
+  "evals": {},
+  "lineage": {
+    "parent_agent_id": null,
+    "derived_from_candidate": null
+  },
+  "evolve_policy": {
+    "can_use_as_parent": true,
+    "merge_eligible": true,
+    "recommended_next_use": "Default clean parent for DAB tool-agent workflow evolution; start new repairs from current mainline source and zero-start policy."
+  },
+  "archive_notes": [
+    "This parent intentionally has no candidate_patch and no inherited source patch chain.",
+    "Use this as the clean source-lineage root for dab_tool_agent_workflow experiments."
+  ]
+}

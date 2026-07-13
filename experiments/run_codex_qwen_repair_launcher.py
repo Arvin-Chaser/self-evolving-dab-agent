@@ -498,6 +498,17 @@ def resolve_parent_candidate_patches(parent_agent_id: str | None) -> list[Path]:
     patches: list[Path] = []
     seen: set[str] = set()
 
+    def compatible_source_lineage(card: dict[str, Any], parent_card: dict[str, Any] | None) -> bool:
+        if not parent_card:
+            return False
+        source_refs = card.get("source_refs") if isinstance(card.get("source_refs"), dict) else {}
+        parent_refs = parent_card.get("source_refs") if isinstance(parent_card.get("source_refs"), dict) else {}
+        runner = str(source_refs.get("runner") or "")
+        parent_runner = str(parent_refs.get("runner") or "")
+        if runner and parent_runner and runner != parent_runner:
+            return False
+        return True
+
     def collect(agent_id: str | None) -> None:
         if not agent_id or agent_id in seen:
             return
@@ -506,7 +517,9 @@ def resolve_parent_candidate_patches(parent_agent_id: str | None) -> list[Path]:
         if not card:
             return
         lineage = card.get("lineage") if isinstance(card.get("lineage"), dict) else {}
-        collect(str(lineage.get("parent_agent_id") or ""))
+        parent_card = load_parent_agent_card(str(lineage.get("parent_agent_id") or ""))
+        if compatible_source_lineage(card, parent_card):
+            collect(str(lineage.get("parent_agent_id") or ""))
         source_refs = card.get("source_refs") if isinstance(card.get("source_refs"), dict) else {}
         patch_ref = source_refs.get("candidate_patch")
         if not patch_ref:

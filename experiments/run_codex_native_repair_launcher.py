@@ -25,6 +25,9 @@ sys.path.insert(0, str(ROOT))
 import experiments.run_codex_qwen_repair_launcher as base
 
 
+CODEX_NATIVE_REPAIR_PROTOCOL_VERSION = "codex_native_long_context_usable_patch_v002"
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -79,18 +82,30 @@ def codex_native_eval_instructions(
     lines = [
         "## Codex-native self-debug loop",
         "",
-        "Codex itself is the looping meta-agent. Do not stop merely because a patch compiles.",
-        "After making a candidate edit, use your own tool calls to run the existing data-agent/evidence tools, inspect the result, and revise the patch if the child did not improve.",
+        f"protocol_version: `{CODEX_NATIVE_REPAIR_PROTOCOL_VERSION}`",
+        "",
+        "Codex itself is the looping meta-agent. Use the long-context task window as working memory: keep the causal diagnosis, file/interface facts, failed commands, and revised hypotheses in this same task until the patch is usable or no safe patch exists.",
+        "Do not stop merely because a patch compiles, and do not stop after writing a patch-like idea in text.",
+        "After making a candidate edit, use your own tool calls to run the existing data-agent/evidence tools, inspect the result, and revise the patch if the child did not improve or the patch is not wired into generated behavior.",
         "The outer Python launcher is only a sandbox/archiver/final auditor; it is not the debugging loop.",
         "",
-        "### Completion condition",
+        "### Usable patch completion contract",
+        "",
+        "A usable patch means all conditions below are satisfied inside this same Codex task unless the environment makes a condition impossible:",
+        "- A real project source diff exists in allowed files, not just a textual suggestion.",
+        "- The diff can be replayed against a fresh/materialized parent baseline with `experiments/check_candidate_patch_replay.py`.",
+        "- Changed Python files compile, and focused imports/checks relevant to the repair pass.",
+        "- For DAB tool-agent repairs, an inner data-agent/evidence run is attempted when META_LOOP_CASE_DIR and META_LOOP_DAB_ROOT are available.",
+        "- If the inner child run fails, you inspect stderr/logs and either fix the patch in this same task or explain why the failure is external to the patch with concrete file paths.",
+        "- If a helper/tool/script is created or modified, generated child behavior must actually call it and use its output, not only log it.",
         "",
         "You may finish only when one of these is true:",
         "- You produced a real source diff and local checks plus an inner data-agent/evidence run indicate the repair is wired into the generated child behavior.",
-        "- You produced a real source diff and explain why full child improvement could not be confirmed within the local budget, with concrete evidence.",
+        "- You produced a real source diff, replay/compile checks pass, and you explain why full child improvement could not be confirmed within the local/environment budget, with concrete evidence.",
         "- You leave the tree unchanged because no safe repair is possible, and explain the no-op reason.",
         "",
         "If an inner run shows the helper/prompt/script is not actually used by generated code, continue debugging inside this same Codex task instead of stopping.",
+        "If patch replay, compile, import, or focused behavior checks fail, treat that as a repair input and revise the patch in this same Codex task instead of ending with a failed candidate.",
         "Before your final response, run the patch replay self-check below. If it fails, inspect the reported file conflicts and revise your patch in this same Codex task.",
         "",
         "### Interface-alignment observations to perform yourself",
@@ -210,8 +225,9 @@ def build_codex_task_prompt(
         "3. Make real source edits in the workspace if a safe repair exists.",
         "4. Run focused checks proportional to the change. At minimum, run `python -m py_compile` on changed Python files when applicable.",
         "5. Use the Codex-native self-debug loop below: run the relevant existing data-agent/evidence commands, inspect generated child behavior, and revise if your patch is not actually wired into the child.",
-        "6. If you create or modify `adapters/dab_tool_agent_helpers`, ensure `registry.py` uses entries with `name`, `function`, `description`, and `input_contract`, and helper functions accept `(payload, inputs)`.",
-        "7. Do not spend time on broad refactors. If the task is not safely repairable, no-op rather than fabricating a patch.",
+        "6. Keep iterating within this same Codex task after any patch replay, compile, interface, or child-run failure. Do not hand back a known-broken patch unless the failure is clearly external and documented.",
+        "7. If you create or modify `adapters/dab_tool_agent_helpers`, ensure `registry.py` uses entries with `name`, `function`, `description`, and `input_contract`, and helper functions accept `(payload, inputs)`.",
+        "8. Do not spend time on broad refactors. If the task is not safely repairable, no-op rather than fabricating a patch.",
         "",
         codex_native_eval_instructions(profile=profile, candidate_dir=candidate_dir, parent_run=parent_run),
         "",
@@ -219,7 +235,8 @@ def build_codex_task_prompt(
         "",
         "End with a concise summary containing:",
         "- changed files",
-        "- tests/checks run",
+        "- self-debug attempts made after the first patch",
+        "- tests/checks run, including patch replay result when possible",
         "- whether this is intended as a candidate for child eval",
         "- any known risks or reasons for no-op",
         "",
@@ -253,7 +270,7 @@ def run_codex_exec(*, workspace: Path, prompt_path: Path, candidate_dir: Path) -
     model = os.environ.get("CODEX_NATIVE_MODEL")
     sandbox = os.environ.get("CODEX_NATIVE_SANDBOX", "workspace-write")
     approval = os.environ.get("CODEX_NATIVE_APPROVAL", "never")
-    timeout = int(os.environ.get("CODEX_NATIVE_TIMEOUT_SEC", "900"))
+    timeout = int(os.environ.get("CODEX_NATIVE_TIMEOUT_SEC", "1800"))
     if profile:
         command.extend(["--profile", profile])
     if model:
@@ -350,6 +367,15 @@ def run_launcher(args: argparse.Namespace) -> int:
 
     gate_protocol = base.profile_gate_protocol(profile)
     write_json(candidate_dir / "gate_protocol.json", gate_protocol)
+    write_json(
+        candidate_dir / "codex_native_repair_protocol.json",
+        {
+            "protocol_version": CODEX_NATIVE_REPAIR_PROTOCOL_VERSION,
+            "mode": "long_context_usable_patch_contract",
+            "intent": "Codex should keep debugging within one repair task until it has a real replayable/compilable candidate patch or a concrete no-op reason.",
+            "default_timeout_sec": int(os.environ.get("CODEX_NATIVE_TIMEOUT_SEC", "1800")),
+        },
+    )
 
     repair_seed = Path(args.repair_seed or os.environ.get("META_LOOP_REPAIR_SEED", "")) if (args.repair_seed or os.environ.get("META_LOOP_REPAIR_SEED")) else None
     repair_seed_override = os.environ.get("META_LOOP_REPAIR_SEED_OVERRIDE") == "1"
@@ -395,6 +421,7 @@ def run_launcher(args: argparse.Namespace) -> int:
                 "gate_protocol": gate_protocol,
                 "workspace": str(workspace),
                 "codex_native_exit_code": proc.returncode,
+                "codex_native_protocol_version": CODEX_NATIVE_REPAIR_PROTOCOL_VERSION,
                 **diff_info,
             },
         )
@@ -413,6 +440,7 @@ def run_launcher(args: argparse.Namespace) -> int:
                 "gate_protocol": gate_protocol,
                 "workspace": str(workspace),
                 "codex_native_exit_code": proc.returncode,
+                "codex_native_protocol_version": CODEX_NATIVE_REPAIR_PROTOCOL_VERSION,
                 **diff_info,
             },
         )
@@ -430,6 +458,7 @@ def run_launcher(args: argparse.Namespace) -> int:
             "gate_protocol": gate_protocol,
             "workspace": str(workspace),
             "codex_native_exit_code": proc.returncode,
+            "codex_native_protocol_version": CODEX_NATIVE_REPAIR_PROTOCOL_VERSION,
             "project_changed_files": [path for path in diff_info["changed_files"] if base.is_allowed_file(path, profile)],
             "total_changed_lines": diff_info["total_changed_lines"],
             "patch_numstat": diff_info["patch_numstat"],

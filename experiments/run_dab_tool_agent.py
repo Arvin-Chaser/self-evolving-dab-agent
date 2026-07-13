@@ -14,6 +14,7 @@ import importlib
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -33,6 +34,65 @@ DEFAULT_TOOL_AGENT_POLICY = ROOT / "prompts" / "dab" / "dab_tool_agent_policy_ze
 DEFAULT_BAILIAN_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 QWEN_MODEL_MARKERS = ("qwen", "qwq", "qvq")
 
+
+SAFE_SQL_METADATA_MARKERS = (
+    "information_schema",
+    "sqlite_master",
+    "pg_catalog",
+    "show tables",
+    "show columns",
+    "describe ",
+    "pragma ",
+)
+
+SAFE_SQL_AGGREGATE_MARKERS = (
+    "group by",
+    "count(",
+    "count (",
+    "sum(",
+    "sum (",
+    "avg(",
+    "avg (",
+    "min(",
+    "min (",
+    "max(",
+    "max (",
+    "array_agg(",
+    "array_agg (",
+    "string_agg(",
+    "string_agg (",
+)
+
+
+def normalize_sql_for_capacity_guard(query: str) -> str:
+    """Return a compact lowercase SQL string for cheap safety checks."""
+    without_line_comments = re.sub(r"--[^\n\r]*", " ", query)
+    without_block_comments = re.sub(r"/\*.*?\*/", " ", without_line_comments, flags=re.DOTALL)
+    return re.sub(r"\s+", " ", without_block_comments).strip().lower()
+
+
+def should_block_unbounded_select(query: str) -> tuple[bool, str]:
+    """Detect result-materialization hazards before QueryDBTool executes SQL.
+
+    Upstream DAB loads SQL query results into a pandas DataFrame and then into a
+    JSON-serializable Python object before DataAgent can decide whether to write
+    the result to file_storage. A full-table SELECT can therefore kill the
+    process before the normal preview/storage mechanism runs. This guard is
+    intentionally generic: it asks the agent to use bounded, aggregate, or
+    metadata queries instead of materializing raw full-table rows.
+    """
+    sql = normalize_sql_for_capacity_guard(query)
+    if not sql:
+        return False, "empty"
+    if not sql.startswith("select "):
+        return False, "not_select"
+    if any(marker in sql for marker in SAFE_SQL_METADATA_MARKERS):
+        return False, "metadata_query"
+    if re.search(r"\blimit\s+\d+\b", sql):
+        return False, "bounded_limit"
+    if any(marker in sql for marker in SAFE_SQL_AGGREGATE_MARKERS):
+        return False, "aggregate_or_grouped"
+    return True, "unbounded_select_without_limit_or_aggregation"
 
 def utc_slug() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
@@ -296,6 +356,44 @@ def install_evolved_helper_tool(data_agent_module: Any, args: argparse.Namespace
     return helper_specs
 
 
+def install_query_capacity_guard(data_agent_module: Any, args: argparse.Namespace) -> None:
+    """Patch QueryDBTool to reject hazardous raw full-table SELECT results early."""
+    if getattr(args, "disable_query_capacity_guard", False):
+        return
+
+    original_query_db_tool = data_agent_module.QueryDBTool
+
+    class CapacityGuardedQueryDBTool(original_query_db_tool):
+        def get_spec(self):
+            spec = super().get_spec()
+            function = spec.get("function", {}) if isinstance(spec, dict) else {}
+            description = str(function.get("description", ""))
+            function["description"] = (
+                description.rstrip()
+                + " Local capacity guard: raw unbounded SELECT queries without LIMIT, GROUP BY, "
+                + "or aggregate functions are rejected before execution because they may materialize "
+                + "too many rows. Prefer schema queries, COUNT/GROUP BY aggregates, LIMIT previews, "
+                + "or local helper tools for streaming post-processing."
+            )
+            return spec
+
+        def _check_args(self, tool_args: dict):
+            query = tool_args.get("query") if isinstance(tool_args, dict) else None
+            if isinstance(query, str):
+                block, reason = should_block_unbounded_select(query)
+                if block:
+                    raise ValueError(
+                        "Local query capacity guard blocked this query before DB execution "
+                        f"({reason}). Rewrite it as a bounded or aggregate query: add LIMIT for "
+                        "small previews; use COUNT/GROUP BY/MIN/MAX/SUM/AVG for evidence collection; "
+                        "or call a registered local helper that can stream/process rows without "
+                        "returning a full raw table to the LLM."
+                    )
+            return super()._check_args(tool_args)
+
+    data_agent_module.QueryDBTool = CapacityGuardedQueryDBTool
+
+
 def install_configurable_llm_retry(data_agent_module: Any, args: argparse.Namespace) -> None:
     """Patch upstream DataAgent.call_llm with local timeout/retry controls.
 
@@ -465,6 +563,7 @@ def import_upstream_data_agent(upstream_root: Path, args: argparse.Namespace | N
         prompt_builder.init_messages = qwen_init_messages
 
     if args is not None:
+        install_query_capacity_guard(data_agent_module, args)
         install_configurable_llm_retry(data_agent_module, args)
         args.evolved_helper_specs = install_evolved_helper_tool(data_agent_module, args)
 
@@ -767,6 +866,7 @@ def normalize_run_artifacts(*, args: argparse.Namespace, upstream_run_dir: Path,
         "tool_agent_policy": str(args.tool_agent_policy) if args.tool_agent_policy else None,
         "evolved_helper_tool_enabled": bool(getattr(args, "evolved_helper_specs", [])),
         "evolved_helper_specs": getattr(args, "evolved_helper_specs", []),
+        "query_capacity_guard_enabled": not getattr(args, "disable_query_capacity_guard", False),
         "dab_upstream_root": str(args.dab_upstream_root),
         "upstream_run_dir": str(upstream_run_dir),
         "normalized_run_dir": str(normalized_dir),
@@ -921,6 +1021,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
     parser.add_argument("--tool-agent-policy", default=os.environ.get("DAB_TOOL_AGENT_POLICY", str(DEFAULT_TOOL_AGENT_POLICY)), help="Local prompt-policy overlay appended to the upstream DAB DataAgent system prompt.")
     parser.add_argument("--disable-evolved-helper-tools", action="store_true", help="Do not expose registered adapters/dab_tool_agent_helpers as DataAgent tools.")
+    parser.add_argument("--disable-query-capacity-guard", action="store_true", help="Allow raw unbounded SELECT query_db calls. Default blocks likely full-table materialization hazards before DB execution.")
     parser.add_argument("--evolved-helper-tool-name", default=os.environ.get("DAB_EVOLVED_HELPER_TOOL_NAME", "run_evolved_helper"), help="Tool name used to expose registered meta-agent-created helpers.")
     parser.add_argument("--run-id")
     parser.add_argument("--prepare-only", action="store_true", help="Resolve paths and write summary without calling the LLM/tools.")

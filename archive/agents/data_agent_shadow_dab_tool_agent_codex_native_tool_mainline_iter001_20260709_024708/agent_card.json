@@ -1,0 +1,139 @@
+{
+  "agent_id": "data_agent_shadow_dab_tool_agent_codex_native_tool_mainline_iter001_20260709_024708",
+  "agent_type": "data_agent",
+  "status": "shadow_parent_incompatible_with_current_mainline",
+  "created_or_observed_at": "20260709",
+  "source_refs": {
+    "prompt": "archive/prompts/data_agent_shadow_dab_tool_agent_codex_native_tool_mainline_iter001_20260709_024708/dab_tool_agent_policy_zero_start.txt",
+    "base_prompt": "prompts/dab/dab_tool_agent_policy_zero_start.txt",
+    "candidate_patch": "candidates/dab/dab_tool_agent_codex_native_tool_mainline_iter001_20260709_024708/patch.diff",
+    "candidate_card": "archive/candidates/dab_tool_agent_codex_native_tool_mainline_iter001_20260709_024708/candidate_card.json",
+    "runner": "experiments/run_dab_tool_agent.py"
+  },
+  "capabilities": [
+    "DAB multi-turn tool workflow",
+    "tool-agent policy overlay",
+    "workflow trace/tool/LLM logging",
+    "partial-improvement continuation parent"
+  ],
+  "known_failures": [
+    {
+      "case": "PATENTS_query1",
+      "status": "failed_strict_validation",
+      "reason": "answer_validation",
+      "merge_note": "Do not merge this shadow parent into main without a later strict-validation pass."
+    }
+  ],
+  "evals": {
+    "PATENTS_query1": {
+      "passed_original_dab_validation": false,
+      "evolution_status": "improved_but_failed",
+      "answer_metrics": {
+        "available": true,
+        "metric_type": "cpc_code_set_overlap",
+        "strict_match_passed": false,
+        "strict_match_reason": "strict_match_failed: expected 50 unique CPC codes, got 89 unique CPC codes.\nMissing CPC codes (21): A22B, A24D, A41G, A47F, A61P, A62B, A62D, A63H, B24B, B28D, B30B, B60H, C25B, E21D, F17B, F24D, F26B, G05G, G06J, G08G, G16C\nExtra CPC codes (60): A41H, A44D, A61G, A62C, B02C, B03C, B04B, B05B, B07B, B21B, B21C, B21H, B22D, B22F, B25D, B27M, B33Y, B60D, B60L, B63C, B66F, C01F, C01P, C07B, C21C, C21D, C22B, D03J, D06H, E01C, ... (+30 more)",
+        "expected_count": 50,
+        "predicted_count": 89,
+        "true_positive_count": 29,
+        "missing_count": 21,
+        "extra_count": 60,
+        "duplicate_count": 0,
+        "precision": 0.3258,
+        "recall": 0.58,
+        "f1": 0.4173,
+        "missing_codes_sample": [
+          "A22B",
+          "A24D",
+          "A41G",
+          "A47F",
+          "A61P",
+          "A62B",
+          "A62D",
+          "A63H",
+          "B24B",
+          "B28D",
+          "B30B",
+          "B60H",
+          "C25B",
+          "E21D",
+          "F17B",
+          "F24D",
+          "F26B",
+          "G05G",
+          "G06J",
+          "G08G"
+        ],
+        "extra_codes_sample": [
+          "A41H",
+          "A44D",
+          "A61G",
+          "A62C",
+          "B02C",
+          "B03C",
+          "B04B",
+          "B05B",
+          "B07B",
+          "B21B",
+          "B21C",
+          "B21H",
+          "B22D",
+          "B22F",
+          "B25D",
+          "B27M",
+          "B33Y",
+          "B60D",
+          "B60L",
+          "B63C"
+        ],
+        "predicted_codes_sample": [
+          "A23J",
+          "A23P",
+          "A24F",
+          "A41H",
+          "A44D",
+          "A61G",
+          "A62C",
+          "B02C",
+          "B03C",
+          "B04B",
+          "B05B",
+          "B07B",
+          "B08B",
+          "B09B",
+          "B09C",
+          "B21B",
+          "B21C",
+          "B21H",
+          "B22D",
+          "B22F"
+        ],
+        "query_dir": "/home/m0st1ma/research/DataAgentBench/query_PATENTS/query1",
+        "true_positive": 29,
+        "false_positive": 60,
+        "false_negative": 21,
+        "status": "computed"
+      },
+      "execution_metrics": {
+        "child_exit_code": 0,
+        "child_execution_success": true,
+        "child_has_answer_like_output": true
+      },
+      "selected_stage": "answer_validation",
+      "selected_signal": "answer_quality_mismatch;f1=0.4173;precision=0.3258;recall=0.58;missing_count=21;extra_count=60"
+    }
+  },
+  "lineage": {
+    "parent_agent_id": "data_agent_shadow_codex_qwen_proxy_patents_iter045_cpc_mapping_level_type_replay_gate_iter001_20260701_143850",
+    "derived_from_candidate": "dab_tool_agent_codex_native_tool_mainline_iter001_20260709_024708"
+  },
+  "evolve_policy": {
+    "can_use_as_parent": false,
+    "merge_eligible": false,
+    "recommended_next_use": "Historical/evidence artifact only. Do not use as default parent because its candidate_patch no longer applies cleanly to current run_dab_tool_agent.py."
+  },
+  "source_lineage_family": "dab_tool_agent_workflow",
+  "archive_notes": [
+    "Marked incompatible after 2026-07-13 parent materialization preflight: own candidate patch failed to apply to current mainline runner."
+  ]
+}
