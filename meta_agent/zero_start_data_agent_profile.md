@@ -1,8 +1,8 @@
 # Zero-Start DAB DataAgent Profile
 
-This profile defines the clean starting point for the new DAB-style DataAgent evolution line.
+This profile defines the clean starting point for the new DAB-style DataAgent evolution line. The zero-start constraint applies to the DataAgent's initial solving capabilities, not to the meta-agent's experimental scaffold.
 
-The research goal is to test whether fine-grained feedback helps a meta-agent evolve useful DataAgent capabilities over multiple iterations. Therefore the initial DataAgent must not receive task-specific helper scripts that already encode PATENTS/CPC solving knowledge.
+The research goal is to test whether fine-grained feedback helps a skill-guided, archive-aware meta-agent evolve useful DataAgent capabilities over multiple iterations. Therefore the initial DataAgent must not receive task-specific helper scripts that already encode PATENTS/CPC solving knowledge, while the meta-agent may still use skills, structured patch specs, child eval, archive selection, and feedback analyzers.
 
 ## Initial DataAgent Capabilities
 
@@ -35,7 +35,7 @@ The zero-start DataAgent must not be preloaded with helpers that directly encode
 - query-specific answer repair scripts.
 - any helper generated in previous non-zero-start iterations that directly improves PATENTS solving.
 
-These scripts are evolution-eligible, but they must be proposed or created by the meta-agent during later iterations.
+These scripts are evolution-eligible, but they must be proposed or created by the meta-agent during later iterations. This means they are forbidden as initial preloaded DataAgent capabilities, not forbidden as future candidate patches.
 
 ## Evolution-Eligible Targets
 
@@ -49,6 +49,8 @@ During evolution, the meta-agent may propose or modify:
 - evidence-pack construction;
 - archive observation and parent-selection logic;
 - eventually, domain helpers such as CPC or EMA tools, if justified by observed failures.
+
+When repeated trace failures point to brittle SQL/schema/data-processing logic, the meta-agent should consider creating or registering reusable scripts/tools rather than only adding more prompt text. The default target for such tools is `adapters/dab_tool_agent_helpers/` plus `registry.py`; registered helpers are exposed to the DataAgent as `run_evolved_helper`.
 
 ## Feedback Principle
 
@@ -74,3 +76,8 @@ Key outcome measures:
 - no-op or interface-mismatch candidate rate;
 - whether the meta-agent creates new useful helper scripts;
 - whether the meta-agent modifies logging or feedback components.
+
+
+## Script-first meta-agent repair preference
+
+When repeated workflow or answer-quality evidence indicates missing capability, the meta-agent should first consider creating or registering an executable helper/script/tool, runner glue, workflow observer, or evidence-pack improvement. Prompt edits should normally be minimal glue that helps the DataAgent discover and use that executable capability. A prompt-only candidate should explain why no script/tool/runner repair was the right minimal move for the evidence.

@@ -40,7 +40,10 @@ def write_json(path: Path, value: Any) -> None:
 def ensure_dab_tool_agent_analysis(run_dir: Path) -> None:
     required = [run_dir / "observations.json", run_dir / "feedback_summary.json", run_dir / "meta_agent_seed.json"]
     if all(path.exists() for path in required):
-        return
+        feedback_summary = load_json(run_dir / "feedback_summary.json", {}) or {}
+        required_feedback_fields = {"answer_quality", "helper_usage_summary", "selected_stage", "selected_signal", "candidate_repair_layers", "routing_policy", "meta_agent_decision_required"}
+        if isinstance(feedback_summary, dict) and required_feedback_fields.issubset(feedback_summary):
+            return
     from experiments.analyze_dab_tool_agent_trace import analyze_run, write_json as analyzer_write_json
 
     result = analyze_run(run_dir)
@@ -76,6 +79,7 @@ def build_dab_tool_agent_evidence_pack(
         "final_agent_json": str(run_dir / "final_agent.json"),
         "final_answer_txt": str(run_dir / "final_answer.txt"),
         "validation_jsonl": str(run_dir / "validation.jsonl"),
+        "agent_self_observations_jsonl": str(run_dir / "agent_self_observations.jsonl"),
         "observations_json": str(run_dir / "observations.json"),
         "feedback_summary_json": str(run_dir / "feedback_summary.json"),
         "meta_agent_seed_json": str(run_dir / "meta_agent_seed.json"),
@@ -112,15 +116,27 @@ def build_dab_tool_agent_evidence_pack(
             "postgres_status": summary.get("postgres_status"),
         },
         "workflow_feedback_summary": feedback_summary,
+        "answer_quality": feedback_summary.get("answer_quality") if isinstance(feedback_summary, dict) else None,
+        "helper_usage_summary": feedback_summary.get("helper_usage_summary") if isinstance(feedback_summary, dict) else None,
+        "agent_self_observation_summary": feedback_summary.get("agent_self_observation_summary") if isinstance(feedback_summary, dict) else None,
+        "selected_stage": feedback_summary.get("selected_stage") if isinstance(feedback_summary, dict) else None,
+        "selected_signal": feedback_summary.get("selected_signal") if isinstance(feedback_summary, dict) else None,
+        "recommended_repair_layer": feedback_summary.get("recommended_repair_layer") if isinstance(feedback_summary, dict) else None,
+        "candidate_repair_layers": feedback_summary.get("candidate_repair_layers") if isinstance(feedback_summary, dict) else None,
+        "routing_policy": feedback_summary.get("routing_policy") if isinstance(feedback_summary, dict) else None,
+        "meta_agent_decision_required": feedback_summary.get("meta_agent_decision_required") if isinstance(feedback_summary, dict) else None,
+        "primary_signal": feedback_summary.get("primary_signal") if isinstance(feedback_summary, dict) else None,
         "structured_observations": observations[:max_observations],
         "meta_agent_seed": meta_agent_seed,
         "final_answer_preview": final_answer,
         "repair_guidance": {
             "use_feedback_as": "evidence_not_fixed_repair_decision",
-            "preferred_initial_targets": ["prompt", "tool_policy", "tool_schema", "workflow_logging", "generic_trace_analyzer"],
-            "allowed_evolution_targets": ["prompt", "generic_helper_tool", "tool_registration", "workflow_observer", "trace_analyzer", "evidence_pack_builder"],
+            "script_first_policy": "Prefer executable helper/script/tool/runner/observer capability plus minimal prompt glue over standalone prompt edits; if prompt-only, explain why no executable repair was appropriate.",
+            "preferred_initial_targets": ["generic_helper_tool", "tool_registration", "tool_schema", "workflow_observer", "runner_tool_glue", "trace_analyzer", "prompt_glue"],
+            "allowed_evolution_targets": ["generic_helper_tool", "tool_registration", "workflow_observer", "runner_tool_glue", "trace_analyzer", "evidence_pack_builder", "prompt_glue"],
             "domain_helper_policy": "Do not add CPC/PATENTS helpers unless repeated workflow/validation evidence justifies them; if added, they must be generated as an evolution candidate, not treated as seed capability.",
             "context_policy": "Embed summaries and top observations only; use raw artifact paths for detailed inspection instead of inlining full logs.",
+            "open_self_observation_policy": "If agent_self_observation_summary is available, treat it as DataAgent-authored evidence for meta-agent interpretation, not as a fixed repair label.",
         },
         "artifact_paths": artifact_paths,
     }
@@ -131,6 +147,11 @@ def markdown_for_dab_tool_agent_feedback(feedback: dict[str, Any]) -> str:
         ("Zero-Start Constraints", feedback.get("zero_start_constraints") or {}),
         ("Run Summary", feedback.get("run_summary") or {}),
         ("Workflow Feedback Summary", feedback.get("workflow_feedback_summary") or {}),
+        ("Primary Signal", feedback.get("primary_signal") or {}),
+        ("Routing Context", {"candidate_repair_layers": feedback.get("candidate_repair_layers") or [], "routing_policy": feedback.get("routing_policy") or {}, "meta_agent_decision_required": feedback.get("meta_agent_decision_required")}),
+        ("Answer Quality", feedback.get("answer_quality") or {}),
+        ("Helper Usage Summary", feedback.get("helper_usage_summary") or {}),
+        ("Agent Self-Observation Summary", feedback.get("agent_self_observation_summary") or {}),
         ("Structured Observations", feedback.get("structured_observations") or []),
         ("Meta-Agent Seed", feedback.get("meta_agent_seed") or {}),
         ("Repair Guidance", feedback.get("repair_guidance") or {}),

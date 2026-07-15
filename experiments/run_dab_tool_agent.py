@@ -356,6 +356,336 @@ def install_evolved_helper_tool(data_agent_module: Any, args: argparse.Namespace
     return helper_specs
 
 
+def install_self_observation_tool(data_agent_module: Any, args: argparse.Namespace) -> None:
+    """Patch upstream DataAgent to expose an open-ended self-observation tool.
+
+    This is deliberately not a fixed failure taxonomy. The DataAgent can record
+    its own local reasoning state, uncertainty, evidence references, and intended
+    next step in free text. Downstream analyzers only compact these observations
+    for the meta-agent; they should not turn them into hard-coded repair labels.
+    """
+    if getattr(args, "disable_self_observation_tool", False):
+        return
+
+    BaseTool = data_agent_module.BaseTool
+    original_data_agent = data_agent_module.DataAgent
+    tool_name = getattr(args, "self_observation_tool_name", "record_self_observation")
+
+    def normalize_self_observation_payload(payload: Any) -> dict[str, Any] | None:
+        if payload is None:
+            return None
+        if isinstance(payload, str):
+            payload = {"freeform": payload}
+        if not isinstance(payload, dict):
+            payload = {"freeform": str(payload)}
+        freeform = payload.get("freeform") or payload.get("note") or payload.get("why_this_action") or ""
+        if not isinstance(freeform, str) or not freeform.strip():
+            return None
+        normalized: dict[str, Any] = {"freeform": freeform.strip()}
+        for key in ("current_goal", "intended_next_step", "why_next_action", "why_this_action", "failure_if_stopped_now"):
+            value = payload.get(key)
+            if value is not None:
+                normalized[key] = str(value).strip()
+        for key in ("what_i_know", "uncertainties", "evidence_refs", "claims"):
+            value = payload.get(key, [])
+            if value is None:
+                value = []
+            if isinstance(value, str):
+                value = [value]
+            if isinstance(value, list):
+                normalized[key] = [str(item).strip() for item in value if str(item).strip()]
+        return normalized
+
+    def write_self_observation(log_path: Path, payload: Any, *, source: str, tool_name_for_action: str | None = None, tool_call_id: str | None = None) -> bool:
+        normalized = normalize_self_observation_payload(payload)
+        if normalized is None:
+            return False
+        observation_log_path = Path(log_path).parent / "agent_self_observations.jsonl"
+        row = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "source": source,
+            "tool_name": tool_name,
+            "tool_name_for_action": tool_name_for_action,
+            "tool_call_id": tool_call_id,
+            "payload": normalized,
+        }
+        observation_log_path.parent.mkdir(parents=True, exist_ok=True)
+        with observation_log_path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+        return True
+
+    def read_latest_tool_log_entry(log_path: Path) -> dict[str, Any] | None:
+        path = Path(log_path)
+        if not path.exists():
+            return None
+        try:
+            lines = [line for line in path.read_text(encoding="utf-8", errors="replace").splitlines() if line.strip()]
+        except OSError:
+            return None
+        if not lines:
+            return None
+        try:
+            value = json.loads(lines[-1])
+        except json.JSONDecodeError:
+            return {"_parse_error": True, "raw": lines[-1][:1000]}
+        return value if isinstance(value, dict) else {"value": value}
+
+    def compact_for_observation(value: Any, max_chars: int = 800) -> str:
+        try:
+            text = json.dumps(value, ensure_ascii=False, default=str)
+        except TypeError:
+            text = str(value)
+        text = re.sub(r"\s+", " ", text).strip()
+        return text[:max_chars]
+
+    def write_automatic_tool_observation(
+        log_path: Path,
+        *,
+        tool_name_for_action: str | None,
+        tool_call_id: str | None,
+        raw_args: dict[str, Any] | None,
+        latest_tool_log: dict[str, Any] | None,
+        final_result: Any,
+    ) -> bool:
+        if not tool_name_for_action or tool_name_for_action == tool_name:
+            return False
+        latest_tool_log = latest_tool_log or {}
+        result = latest_tool_log.get("result") if isinstance(latest_tool_log.get("result"), dict) else {}
+        success = result.get("success")
+        result_preview = result.get("preview") if isinstance(result, dict) else None
+        payload = {
+            "freeform": (
+                f"Automatic workflow observation: tool `{tool_name_for_action}` completed "
+                f"with success={success}. Result preview: {compact_for_observation(result_preview, 600)}"
+            ),
+            "current_goal": "track DataAgent tool-action evidence for future meta-agent repair",
+            "what_i_know": [
+                f"tool={tool_name_for_action}",
+                f"success={success}",
+                f"args={compact_for_observation(raw_args or {}, 400)}",
+                f"result_preview={compact_for_observation(result_preview, 600)}",
+            ],
+            "uncertainties": [
+                "This is runner-observed behavior, not a model-authored causal explanation.",
+            ],
+            "intended_next_step": (
+                "use this tool result to decide the next action or final answer"
+                if final_result is None else "workflow has produced a final result"
+            ),
+            "failure_if_stopped_now": (
+                "No final answer has been submitted yet."
+                if final_result is None else "Final answer has been submitted; validate answer quality next."
+            ),
+            "evidence_refs": [
+                f"tool_call_id:{tool_call_id}",
+                f"tool_log:{Path(log_path)}",
+            ],
+            "claims": [
+                f"{tool_name_for_action} success={success}",
+            ],
+        }
+        return write_self_observation(
+            log_path,
+            payload,
+            source="tool_action_auto_observer",
+            tool_name_for_action=tool_name_for_action,
+            tool_call_id=tool_call_id,
+        )
+
+    def add_sidecar_to_tool_spec(spec: dict[str, Any]) -> dict[str, Any]:
+        if not isinstance(spec, dict):
+            return spec
+        function = spec.get("function")
+        if not isinstance(function, dict):
+            return spec
+        parameters = function.get("parameters")
+        if not isinstance(parameters, dict):
+            return spec
+        properties = parameters.setdefault("properties", {})
+        if not isinstance(properties, dict):
+            return spec
+        properties.setdefault("self_observation", {
+            "type": "object",
+            "description": (
+                "Optional open-ended sidecar observation attached to this same tool action. "
+                "Use it to explain why this action is being taken, what is known, uncertainty, "
+                "and what would fail if stopping now. This does not consume a separate tool turn."
+            ),
+            "properties": {
+                "freeform": {"type": "string"},
+                "current_goal": {"type": "string"},
+                "what_i_know": {"type": "array", "items": {"type": "string"}},
+                "uncertainties": {"type": "array", "items": {"type": "string"}},
+                "why_this_action": {"type": "string"},
+                "intended_next_step": {"type": "string"},
+                "failure_if_stopped_now": {"type": "string"},
+                "evidence_refs": {"type": "array", "items": {"type": "string"}},
+                "claims": {"type": "array", "items": {"type": "string"}},
+            },
+        })
+        description = str(function.get("description") or "")
+        sidecar_note = " You may include optional `self_observation` to log open reasoning/evidence for future meta-agent evolution without spending another tool call."
+        if "self_observation" not in description:
+            function["description"] = description.rstrip() + sidecar_note
+        return spec
+
+    def wrap_tool_get_spec_for_sidecar(tool: Any) -> None:
+        if getattr(tool, "_self_observation_sidecar_wrapped", False):
+            return
+        original_get_spec = tool.get_spec
+
+        def get_spec_with_sidecar():
+            return add_sidecar_to_tool_spec(original_get_spec())
+
+        tool.get_spec = get_spec_with_sidecar
+        tool._self_observation_sidecar_wrapped = True
+
+    class SelfObservationTool(BaseTool):
+        def __init__(self, log_path, name: str):
+            super().__init__(log_path, name)
+            self.observation_log_path = Path(log_path).parent / "agent_self_observations.jsonl"
+
+        def to_dict(self):
+            base = super().to_dict()
+            base.update({
+                "observation_log_path": str(self.observation_log_path),
+                "purpose": "open_freeform_agent_self_observation",
+            })
+            return base
+
+        def get_spec(self):
+            return {
+                "type": "function",
+                "function": {
+                    "name": self.name,
+                    "description": (
+                        "Record an open-ended self-observation for future meta-agent evolution. "
+                        "Use this opportunistically when it helps explain your current goal, what you know, "
+                        "uncertainties, why you chose a next action, or what would fail if you stopped now. "
+                        "This is not a fixed stage/error label tool; write natural, task-specific observations. "
+                        "Do not spend the final answer turn solely on this tool."
+                    ),
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "freeform": {"type": "string", "description": "Natural-language observation in your own words."},
+                            "current_goal": {"type": "string", "description": "Optional current local goal or subgoal."},
+                            "what_i_know": {"type": "array", "items": {"type": "string"}, "description": "Optional facts/evidence currently known."},
+                            "uncertainties": {"type": "array", "items": {"type": "string"}, "description": "Optional uncertainties or unresolved hypotheses."},
+                            "intended_next_step": {"type": "string", "description": "Optional intended next tool/action."},
+                            "why_next_action": {"type": "string", "description": "Optional rationale for the intended next action."},
+                            "failure_if_stopped_now": {"type": "string", "description": "Optional description of what would be wrong/incomplete if stopping now."},
+                            "evidence_refs": {"type": "array", "items": {"type": "string"}, "description": "Optional references to prior tool calls, storage keys, files, tables, or query fragments."},
+                            "claims": {"type": "array", "items": {"type": "string"}, "description": "Optional concise claims that future analysis should verify."},
+                        },
+                        "required": ["freeform"],
+                    },
+                },
+            }
+
+        def _check_args(self, args: dict):
+            args = super()._check_args(args)
+            normalized = normalize_self_observation_payload(args)
+            if normalized is None:
+                raise ValueError("freeform must be a non-empty string")
+            return normalized
+
+        def _exec(self, args: dict):
+            super()._exec(args)
+            write_self_observation(self.log_path, args, source="data_agent_tool_call", tool_name_for_action=self.name)
+            return {
+                "recorded": True,
+                "observation_log_path": str(self.observation_log_path),
+                "note": "Open self-observation recorded for future meta-agent interpretation.",
+            }
+
+        def clean_up(self):
+            return None
+
+    class DataAgentWithSelfObservation(original_data_agent):
+        def __init__(self, *da_args: Any, **da_kwargs: Any):
+            super().__init__(*da_args, **da_kwargs)
+            self.tools[tool_name] = SelfObservationTool(self.tool_log_path, tool_name)
+            for action_tool_name, action_tool in self.tools.items():
+                if action_tool_name != tool_name:
+                    wrap_tool_get_spec_for_sidecar(action_tool)
+
+        def _handle_tool_call(self, tool_call):
+            tool_name_for_action = getattr(getattr(tool_call, "function", None), "name", None)
+            tool_call_id = getattr(tool_call, "id", None)
+            raw_arguments = getattr(getattr(tool_call, "function", None), "arguments", None)
+            parsed_tool_args: dict[str, Any] | None = None
+            try:
+                tool_args = json.loads(raw_arguments) if isinstance(raw_arguments, str) else {}
+            except json.JSONDecodeError:
+                before_entry = read_latest_tool_log_entry(self.tool_log_path)
+                result = super()._handle_tool_call(tool_call)
+                after_entry = read_latest_tool_log_entry(self.tool_log_path)
+                if after_entry != before_entry:
+                    write_automatic_tool_observation(
+                        self.tool_log_path,
+                        tool_name_for_action=tool_name_for_action,
+                        tool_call_id=tool_call_id,
+                        raw_args=None,
+                        latest_tool_log=after_entry,
+                        final_result=self.final_result,
+                    )
+                return result
+            if isinstance(tool_args, dict):
+                parsed_tool_args = dict(tool_args)
+            if isinstance(tool_args, dict) and "self_observation" in tool_args:
+                sidecar = tool_args.pop("self_observation")
+                write_self_observation(
+                    self.tool_log_path,
+                    sidecar,
+                    source="tool_action_sidecar",
+                    tool_name_for_action=tool_name_for_action,
+                    tool_call_id=tool_call_id,
+                )
+
+                class _FunctionProxy:
+                    def __init__(self, name: str | None, arguments: str):
+                        self.name = name
+                        self.arguments = arguments
+
+                class _ToolCallProxy:
+                    def __init__(self, original: Any, arguments: str):
+                        self.id = getattr(original, "id", None)
+                        self.function = _FunctionProxy(getattr(getattr(original, "function", None), "name", None), arguments)
+
+                    def model_dump(self):
+                        if hasattr(tool_call, "model_dump"):
+                            dumped = tool_call.model_dump()
+                            if isinstance(dumped, dict):
+                                dumped = dict(dumped)
+                                function = dict(dumped.get("function") or {})
+                                function["arguments"] = self.function.arguments
+                                dumped["function"] = function
+                                return dumped
+                        return {
+                            "id": self.id,
+                            "type": "function",
+                            "function": {"name": self.function.name, "arguments": self.function.arguments},
+                        }
+
+                tool_call = _ToolCallProxy(tool_call, json.dumps(tool_args, ensure_ascii=False))
+            before_entry = read_latest_tool_log_entry(self.tool_log_path)
+            result = super()._handle_tool_call(tool_call)
+            after_entry = read_latest_tool_log_entry(self.tool_log_path)
+            if after_entry != before_entry:
+                write_automatic_tool_observation(
+                    self.tool_log_path,
+                    tool_name_for_action=tool_name_for_action,
+                    tool_call_id=tool_call_id,
+                    raw_args=tool_args if isinstance(tool_args, dict) else parsed_tool_args,
+                    latest_tool_log=after_entry,
+                    final_result=self.final_result,
+                )
+            return result
+
+    data_agent_module.DataAgent = DataAgentWithSelfObservation
+
+
 def install_query_capacity_guard(data_agent_module: Any, args: argparse.Namespace) -> None:
     """Patch QueryDBTool to reject hazardous raw full-table SELECT results early."""
     if getattr(args, "disable_query_capacity_guard", False):
@@ -554,6 +884,14 @@ def import_upstream_data_agent(upstream_root: Path, args: argparse.Namespace | N
         original_init_messages = prompt_builder.init_messages
 
         def qwen_init_messages(user_query: str, db_description: str, deployment_name: str, system_prompt=prompt_builder.SYSTEM_PROMPT):
+            open_self_observation_overlay = (
+                "The runner automatically records a compact observation after every tool action for future meta-agent repair. "
+                "Every task tool may also accept an optional `self_observation` object when you have a useful causal explanation. "
+                "Attach it to the same list_db/query_db/execute_python/run_evolved_helper/return_answer action instead of spending a separate turn. "
+                "Use it to record open-ended process observations: current goal, what is known, uncertainties, why this action matters, intended next step, "
+                "and what would fail if stopping now. This is not a fixed stage/error taxonomy."
+            )
+            system_prompt = system_prompt.rstrip() + "\n\n# OPEN SELF-OBSERVATION TRACE\n" + open_self_observation_overlay + "\n"
             if policy_overlay:
                 system_prompt = system_prompt.rstrip() + "\n\n# LOCAL ZERO-START POLICY OVERLAY\n" + policy_overlay + "\n"
             if is_qwen_like_model(deployment_name):
@@ -565,6 +903,7 @@ def import_upstream_data_agent(upstream_root: Path, args: argparse.Namespace | N
     if args is not None:
         install_query_capacity_guard(data_agent_module, args)
         install_configurable_llm_retry(data_agent_module, args)
+        install_self_observation_tool(data_agent_module, args)
         args.evolved_helper_specs = install_evolved_helper_tool(data_agent_module, args)
 
     return data_agent_module.DataAgent
@@ -837,6 +1176,10 @@ def normalize_run_artifacts(*, args: argparse.Namespace, upstream_run_dir: Path,
             upstream_run_dir / "execute_python_artifacts.jsonl",
             normalized_dir / "execute_python_artifacts.jsonl",
         ),
+        "self_observations": copy_if_exists(
+            upstream_run_dir / "agent_self_observations.jsonl",
+            normalized_dir / "agent_self_observations.jsonl",
+        ),
     }
 
     qwen_config = qwen_bailian_config(args) if is_qwen_like_model(args.deployment_name) else None
@@ -867,6 +1210,9 @@ def normalize_run_artifacts(*, args: argparse.Namespace, upstream_run_dir: Path,
         "evolved_helper_tool_enabled": bool(getattr(args, "evolved_helper_specs", [])),
         "evolved_helper_specs": getattr(args, "evolved_helper_specs", []),
         "query_capacity_guard_enabled": not getattr(args, "disable_query_capacity_guard", False),
+        "self_observation_tool_enabled": not getattr(args, "disable_self_observation_tool", False),
+        "self_observation_tool_name": getattr(args, "self_observation_tool_name", "record_self_observation"),
+        "self_observation_count": len(read_jsonl(normalized_dir / "agent_self_observations.jsonl")),
         "dab_upstream_root": str(args.dab_upstream_root),
         "upstream_run_dir": str(upstream_run_dir),
         "normalized_run_dir": str(normalized_dir),
@@ -1022,6 +1368,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tool-agent-policy", default=os.environ.get("DAB_TOOL_AGENT_POLICY", str(DEFAULT_TOOL_AGENT_POLICY)), help="Local prompt-policy overlay appended to the upstream DAB DataAgent system prompt.")
     parser.add_argument("--disable-evolved-helper-tools", action="store_true", help="Do not expose registered adapters/dab_tool_agent_helpers as DataAgent tools.")
     parser.add_argument("--disable-query-capacity-guard", action="store_true", help="Allow raw unbounded SELECT query_db calls. Default blocks likely full-table materialization hazards before DB execution.")
+    parser.add_argument("--disable-self-observation-tool", action="store_true", help="Do not expose the open-ended record_self_observation tool to the DataAgent.")
+    parser.add_argument("--self-observation-tool-name", default=os.environ.get("DAB_SELF_OBSERVATION_TOOL_NAME", "record_self_observation"), help="Tool name used for open-ended DataAgent self-observation logging.")
     parser.add_argument("--evolved-helper-tool-name", default=os.environ.get("DAB_EVOLVED_HELPER_TOOL_NAME", "run_evolved_helper"), help="Tool name used to expose registered meta-agent-created helpers.")
     parser.add_argument("--run-id")
     parser.add_argument("--prepare-only", action="store_true", help="Resolve paths and write summary without calling the LLM/tools.")

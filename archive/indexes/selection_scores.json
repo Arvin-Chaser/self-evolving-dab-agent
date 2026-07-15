@@ -3,11 +3,56 @@
   "selection_policy": "manual_score_mvp",
   "scores": [
     {
+      "arm_id": "data_agent_shadow_codex_native_near_miss_refine_iter001_20260715_090844",
+      "arm_type": "data_agent",
+      "score": 1.18,
+      "score_policy": "tool_agent_mainline_partial_improvement_floor",
+      "evidence": "Strict validation passed.",
+      "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+      "source_candidate": "codex_native_near_miss_refine_iter001_20260715_090844"
+    },
+    {
+      "arm_id": "data_agent_shadow_codex_native_iter10_two_step_selfobs_iter001_20260715_081931",
+      "arm_type": "data_agent",
+      "score": 1.03,
+      "score_policy": "tool_agent_mainline_partial_improvement_floor",
+      "evidence": "Candidate remains non-mergeable, but child answer improved relative to the materialized parent baseline.",
+      "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+      "source_candidate": "codex_native_iter10_two_step_selfobs_iter001_20260715_081931"
+    },
+    {
+      "arm_id": "data_agent_shadow_codex_native_iter10_two_step_selfobs_iter002_20260715_082928",
+      "arm_type": "data_agent",
+      "score": 1.03,
+      "score_policy": "tool_agent_mainline_partial_improvement_floor",
+      "evidence": "Candidate remains non-mergeable, but child answer improved relative to the materialized parent baseline.",
+      "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+      "source_candidate": "codex_native_iter10_two_step_selfobs_iter002_20260715_082928"
+    },
+    {
       "arm_id": "codex_qwen_meta_v4_structured_patch_spec",
       "arm_type": "meta_agent_protocol",
       "score": 0.85,
       "evidence": "Produced a post-child-eval-reviewed feedback analyzer repair after switching from free editor to structured patch_spec.",
       "recommended_use": "Use as default protocol for iter004."
+    },
+    {
+      "arm_id": "data_agent_shadow_codex_native_iter10_script_first_iter001_20260715_074941",
+      "arm_type": "data_agent",
+      "score": 0.83726,
+      "score_policy": "tool_agent_mainline_partial_improvement_floor",
+      "evidence": "Candidate remains non-mergeable, but child answer improved relative to the materialized parent baseline.",
+      "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+      "source_candidate": "codex_native_iter10_script_first_iter001_20260715_074941"
+    },
+    {
+      "arm_id": "data_agent_shadow_dab_tool_agent_codex_native_tool_mainline_iter001_20260709_024708",
+      "arm_type": "data_agent",
+      "score": 0.72211,
+      "score_policy": "tool_agent_mainline_partial_improvement_floor",
+      "evidence": "Candidate remains non-mergeable, but child answer improved relative to the materialized parent baseline.",
+      "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+      "source_candidate": "dab_tool_agent_codex_native_tool_mainline_iter001_20260709_024708"
     },
     {
       "arm_id": "data_agent_shadow_codex_qwen_proxy_patents_iter045_cpc_mapping_level_type_replay_gate_iter001_20260701_143850",

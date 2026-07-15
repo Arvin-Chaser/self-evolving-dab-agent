@@ -431,6 +431,100 @@ def f1_from_quality(value: dict[str, Any]) -> float | None:
         return None
 
 
+def _int_or_none(value: Any) -> int | None:
+    try:
+        if value is None:
+            return None
+        return int(value)
+    except Exception:
+        return None
+
+
+def _float_or_none(value: Any) -> float | None:
+    try:
+        if value is None:
+            return None
+        return float(value)
+    except Exception:
+        return None
+
+
+def build_near_miss_refinement_mode(seed: dict[str, Any]) -> dict[str, Any]:
+    """Describe whether the next repair should be a near-miss boundary refinement.
+
+    This is intentionally a routing/evidence attribute, not a deterministic
+    repair recipe.  The meta-agent should still infer the causal mechanism, but
+    when the answer is already close it should focus on the observed boundary
+    errors instead of broad prompt/helper rewrites.
+    """
+    quality = answer_quality_from_feedback(seed)
+    f1 = _float_or_none(quality.get("f1"))
+    missing_count = _int_or_none(quality.get("missing_count"))
+    extra_count = _int_or_none(quality.get("extra_count"))
+    strict_match_passed = quality.get("strict_match_passed")
+    missing_codes = quality.get("missing_codes_sample") if isinstance(quality.get("missing_codes_sample"), list) else []
+    extra_codes = quality.get("extra_codes_sample") if isinstance(quality.get("extra_codes_sample"), list) else []
+    active = bool(
+        strict_match_passed is False
+        and f1 is not None
+        and f1 >= 0.90
+        and missing_count is not None
+        and extra_count is not None
+        and missing_count <= 5
+        and extra_count <= 5
+    )
+    return {
+        "schema_version": "near_miss_refinement_mode_v001",
+        "mode": "near_miss_refinement" if active else "normal_repair",
+        "active": active,
+        "activation_criteria": {
+            "strict_match_passed": False,
+            "f1_min": 0.90,
+            "missing_count_max": 5,
+            "extra_count_max": 5,
+        },
+        "observed": {
+            "strict_match_passed": strict_match_passed,
+            "f1": f1,
+            "precision": _float_or_none(quality.get("precision")),
+            "recall": _float_or_none(quality.get("recall")),
+            "expected_count": _int_or_none(quality.get("expected_count")),
+            "predicted_count": _int_or_none(quality.get("predicted_count")),
+            "true_positive_count": _int_or_none(quality.get("true_positive_count")),
+            "missing_count": missing_count,
+            "extra_count": extra_count,
+            "boundary_error_count": (missing_count + extra_count) if missing_count is not None and extra_count is not None else None,
+            "strict_match_reason_excerpt": str(quality.get("strict_match_reason") or quality.get("strict_match_reason_excerpt") or "")[:800],
+        },
+        "targeted_boundary_codes": {
+            "missing_codes_sample": missing_codes[:12],
+            "extra_codes_sample": extra_codes[:12],
+        },
+        "meta_agent_instructions": [
+            "Treat this as a boundary-refinement repair, not a broad parser/prompt rewrite.",
+            "First inspect why the current helper/workflow excludes the missing codes and includes the extra codes.",
+            "Prefer a small reusable helper/filter/ranking/tie-breaker change plus minimal prompt glue.",
+            "Do not hardcode the exact expected answer list or blindly append/remove the diagnostic missing/extra samples.",
+            "Validate by rerunning the child workflow and comparing the new missing/extra counts against this near-miss baseline.",
+        ] if active else [
+            "Near-miss refinement is inactive; use the normal open diagnosis and repair loop.",
+        ],
+    }
+
+
+def attach_repair_mode_to_seed(seed: dict[str, Any], seed_path: Path | None = None) -> dict[str, Any]:
+    mode = build_near_miss_refinement_mode(seed)
+    seed["repair_mode"] = mode
+    seed["near_miss_refinement"] = mode
+    fine = seed.setdefault("fine_grained_feedback", {})
+    if isinstance(fine, dict):
+        fine["repair_mode"] = mode
+        fine["near_miss_refinement"] = mode
+    if seed_path is not None:
+        write_json(seed_path, seed)
+    return mode
+
+
 def build_iteration_handoff(
     *,
     archive_root: Path,
@@ -1904,7 +1998,7 @@ def run_dab_tool_agent_child_eval(
         }
     )
     next_seed_path = child_eval_dir / "next_data_agent_repair_seed.json"
-    write_json(next_seed_path, next_seed)
+    attach_repair_mode_to_seed(next_seed, next_seed_path)
 
     report = {
         "status": "completed",
@@ -2081,7 +2175,7 @@ def run_generic_child_eval(
         },
     }
     next_repair_seed_path = child_eval_dir / "next_data_agent_repair_seed.json"
-    write_json(next_repair_seed_path, next_repair_seed)
+    attach_repair_mode_to_seed(next_repair_seed, next_repair_seed_path)
     helper_usage = generated_code_uses_helper(
         child_run_dir / "generated_solve.py",
         candidate_patents_helper_modules(candidate_dir),
@@ -2323,6 +2417,7 @@ def run_loop(args: argparse.Namespace) -> int:
                 repeated_parent_ids=parent_history,
             )
             attach_recent_loop_handoffs_to_seed(seed, seed_path, archive_root, iteration_dir)
+            attach_repair_mode_to_seed(seed, seed_path)
             write_json(
                 iteration_dir / "repair_seed_override.json",
                 {
@@ -2349,6 +2444,7 @@ def run_loop(args: argparse.Namespace) -> int:
                 repeated_parent_ids=parent_history,
             )
             attach_recent_loop_handoffs_to_seed(seed, seed_path, archive_root, iteration_dir)
+            attach_repair_mode_to_seed(seed, seed_path)
         candidate_id = candidate_id_for(args.candidate_id_prefix, iteration)
         candidate_dir = ROOT / "candidates/dab" / candidate_id
         launcher_exit = None

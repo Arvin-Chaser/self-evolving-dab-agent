@@ -881,7 +881,7 @@ def compact_repair_seed_summary(seed: dict[str, Any]) -> dict[str, Any]:
     if is_dab_tool_agent_zero_start_seed(seed):
         feedback_summary = seed.get("feedback_summary") if isinstance(seed.get("feedback_summary"), dict) else {}
         observations = seed.get("top_observations") if isinstance(seed.get("top_observations"), list) else []
-        return {
+        summary = {
             "schema_version": seed.get("schema_version"),
             "created_at": seed.get("created_at"),
             "run_dir": seed.get("run_dir"),
@@ -892,6 +892,11 @@ def compact_repair_seed_summary(seed: dict[str, Any]) -> dict[str, Any]:
             "top_observations": observations[:8],
             "instruction": seed.get("instruction"),
         }
+        if seed.get("repair_mode"):
+            summary["repair_mode"] = seed.get("repair_mode")
+        if seed.get("near_miss_refinement"):
+            summary["near_miss_refinement"] = seed.get("near_miss_refinement")
+        return summary
 
     keys = (
         "seed_id",
@@ -901,6 +906,10 @@ def compact_repair_seed_summary(seed: dict[str, Any]) -> dict[str, Any]:
         "selected_signal",
         "repair_profile",
         "analysis_summary",
+        "answer_quality",
+        "helper_usage_summary",
+        "repair_mode",
+        "near_miss_refinement",
         "parent_capabilities",
         "answer_delta",
         "candidate_context",
