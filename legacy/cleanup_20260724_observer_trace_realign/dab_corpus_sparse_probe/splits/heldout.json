@@ -1,0 +1,28 @@
+{
+  "schema_version": "dab_query_split_v001",
+  "created_at": "2026-07-19T06:32:41.191970+00:00",
+  "split": "heldout",
+  "query_ids": [
+    "civic_unstructured/query8",
+    "crmarenapro/query8",
+    "cve/query8",
+    "imdb/query8",
+    "krama/query8",
+    "usaspending/query8",
+    "civic_unstructured/query9",
+    "crmarenapro/query9",
+    "cve/query9",
+    "imdb/query9",
+    "krama/query9",
+    "usaspending/query9",
+    "civic_unstructured/query10",
+    "crmarenapro/query10",
+    "cve/query10",
+    "imdb/query10",
+    "krama/query10",
+    "usaspending/query10",
+    "crmarenapro/query11",
+    "crmarenapro/query12",
+    "crmarenapro/query13"
+  ]
+}

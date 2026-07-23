@@ -1,0 +1,25 @@
+Continue the same PATENTS meta-agent candidate from the diagnosis phase.
+
+Your previous report proposed changing an extractor in
+`adapters/feedback/common_trace_checks.py`, but your own grep commands did not
+find the claimed `no_years_found` handling. Treat the previous report as a
+hypothesis, not truth.
+
+Inspect the actual definitions, imports, call order, and error-list
+initialization in:
+
+- adapters/feedback/common_trace_checks.py
+- adapters/feedback/dab_patents_checks.py
+- experiments/analyze_agent_error.py
+
+Reconcile them with the local `no_years_found` evidence under
+`evidence/parent_run/`. Choose exactly one smallest generalizable repair that
+makes the feedback path correctly and safely surface the earliest runtime
+failure. Do not modify the object prompt, validator, evidence, legacy code, or
+benchmark data.
+
+You must make the edit before the tool budget expires. Run Python syntax/import
+checks and one focused local check for the changed behavior. Use at most eight
+tool calls. Finish with Diagnosis, Repair target, Changed files, Validation,
+and Risks. Do not merely print a proposed patch in the final answer; apply it
+to the isolated workspace.

@@ -8,14 +8,22 @@ meta-agent evidence layer.  It intentionally avoids PATENTS/CPC-specific rules.
 from __future__ import annotations
 
 import argparse
+import ast
 import importlib.util
 import json
+import re
+import sys
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from experiments.dab_answer_utils import semantic_final_answer_text
+
+DAB_UPSTREAM_ROOT = Path("/home/m0st1ma/research/DataAgentBench_upstream")
 
 
 def utc_now() -> str:
@@ -62,6 +70,8 @@ def _load_query_validator(query_dir: Path) -> Any | None:
     if not validate_path.exists():
         return None
     try:
+        if DAB_UPSTREAM_ROOT.exists() and str(DAB_UPSTREAM_ROOT) not in sys.path:
+            sys.path.insert(0, str(DAB_UPSTREAM_ROOT))
         spec = importlib.util.spec_from_file_location(f"dab_validate_{abs(hash(validate_path))}", validate_path)
         if spec is None or spec.loader is None:
             return None
@@ -71,6 +81,85 @@ def _load_query_validator(query_dir: Path) -> Any | None:
     except Exception:
         return None
 
+
+
+def _flatten_string_values(value: Any) -> list[str]:
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, (list, tuple, set)):
+        out: list[str] = []
+        for item in value:
+            out.extend(_flatten_string_values(item))
+        return out
+    if isinstance(value, dict):
+        out: list[str] = []
+        for item in value.values():
+            out.extend(_flatten_string_values(item))
+        return out
+    return []
+
+
+def _looks_like_code_set(values: list[str]) -> bool:
+    if not values:
+        return False
+    code_like = [v for v in values if re.fullmatch(r"[A-Z][0-9A-Z._-]{1,12}", str(v).upper())]
+    return len(code_like) >= max(1, min(5, len(values)))
+
+
+def _ground_truth_codes_from_validator(validator: Any) -> list[str]:
+    for attr in ("ground_truth", "expected", "expected_answer", "answers", "answer"):
+        values = getattr(validator, attr, None)
+        strings = _flatten_string_values(values)
+        if _looks_like_code_set(strings):
+            return [str(item).upper() for item in strings]
+    return []
+
+
+def _ground_truth_codes_from_validate_source(query_dir: Path) -> list[str]:
+    validate_path = query_dir / "validate.py"
+    if not validate_path.exists():
+        return []
+    try:
+        tree = ast.parse(validate_path.read_text(encoding="utf-8", errors="replace"))
+    except Exception:
+        return []
+    preferred_names = {"ground_truth", "expected", "expected_answer", "answers", "answer"}
+    fallback: list[str] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Assign):
+            continue
+        names = [target.id for target in node.targets if isinstance(target, ast.Name)]
+        if not names:
+            continue
+        try:
+            literal = ast.literal_eval(node.value)
+        except Exception:
+            continue
+        strings = [str(item).upper() for item in _flatten_string_values(literal)]
+        if not _looks_like_code_set(strings):
+            continue
+        if any(name in preferred_names for name in names):
+            return strings
+        if not fallback:
+            fallback = strings
+    return fallback
+
+
+def _extract_codes_with_expected_shapes(final_answer: str, expected_codes: list[str]) -> list[str]:
+    expected = {str(code).upper() for code in expected_codes}
+    if not expected:
+        return []
+    predicted: list[str] = []
+    for token in re.findall(r"\b[A-HY]\d{2,4}[A-Z]?\b", final_answer.upper()):
+        matched = False
+        for code in expected:
+            if token == code or token.startswith(code):
+                predicted.append(code)
+                matched = True
+                break
+        if not matched:
+            predicted.append(token)
+    return predicted
 
 def compute_answer_quality(summary: dict[str, Any], final_answer: str) -> dict[str, Any]:
     """Compute answer-level quality metrics when the query validator exposes a set extractor.
@@ -88,21 +177,32 @@ def compute_answer_quality(summary: dict[str, Any], final_answer: str) -> dict[s
     if validator is None:
         return {"available": False, "reason": "validator_not_found_or_unloadable", "query_dir": str(query_dir)}
 
-    required = ("extract_cpc_codes", "load_ground_truth_codes")
-    if not all(hasattr(validator, name) for name in required):
-        return {
-            "available": False,
-            "reason": "validator_missing_supported_code_set_interface",
-            "query_dir": str(query_dir),
-        }
-
     try:
-        expected_codes = list(validator.load_ground_truth_codes())
-        predicted_codes = list(validator.extract_cpc_codes(final_answer))
         strict_passed = None
         strict_reason = None
         if hasattr(validator, "validate"):
             strict_passed, strict_reason = validator.validate(final_answer)
+        if all(hasattr(validator, name) for name in ("extract_cpc_codes", "load_ground_truth_codes")):
+            expected_codes = list(validator.load_ground_truth_codes())
+            predicted_codes = list(validator.extract_cpc_codes(final_answer))
+            metric_type = "cpc_code_set_overlap"
+        else:
+            expected_codes = _ground_truth_codes_from_validator(validator)
+            source_metric = "validator_ground_truth_code_overlap"
+            if not expected_codes:
+                expected_codes = _ground_truth_codes_from_validate_source(query_dir)
+                source_metric = "validator_source_literal_code_overlap"
+            predicted_codes = _extract_codes_with_expected_shapes(final_answer, expected_codes)
+            metric_type = source_metric
+        if not expected_codes:
+            return {
+                "available": bool(hasattr(validator, "validate")),
+                "metric_type": "strict_validate_only",
+                "strict_match_passed": strict_passed,
+                "strict_match_reason": strict_reason,
+                "reason": "validator_missing_supported_code_set_interface",
+                "query_dir": str(query_dir),
+            }
     except Exception as exc:
         return {
             "available": False,
@@ -124,7 +224,7 @@ def compute_answer_quality(summary: dict[str, Any], final_answer: str) -> dict[s
 
     return {
         "available": True,
-        "metric_type": "cpc_code_set_overlap",
+        "metric_type": metric_type,
         "strict_match_passed": strict_passed,
         "strict_match_reason": strict_reason,
         "expected_count": len(expected_set),
@@ -391,7 +491,8 @@ def analyze_run(run_dir: Path) -> dict[str, Any]:
     tool_calls = read_jsonl(run_dir / "tool_calls.jsonl")
     final_agent = read_json(run_dir / "final_agent.json", {})
     validation_rows = read_jsonl(run_dir / "validation.jsonl")
-    final_answer = read_text(run_dir / "final_answer.txt")
+    raw_final_answer = read_text(run_dir / "final_answer.txt")
+    final_answer = semantic_final_answer_text(raw_final_answer)
     self_observation_rows = read_jsonl(run_dir / "agent_self_observations.jsonl")
     answer_quality = compute_answer_quality(summary, final_answer)
     helper_usage_summary = compute_helper_usage_summary(summary, tool_calls, final_answer)

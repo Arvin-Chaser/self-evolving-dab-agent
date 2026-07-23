@@ -13,6 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from experiments.near_miss_causal_diagnosis import build_near_miss_causal_diagnosis
+
 
 def load_json(path: Path, default: Any = None) -> Any:
     if not path.exists():
@@ -85,7 +87,7 @@ def build_dab_tool_agent_evidence_pack(
         "meta_agent_seed_json": str(run_dir / "meta_agent_seed.json"),
     }
 
-    return {
+    feedback = {
         "feedback_type": "dab_tool_agent_workflow_feedback",
         "schema_version": "dab_tool_agent_evidence_pack_v001",
         "source_run_dir": str(run_dir),
@@ -140,6 +142,8 @@ def build_dab_tool_agent_evidence_pack(
         },
         "artifact_paths": artifact_paths,
     }
+    feedback["near_miss_causal_diagnosis"] = build_near_miss_causal_diagnosis(feedback, run_dir=run_dir)
+    return feedback
 
 
 def markdown_for_dab_tool_agent_feedback(feedback: dict[str, Any]) -> str:
@@ -150,6 +154,7 @@ def markdown_for_dab_tool_agent_feedback(feedback: dict[str, Any]) -> str:
         ("Primary Signal", feedback.get("primary_signal") or {}),
         ("Routing Context", {"candidate_repair_layers": feedback.get("candidate_repair_layers") or [], "routing_policy": feedback.get("routing_policy") or {}, "meta_agent_decision_required": feedback.get("meta_agent_decision_required")}),
         ("Answer Quality", feedback.get("answer_quality") or {}),
+        ("Near-Miss Causal Diagnosis", feedback.get("near_miss_causal_diagnosis") or {}),
         ("Helper Usage Summary", feedback.get("helper_usage_summary") or {}),
         ("Agent Self-Observation Summary", feedback.get("agent_self_observation_summary") or {}),
         ("Structured Observations", feedback.get("structured_observations") or []),

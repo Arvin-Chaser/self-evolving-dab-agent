@@ -20,14 +20,14 @@ from __future__ import annotations
 
 import argparse
 import ast
-import contextlib
-import io
 import json
+import re
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -36,19 +36,14 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from experiments.analyze_agent_error import analyze_run
 from experiments.archive_selector import select_from_archive
-from experiments.build_meta_agent_evidence_pack import build_fine_grained_feedback_pack, write_pack
-from experiments.extract_primary_signal import extract_primary_signal
-from experiments.helper_repair_planner import plan_helper_repair
 from experiments.open_diagnosis import build_open_diagnosis_evidence, compact_open_diagnosis_evidence
-from experiments.run_dab_agent import run_dab_agent
+from experiments.near_miss_causal_diagnosis import build_near_miss_causal_diagnosis
 
 
 DEFAULT_ARCHIVE = ROOT / "archive"
 DEFAULT_CASE_DIR = Path("/home/m0st1ma/research/DataAgentBench/query_PATENTS/query1")
 DEFAULT_DAB_ROOT = Path("/home/m0st1ma/research/DataAgentBench")
-DATA_AGENT_CANONICAL_PROMPT = Path("prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt")
 DAB_TOOL_AGENT_CANONICAL_POLICY = Path("prompts/dab/dab_tool_agent_policy_zero_start.txt")
 
 
@@ -337,6 +332,39 @@ def safe_load_json(path: Path) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+def recover_multi_query_batch_from_seed(seed: dict[str, Any]) -> dict[str, Any]:
+    """Return a runnable multi-query batch for child eval.
+
+    Some handoff seeds are deliberately compact and keep only the previous
+    failure observation, not the original batch object. Full child rerun still
+    needs query_ids, so recover them from the source candidate's child eval
+    report when the seed does not carry a complete batch.
+    """
+    batch = seed.get("batch") if isinstance(seed.get("batch"), dict) else {}
+    query_ids = batch.get("query_ids")
+    if isinstance(query_ids, list) and query_ids:
+        return batch
+
+    source_candidate_dir = seed.get("source_candidate_dir")
+    if source_candidate_dir:
+        report_path = Path(str(source_candidate_dir)) / "child_eval" / "child_eval_report.json"
+        report = safe_load_json(report_path)
+        recovered: list[str] = []
+        for item in report.get("per_query_results") or []:
+            if not isinstance(item, dict):
+                continue
+            query_id = str(item.get("query_id") or "").strip()
+            if query_id and query_id not in recovered:
+                recovered.append(query_id)
+        if recovered:
+            return {
+                "schema_version": "dab_query_batch_v001",
+                "batch_id": str(seed.get("batch_id") or report.get("batch_id") or "recovered_child_eval_batch"),
+                "query_ids": recovered,
+                "recovered_from": str(report_path),
+            }
+
+    return batch
 def upsert_jsonl(path: Path, key: str, row: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     rows = load_jsonl(path)
@@ -514,12 +542,18 @@ def build_near_miss_refinement_mode(seed: dict[str, Any]) -> dict[str, Any]:
 
 def attach_repair_mode_to_seed(seed: dict[str, Any], seed_path: Path | None = None) -> dict[str, Any]:
     mode = build_near_miss_refinement_mode(seed)
+    diagnosis = build_near_miss_causal_diagnosis(seed)
     seed["repair_mode"] = mode
     seed["near_miss_refinement"] = mode
+    seed["near_miss_causal_diagnosis"] = diagnosis
     fine = seed.setdefault("fine_grained_feedback", {})
     if isinstance(fine, dict):
         fine["repair_mode"] = mode
         fine["near_miss_refinement"] = mode
+        fine["near_miss_causal_diagnosis"] = diagnosis
+    if isinstance(mode, dict):
+        mode["causal_diagnosis_available"] = diagnosis.get("available")
+        mode["causal_diagnosis_active"] = diagnosis.get("active")
     if seed_path is not None:
         write_json(seed_path, seed)
     return mode
@@ -822,6 +856,294 @@ def run_cmd(
             stderr.close()
 
 
+LLM_PROXY_ENV_KEYS = (
+    "http_proxy",
+    "https_proxy",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "all_proxy",
+    "ALL_PROXY",
+)
+
+
+def normalize_llm_network_mode(value: str | None) -> str:
+    mode = (value or "").strip().lower()
+    aliases = {
+        "": "auto",
+        "none": "direct",
+        "no_proxy": "direct",
+        "noproxy": "direct",
+        "wsl_proxy": "proxy",
+        "system": "inherited",
+        "env": "inherited",
+    }
+    return aliases.get(mode, mode)
+
+
+def llm_preflight_network_modes(env: dict[str, str]) -> list[str]:
+    requested = normalize_llm_network_mode(env.get("META_LOOP_LLM_NETWORK_MODE", "auto"))
+    if requested != "auto":
+        return [requested]
+    raw_order = env.get("META_LOOP_LLM_NETWORK_ORDER", "direct,proxy,inherited")
+    modes: list[str] = []
+    for item in raw_order.split(","):
+        mode = normalize_llm_network_mode(item)
+        if mode and mode != "auto" and mode not in modes:
+            modes.append(mode)
+    return modes or ["direct", "proxy", "inherited"]
+
+
+def apply_llm_network_env(env: dict[str, str], mode: str | None = None) -> dict[str, str]:
+    """Apply one explicit network mode for DashScope/OpenAI-compatible LLM calls."""
+
+    resolved = normalize_llm_network_mode(
+        mode
+        or env.get("META_LOOP_SELECTED_LLM_NETWORK_MODE")
+        or env.get("META_LOOP_LLM_NETWORK_MODE", "auto")
+    )
+    if resolved == "auto":
+        resolved = "proxy" if not env.get("META_LOOP_DISABLE_WSL_PROXY") else "inherited"
+    if resolved == "direct":
+        for key in LLM_PROXY_ENV_KEYS:
+            env.pop(key, None)
+        env.setdefault("no_proxy", "localhost,127.0.0.1,::1")
+        env.setdefault("NO_PROXY", "localhost,127.0.0.1,::1")
+    elif resolved == "proxy":
+        proxy_url = env.get("META_LOOP_WSL_PROXY_URL", "http://172.17.240.1:17891")
+        for key in LLM_PROXY_ENV_KEYS:
+            env[key] = proxy_url
+        env.setdefault("no_proxy", "localhost,127.0.0.1,::1")
+        env.setdefault("NO_PROXY", "localhost,127.0.0.1,::1")
+    elif resolved == "inherited":
+        pass
+    else:
+        raise ValueError(f"Unsupported META_LOOP_LLM_NETWORK_MODE={resolved!r}; expected auto/direct/proxy/inherited")
+    env["META_LOOP_EFFECTIVE_LLM_NETWORK_MODE"] = resolved
+    return env
+
+
+def selected_llm_run_env() -> dict[str, str]:
+    return apply_llm_network_env(os.environ.copy())
+
+
+def run_dab_tool_agent_llm_preflight(loop_dir: Path, label: str) -> dict[str, Any]:
+    """Check the DataAgent LLM endpoint before spending a full parent/child run.
+
+    The DAB tool-agent can fail before the first tool action when the DashScope/
+    OpenAI-compatible endpoint is temporarily unreachable. Without this gate,
+    the downstream analyzer sees an empty final answer and produces a misleading
+    `missing_final_answer` seed. Keep this tiny and independent of Docker,
+    Postgres, and query files: it only verifies that the configured data-agent
+    model can return one short completion.
+    """
+
+    stdout_path = loop_dir / f"{label}_llm_preflight.stdout"
+    stderr_path = loop_dir / f"{label}_llm_preflight.stderr"
+    report_path = loop_dir / f"{label}_llm_preflight.json"
+    base_env = os.environ.copy()
+    base_env.setdefault("META_LOOP_LLM_PREFLIGHT_TIMEOUT_SEC", "30")
+    base_env.setdefault("META_LOOP_LLM_PREFLIGHT_MAX_RETRIES", "2")
+    outer_attempts = max(1, int(base_env.get("META_LOOP_LLM_PREFLIGHT_ATTEMPTS", "4")))
+    outer_sleep_sec = max(0.0, float(base_env.get("META_LOOP_LLM_PREFLIGHT_RETRY_SLEEP_SEC", "5")))
+    network_modes = llm_preflight_network_modes(base_env)
+    code = r"""
+import json
+import os
+import sys
+import time
+
+from openai import OpenAI
+
+
+def first_env(names):
+    for name in names:
+        if not name:
+            continue
+        value = os.getenv(name)
+        if value:
+            return name, value
+    return None, None
+
+
+def normalize_openai_base_url(value):
+    default = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    if not value:
+        return default
+    base_url = value.strip()
+    if not base_url:
+        return default
+    if "://" not in base_url:
+        base_url = "https://" + base_url
+    base_url = base_url.rstrip("/")
+    if base_url.endswith("/v1") or base_url.endswith("/compatible-mode/v1"):
+        return base_url
+    return base_url + "/compatible-mode/v1"
+
+
+key_env, api_key = first_env([
+    os.getenv("DAB_TOOL_AGENT_API_KEY_ENV"),
+    "DASHSCOPE_API_KEY",
+    "dashscope_api_key",
+    "BAILIAN_API_KEY",
+    "DAB_TOOL_AGENT_API_KEY",
+    "TOGETHER_API_KEY",
+])
+base_env, base_from_env = first_env(["DAB_TOOL_AGENT_BASE_URL", "DASHSCOPE_BASE_URL", "BAILIAN_BASE_URL"])
+base_url = normalize_openai_base_url(base_from_env)
+model = os.getenv("DAB_TOOL_AGENT_MODEL", "qwen-plus")
+timeout = float(os.getenv("META_LOOP_LLM_PREFLIGHT_TIMEOUT_SEC", "30"))
+max_retries = int(os.getenv("META_LOOP_LLM_PREFLIGHT_MAX_RETRIES", "0"))
+started = time.time()
+report = {
+    "schema_version": "dab_tool_agent_llm_preflight_v001",
+    "status": "unknown",
+    "model": model,
+    "provider": "openai_compatible",
+    "api_key_env": key_env,
+    "api_key_present": bool(api_key),
+    "base_url_env": base_env,
+    "base_url": base_url,
+    "timeout_sec": timeout,
+    "max_retries": max_retries,
+}
+if not api_key:
+    report.update({
+        "status": "failed",
+        "failure_type": "missing_api_key",
+        "error": "No data-agent API key visible. Set DASHSCOPE_API_KEY or DAB_TOOL_AGENT_API_KEY.",
+        "elapsed_sec": round(time.time() - started, 3),
+    })
+    print(json.dumps(report, ensure_ascii=False))
+    sys.exit(2)
+try:
+    client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout, max_retries=max_retries)
+    response = client.chat.completions.create(
+        model=model,
+        messages=[{"role": "user", "content": "Return exactly: ok"}],
+        temperature=0,
+        max_tokens=8,
+        timeout=timeout,
+    )
+    content = response.choices[0].message.content or ""
+    report.update({
+        "status": "passed",
+        "content_preview": content[:80],
+        "elapsed_sec": round(time.time() - started, 3),
+    })
+    print(json.dumps(report, ensure_ascii=False))
+    sys.exit(0)
+except Exception as exc:
+    report.update({
+        "status": "failed",
+        "failure_type": type(exc).__name__,
+        "error": str(exc),
+        "elapsed_sec": round(time.time() - started, 3),
+    })
+    print(json.dumps(report, ensure_ascii=False))
+    sys.exit(1)
+"""
+    attempts: list[dict[str, Any]] = []
+    proc: subprocess.CompletedProcess[str] | None = None
+    report: dict[str, Any] = {}
+    selected_env: dict[str, str] | None = None
+    selected_mode: str | None = None
+    for network_mode in network_modes:
+        env = apply_llm_network_env(base_env.copy(), network_mode)
+        for attempt in range(1, outer_attempts + 1):
+            attempt_stdout_path = loop_dir / f"{label}_llm_preflight_{network_mode}_attempt{attempt:02d}.stdout"
+            attempt_stderr_path = loop_dir / f"{label}_llm_preflight_{network_mode}_attempt{attempt:02d}.stderr"
+            proc = run_cmd(
+                [str(ROOT / ".venv/bin/python"), "-c", code],
+                cwd=ROOT,
+                env=env,
+                stdout_path=attempt_stdout_path,
+                stderr_path=attempt_stderr_path,
+            )
+            stdout_text = attempt_stdout_path.read_text(encoding="utf-8", errors="replace").strip() if attempt_stdout_path.exists() else ""
+            try:
+                attempt_report = json.loads(stdout_text.splitlines()[-1]) if stdout_text else {}
+            except Exception:
+                attempt_report = {
+                    "schema_version": "dab_tool_agent_llm_preflight_v001",
+                    "status": "failed",
+                    "failure_type": "invalid_preflight_output",
+                    "error": stdout_text[:1000],
+                }
+            attempt_report.setdefault("schema_version", "dab_tool_agent_llm_preflight_v001")
+            attempt_report.setdefault("status", "passed" if proc.returncode == 0 else "failed")
+            attempt_report["network_mode"] = network_mode
+            attempt_report["attempt"] = attempt
+            attempt_report["exit_code"] = proc.returncode
+            attempt_report["stdout_path"] = str(attempt_stdout_path)
+            attempt_report["stderr_path"] = str(attempt_stderr_path)
+            attempts.append(attempt_report)
+            report = dict(attempt_report)
+            if proc.returncode == 0 and report.get("status") == "passed":
+                selected_env = env
+                selected_mode = network_mode
+                break
+            if attempt < outer_attempts and outer_sleep_sec > 0:
+                time.sleep(outer_sleep_sec * attempt)
+        if selected_mode:
+            break
+    stdout_path.write_text(json.dumps(report, ensure_ascii=False) + "\n", encoding="utf-8")
+    stderr_path.write_text("", encoding="utf-8")
+    report.setdefault("schema_version", "dab_tool_agent_llm_preflight_v001")
+    report["label"] = label
+    report["attempts"] = attempts
+    report["network_mode_order"] = network_modes
+    if selected_mode:
+        report["selected_network_mode"] = selected_mode
+        os.environ["META_LOOP_SELECTED_LLM_NETWORK_MODE"] = selected_mode
+    report["outer_attempt_count"] = len(attempts)
+    report["outer_attempt_limit"] = outer_attempts
+    report_env = selected_env if selected_env is not None else apply_llm_network_env(base_env.copy(), network_modes[-1] if network_modes else "inherited")
+    report["proxy_env"] = {
+        "http_proxy": report_env.get("http_proxy"),
+        "https_proxy": report_env.get("https_proxy"),
+        "no_proxy": report_env.get("no_proxy"),
+    }
+    if proc is not None:
+        report["exit_code"] = proc.returncode
+    report["stdout_path"] = str(stdout_path)
+    report["stderr_path"] = str(stderr_path)
+    if (proc is None or proc.returncode != 0) and report.get("status") == "passed":
+        report["status"] = "failed"
+    if report.get("status") != "passed":
+        report.setdefault("final_status", "infra_failed_llm_connection")
+    write_json(report_path, report)
+    return report
+
+
+def write_infra_failed_loop_summary(
+    *,
+    loop_dir: Path,
+    results: list[dict[str, Any]],
+    initial_parent_agent_id: str,
+    parent_agent_id: str,
+    meta_agent_id: str | None,
+    preflight: dict[str, Any],
+) -> int:
+    summary = {
+        "status": "infra_failed_llm_connection",
+        "loop_dir": str(loop_dir),
+        "selected_initial_parent_agent": initial_parent_agent_id,
+        "selected_next_parent_agent": parent_agent_id,
+        "selected_meta_agent_protocol": meta_agent_id,
+        "llm_preflight": preflight,
+        "results": results,
+    }
+    summary_path = loop_dir / "loop_summary.json"
+    write_json(summary_path, summary)
+    print(json.dumps({
+        "status": summary["status"],
+        "loop_dir": str(loop_dir),
+        "loop_summary": str(summary_path),
+        "llm_preflight": preflight,
+    }, indent=2, ensure_ascii=False))
+    return 2
+
+
 def archive_card_path(row: dict[str, Any]) -> Path:
     card_ref = Path(row["card"])
     return card_ref if card_ref.is_absolute() else ROOT / card_ref
@@ -888,6 +1210,7 @@ def select_archive_agent(
     repeated_parent_ids: list[str] | None = None,
     repeated_parent_penalty: float = 0.0,
     source_lineage_family: str | None = None,
+    exclude_agent_ids: list[str] | None = None,
 ) -> dict[str, Any]:
     agents = {row["agent_id"]: row for row in load_jsonl(archive_root / "indexes/agents.jsonl")}
     if requested:
@@ -971,8 +1294,12 @@ def select_parent_agent(
     repeated_parent_ids: list[str] | None = None,
     repeated_parent_penalty: float = 0.0,
     source_lineage_family: str | None = None,
+    exclude_agent_ids: list[str] | None = None,
 ) -> dict[str, Any]:
+    excluded = set(exclude_agent_ids or [])
     if requested:
+        if requested in excluded:
+            raise SystemExit(f"requested parent is excluded by materialization preflight: {requested}")
         return select_archive_agent(
             archive_root,
             requested=requested,
@@ -1003,6 +1330,8 @@ def select_parent_agent(
         if not archive_card_is_recent(card_path, max_age_hours):
             continue
         card = load_json(card_path)
+        if card.get("agent_id") in excluded:
+            continue
         if card.get("agent_type") != "data_agent":
             continue
         if not card_matches_lineage_family(card, source_lineage_family):
@@ -1015,6 +1344,8 @@ def select_parent_agent(
         row["selection_policy"] = "archive_selector_v001_parent_pool"
         return {"index": row, "card": card, "selection_score": row}
 
+    if excluded:
+        raise SystemExit(f"no selectable archive parent remains after excluding non-materializable parents: {sorted(excluded)}")
     return select_archive_agent(
         archive_root,
         requested=None,
@@ -1167,7 +1498,7 @@ def run_dab_tool_agent_parent_case(
     dab_root: Path,
     loop_dir: Path | None,
 ) -> Path:
-    env = os.environ.copy()
+    env = selected_llm_run_env()
     env["PYTHONPATH"] = str(workspace)
     env.setdefault("DAB_TOOL_AGENT_API_KEY_ENV", "DASHSCOPE_API_KEY")
     max_iterations = str(
@@ -1192,7 +1523,7 @@ def run_dab_tool_agent_parent_case(
         "--max-iterations",
         max_iterations,
     ]
-    if policy_path.exists():
+    if policy_path.exists() and not env.get("DAB_QUERY_WORKSPACE"):
         cmd += ["--tool-agent-policy", str(policy_path)]
     proc = run_cmd(
         cmd,
@@ -1275,6 +1606,25 @@ def analyze_dab_tool_agent_and_seed(
     observations = load_json(loop_dir / "observations.json")
     meta_agent_seed = load_json(loop_dir / "meta_agent_seed.json")
     evidence_pack = load_json(fine_grained_json_path)
+    observer_feedback_path = loop_dir / "observer_fine_grained_feedback.json"
+    observer_input_path = loop_dir / "observer_raw_behavior_input.json"
+    observer_proc = run_cmd(
+        [
+            str(ROOT / ".venv/bin/python"),
+            str(ROOT / "experiments/run_fine_grained_observer_agent.py"),
+            "--run-dir",
+            str(run_dir),
+            "--output",
+            str(observer_feedback_path),
+            "--behavior-input-output",
+            str(observer_input_path),
+        ],
+        cwd=ROOT,
+        env=selected_llm_run_env(),
+        stdout_path=loop_dir / "parent_fine_grained_observer.stdout",
+        stderr_path=loop_dir / "parent_fine_grained_observer.stderr",
+    )
+    observer_feedback = load_json(observer_feedback_path)
     obs_top = observations[:8] if isinstance(observations, list) else []
     seed = dict(meta_agent_seed) if isinstance(meta_agent_seed, dict) else {}
     seed.update(
@@ -1288,6 +1638,7 @@ def analyze_dab_tool_agent_and_seed(
             "analysis_commands": {
                 "analyzer_exit_code": analyzer_proc.returncode,
                 "evidence_pack_exit_code": evidence_proc.returncode,
+                "fine_grained_observer_exit_code": observer_proc.returncode,
             },
             "fine_grained_feedback": {
                 "feedback_type": "dab_tool_agent_workflow_feedback",
@@ -1301,6 +1652,9 @@ def analyze_dab_tool_agent_and_seed(
                 "routing_policy": feedback_summary.get("routing_policy"),
                 "meta_agent_decision_required": feedback_summary.get("meta_agent_decision_required"),
                 "primary_signal": feedback_summary.get("primary_signal"),
+                "observer_generated_feedback": observer_feedback,
+                "observer_generated_feedback_path": str(observer_feedback_path),
+                "observer_raw_behavior_input_path": str(observer_input_path),
                 "top_observations": obs_top,
                 "structured_observations": evidence_pack.get("structured_observations"),
                 "repair_guidance": evidence_pack.get("repair_guidance"),
@@ -1310,6 +1664,9 @@ def analyze_dab_tool_agent_and_seed(
                     "markdown": str(fine_grained_md_path),
                 },
             },
+            "observer_generated_feedback": observer_feedback,
+            "observer_generated_feedback_path": str(observer_feedback_path),
+            "observer_raw_behavior_input_path": str(observer_input_path),
             "full_evidence_pack_paths": {
                 "json": str(fine_grained_json_path),
                 "markdown": str(fine_grained_md_path),
@@ -1326,17 +1683,6 @@ def analyze_dab_tool_agent_and_seed(
     seed_path = loop_dir / "repair_seed.json"
     write_json(seed_path, seed)
     return seed, seed_path
-
-
-def analyze_run_quiet(run_dir: Path, stdout_path: Path, stderr_path: Path) -> dict[str, Any]:
-    stdout = io.StringIO()
-    stderr = io.StringIO()
-    try:
-        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-            return analyze_run(run_dir)
-    finally:
-        stdout_path.write_text(stdout.getvalue(), encoding="utf-8")
-        stderr_path.write_text(stderr.getvalue(), encoding="utf-8")
 
 
 def current_failure_tags_from_seed(seed: dict[str, Any]) -> list[str]:
@@ -1397,6 +1743,127 @@ def compact_archive_evidence_item(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+
+FEEDBACK_EVIDENCE_FILE_MARKERS = (
+    "near_miss_causal_diagnosis.py",
+    "build_dab_tool_agent_evidence_pack.py",
+    "analyze_dab_tool_agent_trace.py",
+    "archive_observation.py",
+    "open_diagnosis.py",
+    "interpret_failure.py",
+    "gate_policy.py",
+    "adapters/feedback/",
+)
+
+
+def candidate_matches_query_scope(row: dict[str, Any], *, source_lineage_family: str | None, query_workspace: str | None) -> bool:
+    if source_lineage_family and row.get("source_lineage_family") != source_lineage_family:
+        return False
+    if query_workspace and row.get("query_workspace") != query_workspace:
+        return False
+    return True
+
+
+def feedback_evidence_candidate_score(row: dict[str, Any]) -> tuple[float, list[str]]:
+    """Score candidates that improve how future loops see/interpret evidence.
+
+    This is separate from answer-parent scoring. A candidate can be useless as
+    an answer parent while still being valuable as a feedback/evidence parent if
+    it repairs analyzer, evidence-pack, near-miss, gate, or diagnostic plumbing.
+    """
+    reasons: list[str] = []
+    changed = [str(item) for item in (row.get("changed_files") or row.get("project_changed_files") or [])]
+    score = 0.0
+    if row.get("can_seed_next_repair"):
+        score += 0.25
+        reasons.append("can_seed_next_repair")
+    if row.get("status") in {"candidate_child_eval_failed", "candidate_child_eval_improved_but_failed"}:
+        score += 0.05
+        reasons.append("has_child_eval_outcome")
+    marker_hits = [path for path in changed if any(marker in path for marker in FEEDBACK_EVIDENCE_FILE_MARKERS)]
+    if marker_hits:
+        score += 0.45 + min(0.15, 0.05 * len(marker_hits))
+        reasons.append("feedback_evidence_file_changed:" + ",".join(marker_hits[:3]))
+    if row.get("has_open_diagnosis"):
+        score += 0.05
+        reasons.append("has_open_diagnosis")
+    status = str(row.get("contract_eval_status") or "")
+    if status and status != "not_evaluated_no_proposed_contracts":
+        score += 0.03
+        reasons.append("contract_eval_available")
+    if row.get("metric_delta_f1") is not None:
+        try:
+            if float(row.get("metric_delta_f1") or 0.0) < -0.05:
+                score -= 0.2
+                reasons.append("negative_answer_delta_penalty")
+        except Exception:
+            pass
+    if not marker_hits:
+        reasons.append("no_feedback_evidence_file_marker")
+        return 0.0, reasons
+    return round(score, 6), reasons
+
+
+def select_feedback_evidence_parent(
+    archive_root: Path,
+    *,
+    source_lineage_family: str | None = None,
+    query_workspace: str | None = None,
+) -> dict[str, Any] | None:
+    rows = load_jsonl(archive_root / "indexes/candidates.jsonl")
+    scored: list[dict[str, Any]] = []
+    for row in rows:
+        if not candidate_matches_query_scope(row, source_lineage_family=source_lineage_family, query_workspace=query_workspace):
+            continue
+        if not row.get("can_seed_next_repair"):
+            continue
+        candidate_id = row.get("candidate_id")
+        if not candidate_id:
+            continue
+        card_ref = row.get("card")
+        card_path = Path(card_ref) if isinstance(card_ref, str) and card_ref else archive_root / "candidates" / str(candidate_id) / "candidate_card.json"
+        if not card_path.is_absolute():
+            card_path = ROOT / card_path
+        card = load_json(card_path) if card_path.exists() else {}
+        enriched_row = dict(row)
+        if not enriched_row.get("changed_files") and isinstance(card.get("changed_files"), list):
+            enriched_row["changed_files"] = card.get("changed_files")
+        if not enriched_row.get("project_changed_files") and isinstance(card.get("project_changed_files"), list):
+            enriched_row["project_changed_files"] = card.get("project_changed_files")
+        score, reasons = feedback_evidence_candidate_score(enriched_row)
+        if score <= 0:
+            continue
+        artifacts = card.get("artifacts") if isinstance(card.get("artifacts"), dict) else {}
+        patch_ref = artifacts.get("patch") or artifacts.get("candidate_patch") or str(Path(enriched_row.get("query_workspace") or "") / "candidates" / str(candidate_id) / "patch.diff")
+        scored.append({
+            "schema_version": "feedback_evidence_parent_v001",
+            "candidate_id": candidate_id,
+            "status": row.get("status"),
+            "candidate_type": row.get("candidate_type"),
+            "selection_role": "feedback_evidence_parent",
+            "selection_score": score,
+            "selection_reasons": reasons,
+            "source_lineage_family": enriched_row.get("source_lineage_family"),
+            "query_workspace": enriched_row.get("query_workspace"),
+            "changed_files": enriched_row.get("changed_files") or enriched_row.get("project_changed_files") or [],
+            "card": str(card_path.relative_to(ROOT)) if card_path.exists() and card_path.is_relative_to(ROOT) else str(card_path),
+            "patch": patch_ref,
+            "reward": row.get("reward"),
+            "metric_delta_f1": row.get("metric_delta_f1"),
+            "promotion_score": row.get("promotion_score"),
+            "promotion_reason": row.get("promotion_reason"),
+            "failure_observation_tags": row.get("failure_observation_tags") or [],
+            "contract_eval_status": row.get("contract_eval_status"),
+            "reuse_policy": {
+                "can_seed_next_repair": row.get("can_seed_next_repair"),
+                "use_as_negative_example": row.get("use_as_negative_example"),
+                "do_not_replace_answer_parent": True,
+            },
+            "usage": "Use this candidate as feedback/evidence plumbing context for the next meta-agent repair. It does not replace the selected answer parent unless a later repair explicitly applies or merges it.",
+        })
+    scored.sort(key=lambda item: (item.get("selection_score") or 0.0, str(item.get("candidate_id") or "")), reverse=True)
+    return scored[0] if scored else None
+
 def archive_priority_observations_from_selection(selection: dict[str, Any]) -> list[dict[str, Any]]:
     priority: list[dict[str, Any]] = []
     seen: set[tuple[str, str]] = set()
@@ -1446,6 +1913,8 @@ def attach_archive_selection_to_seed(
     archive_root: Path,
     loop_dir: Path,
     repeated_parent_ids: list[str] | None = None,
+    source_lineage_family: str | None = None,
+    query_workspace: str | None = None,
 ) -> dict[str, Any]:
     current_tags = current_failure_tags_from_seed(seed)
     selection = select_from_archive(
@@ -1456,7 +1925,15 @@ def attach_archive_selection_to_seed(
         parent_limit=5,
         evidence_limit=5,
         parent_agent_type="data_agent",
+        source_lineage_family=source_lineage_family,
     )
+    feedback_evidence_parent = select_feedback_evidence_parent(
+        archive_root,
+        source_lineage_family=source_lineage_family,
+        query_workspace=query_workspace,
+    )
+    if feedback_evidence_parent:
+        selection["feedback_evidence_parent"] = feedback_evidence_parent
     loop_selection_path = loop_dir / "archive_selection.json"
     write_json(loop_selection_path, selection)
     priority_observations = archive_priority_observations_from_selection(selection)
@@ -1475,10 +1952,20 @@ def attach_archive_selection_to_seed(
             for item in (selection.get("parent_pool") or [])[:3]
         ],
         "evidence_pool": [compact_archive_evidence_item(item) for item in (selection.get("evidence_pool") or [])[:5]],
+        "feedback_evidence_parent": selection.get("feedback_evidence_parent"),
     }
     seed["archive_evidence_priority_observations"] = priority_observations
+    seed["dual_parent_context"] = {
+        "schema_version": "dual_parent_context_v001",
+        "answer_parent_agent_id": seed.get("candidate_context", {}).get("parent_agent_id") or seed.get("parent_agent_id"),
+        "answer_parent_policy": "Selected data-agent parent remains the source of answer behavior and materialized child workspace patches.",
+        "feedback_evidence_parent": selection.get("feedback_evidence_parent"),
+        "feedback_evidence_parent_policy": "Selected evidence/plumbing candidate is injected as context for meta-agent diagnosis; it does not replace the answer parent unless a later repair explicitly applies or merges it.",
+    }
     seed.setdefault("fine_grained_feedback", {})["archive_evidence_pool"] = seed["archive_selection"]["evidence_pool"]
     seed["fine_grained_feedback"]["archive_evidence_priority_observations"] = priority_observations
+    seed["fine_grained_feedback"]["dual_parent_context"] = seed["dual_parent_context"]
+    write_json(loop_dir / "feedback_evidence_parent_selection.json", {"feedback_evidence_parent": selection.get("feedback_evidence_parent")})
     write_json(seed_path, seed)
     return selection
 
@@ -1489,6 +1976,12 @@ def analyze_and_seed(
     loop_dir: Path,
     candidate_context: dict[str, Any],
 ) -> tuple[dict[str, Any], Path]:
+    """Analyze a parent run and build the meta-agent repair seed.
+
+    Current mainline supports only DAB tool-agent run artifacts.  The old
+    one-shot generated_solve.py analyzer path has been archived to legacy so
+    active evolution cannot silently fall back to a different feedback format.
+    """
     if is_dab_tool_agent_run_dir(run_dir):
         return analyze_dab_tool_agent_and_seed(
             run_dir=run_dir,
@@ -1496,108 +1989,13 @@ def analyze_and_seed(
             candidate_context=candidate_context,
         )
 
-    # Legacy generated_solve.py fallback.  This branch is kept only for
-    # historical run directories explicitly supplied through --parent-run; the
-    # active loop no longer creates this format.
-    analysis = analyze_run_quiet(
-        run_dir,
-        loop_dir / "parent_analyze.stdout",
-        loop_dir / "parent_analyze.stderr",
+    raise SystemExit(
+        "Unsupported parent run format for current DAB tool-agent mainline: "
+        f"{run_dir}. Expected a run directory containing summary.json with "
+        "schema_version=dab_tool_agent_run_v001, workflow_trace.jsonl, or "
+        "tool_calls.jsonl. The legacy generated_solve.py analyzer path has "
+        "been archived under legacy/ and is no longer used by the active loop."
     )
-    signal = extract_primary_signal(run_dir / "agent_error_summary.json")
-    signal_path = loop_dir / "parent_primary_signal.json"
-    write_json(signal_path, signal)
-    fine_grained_feedback = build_fine_grained_feedback_pack(
-        run_dir,
-        primary_signal=signal,
-        max_trace_events=12,
-    )
-    fine_grained_json_path = loop_dir / "fine_grained_evidence_pack.json"
-    fine_grained_md_path = loop_dir / "fine_grained_evidence_pack.md"
-    write_pack(fine_grained_feedback, fine_grained_json_path, fine_grained_md_path)
-    repair_profile = str(candidate_context.get("repair_profile") or "")
-    seed_feedback = adapt_feedback_for_repair_profile(fine_grained_feedback, repair_profile)
-    helper_repair_plan = plan_helper_repair(seed_feedback, repair_profile)
-    if helper_repair_plan.get("status") == "planned":
-        routing = dict(seed_feedback.get("repair_routing") or {})
-        recommended_helper = helper_repair_plan.get("recommended_helper_file")
-        recommended_prompt = helper_repair_plan.get("recommended_prompt_glue_file")
-        existing_targets = [str(item) for item in routing.get("recommended_target_files") or []]
-        prioritized_targets = []
-        for item in (recommended_helper, recommended_prompt):
-            if item and str(item) not in prioritized_targets:
-                prioritized_targets.append(str(item))
-        for item in existing_targets:
-            if item not in prioritized_targets:
-                prioritized_targets.append(item)
-        if prioritized_targets:
-            routing["recommended_target_files"] = prioritized_targets
-        routing["helper_repair_plan_summary"] = {
-            "recommended_helper_file": recommended_helper,
-            "helper_focus": helper_repair_plan.get("helper_focus"),
-            "required_functions": helper_repair_plan.get("required_functions"),
-            "success_criteria": helper_repair_plan.get("success_criteria"),
-        }
-        tool_policy = dict(routing.get("tool_first_policy") or {})
-        if recommended_helper:
-            tool_policy["required_primary_target"] = recommended_helper
-        if helper_repair_plan.get("helper_focus"):
-            tool_policy["helper_focus"] = helper_repair_plan.get("helper_focus")
-        routing["tool_first_policy"] = tool_policy
-        seed_feedback["repair_routing"] = routing
-        seed_feedback["next_repair_focus"] = [
-            str(helper_repair_plan.get("helper_focus") or "Use the helper_repair_plan as the primary target."),
-            "Implement the helper API named in helper_repair_plan; if that API cannot be safely implemented, output no_op_failed.",
-            "Validation should address helper_repair_plan.focused_validation_tests before relying on broad child eval.",
-        ] + list(seed_feedback.get("next_repair_focus") or [])
-    seed_feedback["helper_repair_plan"] = helper_repair_plan
-    compact_feedback = {
-        "feedback_type": seed_feedback.get("feedback_type"),
-        "source_run_dir": seed_feedback.get("source_run_dir"),
-        "selected_stage": seed_feedback.get("selected_stage"),
-        "selected_signal": seed_feedback.get("selected_signal"),
-        "repair_routing": seed_feedback.get("repair_routing"),
-        "base_repair_routing": seed_feedback.get("base_repair_routing"),
-        "repair_profile_adaptation": seed_feedback.get("repair_profile_adaptation"),
-        "helper_repair_plan": seed_feedback.get("helper_repair_plan"),
-        "patch_generation_feedback": seed_feedback.get("patch_generation_feedback"),
-        "parent_capabilities": seed_feedback.get("parent_capabilities"),
-        "answer_delta": seed_feedback.get("answer_delta"),
-        "runtime_trace_evidence": (seed_feedback.get("runtime_trace_evidence") or [])[:8],
-        "ranked_feedback_signals": (seed_feedback.get("ranked_feedback_signals") or [])[:5],
-        "repair_constraints": seed_feedback.get("repair_constraints"),
-        "next_repair_focus": seed_feedback.get("next_repair_focus"),
-        "full_evidence_pack_paths": {
-            "json": str(fine_grained_json_path),
-            "markdown": str(fine_grained_md_path),
-        },
-    }
-    seed = {
-        "seed_id": f"repair_seed_{loop_dir.name}",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "parent_run_dir": str(run_dir),
-        "selected_stage": compact_feedback.get("selected_stage"),
-        "selected_signal": compact_feedback.get("selected_signal"),
-        "total_observations": signal.get("total_observations"),
-        "analysis_summary": {
-            "passed": analysis.get("passed"),
-            "validation_reason": analysis.get("validation_reason"),
-        },
-        "repair_profile": repair_profile,
-        "repair_routing": compact_feedback.get("repair_routing"),
-        "base_repair_routing": compact_feedback.get("base_repair_routing"),
-        "repair_profile_adaptation": compact_feedback.get("repair_profile_adaptation"),
-        "helper_repair_plan": compact_feedback.get("helper_repair_plan"),
-        "patch_generation_feedback": compact_feedback.get("patch_generation_feedback"),
-        "answer_delta": compact_feedback.get("answer_delta"),
-        "parent_capabilities": compact_feedback.get("parent_capabilities"),
-        "fine_grained_feedback": compact_feedback,
-        "candidate_context": candidate_context,
-    }
-    seed_path = loop_dir / "repair_seed.json"
-    write_json(seed_path, seed)
-    return seed, seed_path
-
 
 def candidate_id_for(prefix: str, iteration: int) -> str:
     return f"{prefix}_iter{iteration:03d}_{utc_now_slug()}"
@@ -1620,6 +2018,8 @@ def run_candidate_launcher(
     repair_seed_override: bool = False,
 ) -> int:
     env = os.environ.copy()
+    if os.environ.get("META_LOOP_APPLY_LLM_NETWORK_TO_LAUNCHER"):
+        env = selected_llm_run_env()
     env.update(
         {
             env_candidate_id_name: candidate_id,
@@ -1633,6 +2033,7 @@ def run_candidate_launcher(
             "META_LOOP_PARENT_PROMPT": str(parent_prompt),
             "META_LOOP_CASE_DIR": str(case_dir),
             "META_LOOP_DAB_ROOT": str(dab_root),
+            "META_LOOP_QUERY_WORKSPACE": os.environ.get("DAB_QUERY_WORKSPACE", ""),
             "META_LOOP_DIR": str(loop_dir),
             "REPAIR_PROFILE": repair_profile,
         }
@@ -1687,6 +2088,21 @@ def load_archive_agent_card(agent_id: str | None) -> dict[str, Any] | None:
 
 
 def resolve_parent_candidate_patches(parent_agent_card: dict[str, Any] | None) -> list[Path]:
+    workspace_ref = os.environ.get("DAB_QUERY_WORKSPACE")
+    if workspace_ref:
+        workspace = Path(workspace_ref)
+        if not workspace.is_absolute():
+            workspace = ROOT / workspace
+        config = load_json(workspace / "workspace.json") or {}
+        declared = config.get("inherited_candidate_patches")
+        if isinstance(declared, list) and declared:
+            return [
+                path if path.is_absolute() else workspace / path
+                for item in declared
+                if isinstance(item, str) and item.strip()
+                for path in [Path(item)]
+            ]
+
     patches: list[Path] = []
     seen: set[str] = set()
 
@@ -1733,6 +2149,13 @@ def materialize_child_parent_source(child_ws: Path, parent_agent_card: dict[str,
         return {"status": "skipped", "reason": "parent candidate patch missing or not declared"}
     applied_patches: list[str] = []
     for patch_path in patch_paths:
+        if not patch_path.exists():
+            return {
+                "status": "failed",
+                "reason": "parent candidate patch missing",
+                "patch_path": str(patch_path),
+                "applied_patches": applied_patches,
+            }
         if not patch_path.read_text(encoding="utf-8", errors="replace").strip():
             continue
         proc = run_cmd(
@@ -1786,6 +2209,17 @@ def is_dab_tool_agent_workflow_seed(seed: dict[str, Any]) -> bool:
         return True
     paths = seed.get("artifact_paths") if isinstance(seed.get("artifact_paths"), dict) else {}
     return any("dab_tool_agent" in str(value) for value in paths.values())
+
+
+def is_multi_query_workflow_seed(seed: dict[str, Any]) -> bool:
+    if not isinstance(seed, dict):
+        return False
+    if seed.get("schema_version") == "dab_multi_query_repair_seed_v001":
+        return True
+    if seed.get("feedback_type") == "dab_multi_query_workflow_feedback":
+        return True
+    batch = seed.get("batch") if isinstance(seed.get("batch"), dict) else {}
+    return bool(seed.get("per_query_feedback")) and str(batch.get("schema_version") or "").startswith("dab_query_batch")
 
 
 def answer_quality_from_feedback(value: dict[str, Any]) -> dict[str, Any]:
@@ -1887,7 +2321,7 @@ def run_dab_tool_agent_child_eval(
         return report
     child_version = f"dab_tool_agent_child_iter{iteration:03d}_{utc_now_slug()}"
     child_output_root = child_ws / "logs/dab_tool_agent"
-    env = os.environ.copy()
+    env = selected_llm_run_env()
     env["PYTHONPATH"] = str(child_ws)
     env.setdefault("DAB_TOOL_AGENT_API_KEY_ENV", "DASHSCOPE_API_KEY")
     max_iterations = str(env.get("DAB_TOOL_AGENT_CHILD_MAX_ITERATIONS") or env.get("DAB_TOOL_AGENT_MAX_ITERATIONS") or "10")
@@ -2046,6 +2480,447 @@ def run_dab_tool_agent_child_eval(
     return report
 
 
+def run_multi_query_architecture_child_eval(
+    *,
+    candidate_dir: Path,
+    seed: dict[str, Any],
+    loop_dir: Path,
+    iteration: int,
+) -> dict[str, Any]:
+    """Evaluate a multi-query architecture/observer candidate without hand repair.
+
+    This child eval is deliberately evidence-path oriented: apply the candidate
+    patch in an isolated lightweight workspace, then rerun the patched analyzer
+    and evidence-pack builder over the parent multi-query run directories
+    recorded in the seed.  It avoids reloading DB dumps in /tmp, which can add
+    Docker/PostgreSQL noise unrelated to observer/evidence-plumbing patches.
+    """
+    patch_path = candidate_dir / "patch.diff"
+    child_eval_dir = candidate_dir / "child_eval"
+    child_eval_dir.mkdir(parents=True, exist_ok=True)
+    if not patch_path.exists() or not patch_path.read_text(encoding="utf-8", errors="replace").strip():
+        report = {
+            "status": "skipped",
+            "final_status": "candidate_child_eval_failed",
+            "eval_kind": "multi_query_architecture_reanalysis",
+            "reason": "candidate patch.diff missing or empty",
+        }
+        write_json(child_eval_dir / "child_eval_report.json", report)
+        write_json(child_eval_dir / "generic_child_eval_report.json", report)
+        return report
+
+    child_root = Path(tempfile.mkdtemp(prefix="meta_loop_multi_query_child_eval."))
+    child_ws = child_root / "workspace"
+
+    def ignore_lightweight_workspace(_: str, names: list[str]) -> list[str]:
+        ignored = set(ignore_workspace("", names))
+        ignored |= {"external", "dab_corpus"}
+        return [name for name in names if name in ignored]
+
+    shutil.copytree(ROOT, child_ws, ignore=ignore_lightweight_workspace, symlinks=True)
+    for linked_name in (".venv", "external", "dab_corpus"):
+        source = ROOT / linked_name
+        target = child_ws / linked_name
+        if source.exists() and not target.exists():
+            try:
+                target.symlink_to(source, target_is_directory=source.is_dir())
+            except OSError:
+                if source.is_dir():
+                    shutil.copytree(source, target, symlinks=True)
+                else:
+                    shutil.copy2(source, target)
+    run_cmd(["git", "init", "--quiet"], cwd=child_ws)
+    run_cmd(["git", "config", "user.name", "meta-loop-multi-query-child-eval"], cwd=child_ws)
+    run_cmd(["git", "config", "user.email", "meta-loop-multi-query-child-eval@localhost"], cwd=child_ws)
+    run_cmd(["git", "add", "."], cwd=child_ws)
+    run_cmd(["git", "commit", "--quiet", "-m", "baseline"], cwd=child_ws)
+    apply_proc = run_cmd(["git", "apply", str(patch_path)], cwd=child_ws)
+    patch_apply_mode = "strict"
+    if apply_proc.returncode != 0:
+        relaxed_apply_proc = run_cmd(["git", "apply", "--ignore-space-change", str(patch_path)], cwd=child_ws)
+        if relaxed_apply_proc.returncode == 0:
+            apply_proc = relaxed_apply_proc
+            patch_apply_mode = "ignore_space_change"
+
+    manifest = safe_load_json(candidate_dir / "manifest.json")
+    changed_files = [str(path) for path in manifest.get("project_changed_files") or []]
+    child_failure_gates: list[str] = []
+    if apply_proc.returncode != 0:
+        child_failure_gates.append("patch_apply_failed")
+        report = {
+            "status": "patch_apply_failed",
+            "final_status": "candidate_child_eval_failed",
+            "eval_kind": "multi_query_architecture_reanalysis",
+            "workspace": str(child_ws),
+            "stderr": apply_proc.stderr,
+            "patch_apply_mode": patch_apply_mode,
+            "child_failure_gates": child_failure_gates,
+        }
+        write_json(child_eval_dir / "child_eval_report.json", report)
+        write_json(child_eval_dir / "generic_child_eval_report.json", report)
+        return report
+
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(child_ws)
+    changed_python_files = [child_ws / path for path in changed_files if path.endswith(".py")]
+    compile_exit_code = 0
+    if changed_python_files:
+        compile_proc = run_cmd(
+            [str(ROOT / ".venv/bin/python"), "-m", "py_compile", *[str(path) for path in changed_python_files]],
+            cwd=child_ws,
+            env=env,
+            stdout_path=loop_dir / "multi_query_child_py_compile.stdout",
+            stderr_path=loop_dir / "multi_query_child_py_compile.stderr",
+        )
+        compile_exit_code = compile_proc.returncode
+        if compile_proc.returncode != 0:
+            child_failure_gates.append("child_py_compile_failed")
+
+    reanalysis_root = child_eval_dir / "patched_reanalysis"
+    reanalysis_root.mkdir(parents=True, exist_ok=True)
+    per_query_results: list[dict[str, Any]] = []
+    selected_stage_counts: dict[str, int] = {}
+    selected_problem_type_counts: dict[str, int] = {}
+    helper_dependency_counts: dict[str, int] = {}
+    helper_usage_status_counts: dict[str, int] = {}
+    successful_reanalysis_count = 0
+    final_answer_nonempty_count = 0
+    per_query_feedback = seed.get("per_query_feedback") if isinstance(seed.get("per_query_feedback"), list) else []
+
+    for item in per_query_feedback:
+        if not isinstance(item, dict):
+            continue
+        query_id = str(item.get("query_id") or "unknown_query")
+        safe_query_id = re.sub(r"[^A-Za-z0-9_.-]+", "__", query_id).strip("_") or "unknown_query"
+        run_dir_raw = item.get("run_dir")
+        run_dir = Path(str(run_dir_raw)) if run_dir_raw else None
+        output_dir = reanalysis_root / safe_query_id
+        output_dir.mkdir(parents=True, exist_ok=True)
+        result: dict[str, Any] = {
+            "query_id": query_id,
+            "parent_run_dir": str(run_dir) if run_dir else None,
+            "output_dir": str(output_dir),
+        }
+        if not run_dir or not run_dir.exists():
+            result.update({"status": "failed", "exit_code": None, "reason": "parent_run_dir_missing"})
+            child_failure_gates.append(f"parent_run_dir_missing:{query_id}")
+            per_query_results.append(result)
+            continue
+        analyzer_proc = run_cmd(
+            [
+                str(ROOT / ".venv/bin/python"),
+                str(child_ws / "experiments/analyze_dab_tool_agent_trace.py"),
+                "--run-dir",
+                str(run_dir),
+                "--output-dir",
+                str(output_dir),
+            ],
+            cwd=child_ws,
+            env=env,
+            stdout_path=output_dir / "analyzer.stdout",
+            stderr_path=output_dir / "analyzer.stderr",
+        )
+        feedback_summary = safe_load_json(output_dir / "feedback_summary.json")
+        observations = safe_load_json(output_dir / "observations.json")
+        evidence_json = output_dir / "child_dab_tool_agent_evidence_pack.json"
+        evidence_md = output_dir / "child_dab_tool_agent_evidence_pack.md"
+        evidence_proc = run_cmd(
+            [
+                str(ROOT / ".venv/bin/python"),
+                str(child_ws / "experiments/build_dab_tool_agent_evidence_pack.py"),
+                "--run-dir",
+                str(run_dir),
+                "--output-json",
+                str(evidence_json),
+                "--output-md",
+                str(evidence_md),
+            ],
+            cwd=child_ws,
+            env=env,
+            stdout_path=output_dir / "evidence.stdout",
+            stderr_path=output_dir / "evidence.stderr",
+        )
+        if analyzer_proc.returncode == 0 and evidence_proc.returncode == 0:
+            successful_reanalysis_count += 1
+        else:
+            child_failure_gates.append(f"reanalysis_failed:{query_id}")
+        selected_stage = feedback_summary.get("selected_stage")
+        selected_signal = feedback_summary.get("selected_signal")
+        selected_problem_type = feedback_summary.get("selected_problem_type")
+        if selected_stage:
+            selected_stage_counts[str(selected_stage)] = selected_stage_counts.get(str(selected_stage), 0) + 1
+        if selected_problem_type:
+            selected_problem_type_counts[str(selected_problem_type)] = selected_problem_type_counts.get(str(selected_problem_type), 0) + 1
+        helper_usage = feedback_summary.get("helper_usage_summary") if isinstance(feedback_summary.get("helper_usage_summary"), dict) else {}
+        helper_dep = str(helper_usage.get("final_answer_dependency_status") or "unknown")
+        helper_status = str(helper_usage.get("status") or "unknown")
+        helper_dependency_counts[helper_dep] = helper_dependency_counts.get(helper_dep, 0) + 1
+        helper_usage_status_counts[helper_status] = helper_usage_status_counts.get(helper_status, 0) + 1
+        if feedback_summary.get("final_answer_nonempty"):
+            final_answer_nonempty_count += 1
+        result.update(
+            {
+                "status": "completed" if analyzer_proc.returncode == 0 and evidence_proc.returncode == 0 else "failed",
+                "analyzer_exit_code": analyzer_proc.returncode,
+                "evidence_exit_code": evidence_proc.returncode,
+                "selected_stage": selected_stage,
+                "selected_signal": selected_signal,
+                "selected_problem_type": selected_problem_type,
+                "final_answer_nonempty": feedback_summary.get("final_answer_nonempty"),
+                "helper_dependency_status": helper_dep,
+                "helper_usage_status": helper_status,
+                "helper_tool_called": helper_usage.get("helper_tool_called"),
+                "feedback_summary_path": str(output_dir / "feedback_summary.json"),
+                "observations_path": str(output_dir / "observations.json") if (output_dir / "observations.json").exists() else None,
+                "evidence_pack_paths": {"json": str(evidence_json), "markdown": str(evidence_md)},
+                "observation_count": len(observations) if isinstance(observations, list) else None,
+            }
+        )
+        per_query_results.append(result)
+
+    query_count = len(per_query_results)
+    reanalysis_only_safe_files = {
+        "experiments/analyze_dab_tool_agent_trace.py",
+        "experiments/build_dab_tool_agent_evidence_pack.py",
+        "experiments/archive_observation.py",
+        "experiments/gate_policy.py",
+        "experiments/contract_eval.py",
+    }
+    full_rerun_required_files = [path for path in changed_files if path not in reanalysis_only_safe_files]
+    reanalysis_only_applicable = not full_rerun_required_files
+
+    full_child_rerun: dict[str, Any] = {
+        "required": bool(full_rerun_required_files),
+        "status": "not_required" if not full_rerun_required_files else "pending",
+    }
+    full_child_summary: dict[str, Any] = {}
+    parent_child_delta: dict[str, Any] = {}
+    if full_rerun_required_files and compile_exit_code == 0 and not any(g in {"patch_apply_failed", "child_py_compile_failed"} for g in child_failure_gates):
+        batch = recover_multi_query_batch_from_seed(seed)
+        batch_id = str(seed.get("batch_id") or batch.get("batch_id") or f"multi_query_child_iter{iteration:03d}")
+        child_batch_path = child_ws / "dab_corpus" / "batches" / f"{batch_id}.json"
+        if not child_batch_path.exists():
+            child_batch_path = child_ws / f"_child_eval_batch_iter{iteration:03d}.json"
+            write_json(child_batch_path, batch)
+        child_output_root = child_eval_dir / "full_child_rerun"
+        child_run_id = f"full_child_iter{iteration:03d}_{utc_now_slug()}"
+        env_full = selected_llm_run_env()
+        env_full["PYTHONPATH"] = str(child_ws)
+        env_full.setdefault("DAB_TOOL_AGENT_API_KEY_ENV", "DASHSCOPE_API_KEY")
+        max_iterations = str(env_full.get("DAB_TOOL_AGENT_CHILD_MAX_ITERATIONS") or env_full.get("DAB_MULTI_QUERY_MAX_ITERATIONS") or "10")
+        full_proc = run_cmd(
+            [
+                str(ROOT / ".venv/bin/python"),
+                str(child_ws / "experiments/run_multi_query_baseline.py"),
+                "--batch",
+                str(child_batch_path),
+                "--registry",
+                str(child_ws / "dab_corpus/registry.json"),
+                "--dab-root",
+                str(child_ws / "external/DataAgentBench_sparse"),
+                "--output-root",
+                str(child_output_root),
+                "--run-id",
+                child_run_id,
+                "--max-iterations",
+                max_iterations,
+            ],
+            cwd=child_ws,
+            env=env_full,
+            stdout_path=loop_dir / "multi_query_full_child_run.stdout",
+            stderr_path=loop_dir / "multi_query_full_child_run.stderr",
+        )
+        child_summary_path = child_output_root / child_run_id / "multi_query_summary.json"
+        full_child_summary = safe_load_json(child_summary_path)
+        full_child_rerun = {
+            "required": True,
+            "status": "completed" if full_proc.returncode == 0 and full_child_summary else "failed",
+            "exit_code": full_proc.returncode,
+            "run_id": child_run_id,
+            "output_dir": str(child_output_root / child_run_id),
+            "summary_path": str(child_summary_path),
+            "max_iterations": max_iterations,
+        }
+        if full_proc.returncode != 0 or not full_child_summary:
+            child_failure_gates.append("multi_query_full_child_rerun_failed")
+        else:
+            def as_int(value: Any) -> int:
+                try:
+                    return int(value or 0)
+                except Exception:
+                    return 0
+
+            def as_float_or_none(value: Any) -> float | None:
+                try:
+                    if value is None:
+                        return None
+                    return float(value)
+                except Exception:
+                    return None
+
+            parent_success = as_int(seed.get("successful_run_count"))
+            child_success = as_int(full_child_summary.get("successful_run_count"))
+            parent_answer_count = as_int(seed.get("final_answer_nonempty_count"))
+            child_answer_count = as_int(full_child_summary.get("final_answer_nonempty_count"))
+            parent_avg_f1 = as_float_or_none(seed.get("average_f1"))
+            child_avg_f1 = as_float_or_none(full_child_summary.get("average_f1"))
+            parent_tool_failures = as_int((seed.get("selected_problem_type_counts") or {}).get("tool_failure") if isinstance(seed.get("selected_problem_type_counts"), dict) else 0)
+            child_tool_failures = as_int((full_child_summary.get("selected_problem_type_counts") or {}).get("tool_failure") if isinstance(full_child_summary.get("selected_problem_type_counts"), dict) else 0)
+            parent_helper_not_called = as_int(seed.get("helper_registered_but_not_called_count"))
+            child_helper_not_called = as_int(full_child_summary.get("helper_registered_but_not_called_count"))
+            improved_f1 = child_avg_f1 is not None and (parent_avg_f1 is None or child_avg_f1 > parent_avg_f1)
+            improved_answer = child_answer_count > parent_answer_count
+            improved_success = child_success > parent_success and child_answer_count >= parent_answer_count
+            reduced_tool_failures = child_tool_failures < parent_tool_failures and child_success >= parent_success
+            reduced_helper_not_called = child_helper_not_called < parent_helper_not_called if parent_helper_not_called else False
+            severe_regression = child_success < parent_success or child_answer_count < parent_answer_count
+            parent_child_delta = {
+                "parent_successful_run_count": parent_success,
+                "child_successful_run_count": child_success,
+                "delta_successful_run_count": child_success - parent_success,
+                "parent_final_answer_nonempty_count": parent_answer_count,
+                "child_final_answer_nonempty_count": child_answer_count,
+                "delta_final_answer_nonempty_count": child_answer_count - parent_answer_count,
+                "parent_average_f1": parent_avg_f1,
+                "child_average_f1": child_avg_f1,
+                "delta_average_f1": (child_avg_f1 - parent_avg_f1) if child_avg_f1 is not None and parent_avg_f1 is not None else None,
+                "parent_tool_failure_count": parent_tool_failures,
+                "child_tool_failure_count": child_tool_failures,
+                "delta_tool_failure_count": child_tool_failures - parent_tool_failures,
+                "parent_helper_registered_but_not_called_count": parent_helper_not_called,
+                "child_helper_registered_but_not_called_count": child_helper_not_called,
+                "delta_helper_registered_but_not_called_count": child_helper_not_called - parent_helper_not_called,
+                "improved_f1": improved_f1,
+                "improved_answer_count": improved_answer,
+                "improved_success_count": improved_success,
+                "reduced_tool_failures": reduced_tool_failures,
+                "reduced_helper_registered_but_not_called": reduced_helper_not_called,
+                "severe_regression": severe_regression,
+            }
+            if severe_regression:
+                child_failure_gates.append("multi_query_full_child_severe_regression")
+            if not (improved_f1 or improved_answer or improved_success or reduced_tool_failures):
+                child_failure_gates.append("multi_query_full_child_no_measured_improvement")
+
+    full_child_strict_mismatch_count = 0
+    if isinstance(full_child_summary.get("per_query_feedback"), list):
+        for row in full_child_summary.get("per_query_feedback") or []:
+            if not isinstance(row, dict):
+                continue
+            quality = row.get("answer_quality") if isinstance(row.get("answer_quality"), dict) else {}
+            if quality.get("strict_match_passed") is False:
+                full_child_strict_mismatch_count += 1
+    full_child_has_measured_improvement = bool(
+        parent_child_delta.get("improved_f1")
+        or parent_child_delta.get("improved_answer_count")
+        or parent_child_delta.get("improved_success_count")
+        or parent_child_delta.get("reduced_tool_failures")
+        or parent_child_delta.get("reduced_helper_registered_but_not_called")
+    )
+    if reanalysis_only_applicable:
+        child_passed = bool(
+            query_count
+            and successful_reanalysis_count == query_count
+            and compile_exit_code == 0
+            and not child_failure_gates
+        )
+        child_improved_but_failed = False
+    else:
+        child_passed = bool(
+            full_child_rerun.get("status") == "completed"
+            and not child_failure_gates
+            and bool(parent_child_delta)
+            and full_child_strict_mismatch_count == 0
+        )
+        child_improved_but_failed = bool(
+            full_child_rerun.get("status") == "completed"
+            and full_child_has_measured_improvement
+            and not parent_child_delta.get("severe_regression")
+            and full_child_strict_mismatch_count > 0
+            and not any(g in {"patch_apply_failed", "child_py_compile_failed", "multi_query_full_child_rerun_failed", "multi_query_full_child_severe_regression", "multi_query_full_child_no_measured_improvement"} for g in child_failure_gates)
+        )
+    child_final_status = "candidate_child_eval_passed" if child_passed else ("candidate_child_eval_improved_but_failed" if child_improved_but_failed else "candidate_child_eval_failed")
+    effective_query_count = int(full_child_summary.get("query_count") or query_count or 0) if isinstance(full_child_summary, dict) else query_count
+    effective_successful_count = int(full_child_summary.get("successful_run_count") or successful_reanalysis_count or 0) if isinstance(full_child_summary, dict) else successful_reanalysis_count
+    effective_final_answer_count = int(full_child_summary.get("final_answer_nonempty_count") or final_answer_nonempty_count or 0) if isinstance(full_child_summary, dict) else final_answer_nonempty_count
+    effective_stage_counts = full_child_summary.get("selected_stage_counts") if isinstance(full_child_summary.get("selected_stage_counts"), dict) else selected_stage_counts
+    effective_problem_counts = full_child_summary.get("selected_problem_type_counts") if isinstance(full_child_summary.get("selected_problem_type_counts"), dict) else selected_problem_type_counts
+    effective_helper_status_counts = full_child_summary.get("helper_usage_status_counts") if isinstance(full_child_summary.get("helper_usage_status_counts"), dict) else helper_usage_status_counts
+    effective_helper_not_called_count = full_child_summary.get("helper_registered_but_not_called_count", effective_helper_status_counts.get("helper_tool_registered_but_not_called", 0))
+    effective_per_query_feedback = full_child_summary.get("per_query_feedback") if isinstance(full_child_summary.get("per_query_feedback"), list) else per_query_results
+    next_seed = dict(seed)
+    next_seed.update(
+        {
+            "seed_id": f"next_multi_query_architecture_repair_seed_iter{iteration:03d}",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "source": "child_eval_multi_query_architecture_reanalysis",
+            "parent_candidate_dir": str(candidate_dir),
+            "repair_profile": "multi_query_architecture_evolution",
+            "query_count": effective_query_count,
+            "successful_run_count": effective_successful_count,
+            "successful_reanalysis_count": successful_reanalysis_count,
+            "final_answer_nonempty_count": effective_final_answer_count,
+            "selected_stage_counts": effective_stage_counts,
+            "selected_problem_type_counts": effective_problem_counts,
+            "helper_dependency_counts": helper_dependency_counts,
+            "helper_usage_status_counts": effective_helper_status_counts,
+            "helper_registered_but_not_called_count": effective_helper_not_called_count,
+            "per_query_feedback": effective_per_query_feedback,
+            "full_evidence_pack_paths": {"reanalysis_root": str(reanalysis_root)},
+            "full_child_rerun": full_child_rerun,
+            "parent_child_delta": parent_child_delta,
+            "child_multi_query_summary": full_child_summary,
+        }
+    )
+    next_seed_path = child_eval_dir / "next_data_agent_repair_seed.json"
+    attach_repair_mode_to_seed(next_seed, next_seed_path)
+
+    report = {
+        "status": "completed",
+        "final_status": child_final_status,
+        "eval_kind": "multi_query_architecture_reanalysis",
+        "workspace": str(child_ws),
+        "candidate_structure_type": (safe_load_json(candidate_dir / "validated_patch_spec.json").get("codex_native") or {}).get("candidate_structure_type") or "unknown",
+        "project_changed_files": changed_files,
+        "total_changed_lines": manifest.get("total_changed_lines"),
+        "patch_apply_mode": patch_apply_mode,
+        "child_py_compile_exit_code": compile_exit_code,
+        "reanalysis_only_applicable": reanalysis_only_applicable,
+        "full_rerun_required_files": full_rerun_required_files,
+        "full_child_rerun": full_child_rerun,
+        "parent_child_delta": parent_child_delta,
+        "child_multi_query_summary": full_child_summary,
+        "full_child_strict_mismatch_count": full_child_strict_mismatch_count,
+        "child_improved_but_failed": child_improved_but_failed,
+        "query_count": effective_query_count,
+        "successful_reanalysis_count": successful_reanalysis_count,
+        "final_answer_nonempty_count": effective_final_answer_count,
+        "selected_stage_counts": effective_stage_counts,
+        "selected_problem_type_counts": effective_problem_counts,
+        "helper_dependency_counts": helper_dependency_counts,
+        "helper_usage_status_counts": effective_helper_status_counts,
+        "helper_registered_but_not_called_count": effective_helper_not_called_count,
+        "per_query_results": per_query_results,
+        "child_failure_gates": child_failure_gates,
+        "child_passed": child_passed,
+        "child_selected_stage": next(iter((full_child_summary.get("selected_stage_counts") if isinstance(full_child_summary.get("selected_stage_counts"), dict) else selected_stage_counts)), None),
+        "child_selected_signal": "multi_query_full_child_rerun_passed" if child_passed and full_child_rerun.get("required") else ("multi_query_reanalysis_passed" if child_passed else "multi_query_child_eval_failed"),
+        "next_data_agent_repair_seed": str(next_seed_path),
+        "child_status": {
+            "status": "completed",
+            "passed_original_dab_validation": None,
+            "validation_reason": "multi-query observer/evidence reanalysis; DataAgent/prompt/helper patches require full child rerun",
+            "selected_stage": next(iter((full_child_summary.get("selected_stage_counts") if isinstance(full_child_summary.get("selected_stage_counts"), dict) else selected_stage_counts)), None),
+            "selected_signal": "multi_query_full_child_rerun_passed" if child_passed and full_child_rerun.get("required") else ("multi_query_reanalysis_passed" if child_passed else "multi_query_child_eval_failed"),
+            "selected_stage_counts": full_child_summary.get("selected_stage_counts") if isinstance(full_child_summary.get("selected_stage_counts"), dict) else selected_stage_counts,
+            "selected_problem_type_counts": full_child_summary.get("selected_problem_type_counts") if isinstance(full_child_summary.get("selected_problem_type_counts"), dict) else selected_problem_type_counts,
+        },
+    }
+    write_json(child_eval_dir / "generic_child_eval_report.json", report)
+    write_json(child_eval_dir / "child_eval_report.json", report)
+    return report
+
+
 def run_generic_child_eval(
     *,
     candidate_dir: Path,
@@ -2057,232 +2932,25 @@ def run_generic_child_eval(
     iteration: int,
     parent_agent_card: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    patch_path = candidate_dir / "patch.diff"
-    if not patch_path.exists() or not patch_path.read_text(encoding="utf-8", errors="replace").strip():
-        return {"status": "skipped", "reason": "candidate patch.diff missing or empty"}
+    """Reject the archived generated_solve.py child-eval path.
 
-    child_root = Path(tempfile.mkdtemp(prefix="meta_loop_child_eval."))
-    child_ws = child_root / "workspace"
-    shutil.copytree(ROOT, child_ws, ignore=ignore_workspace, symlinks=True)
-    run_cmd(["git", "init", "--quiet"], cwd=child_ws)
-    run_cmd(["git", "config", "user.name", "meta-loop-child-eval"], cwd=child_ws)
-    run_cmd(["git", "config", "user.email", "meta-loop-child-eval@localhost"], cwd=child_ws)
-    run_cmd(["git", "add", "."], cwd=child_ws)
-    run_cmd(["git", "commit", "--quiet", "-m", "baseline"], cwd=child_ws)
-
-    parent_source_materialization = materialize_child_parent_source(child_ws, parent_agent_card)
-    if parent_source_materialization.get("status") == "failed":
-        return {
-            "status": "parent_source_materialization_failed",
-            "parent_source_materialization": parent_source_materialization,
-            "workspace": str(child_ws),
-        }
-
-    try:
-        child_prompt = materialize_child_parent_prompt(child_ws, prompt_path)
-    except FileNotFoundError as exc:
-        return {"status": "child_prompt_materialization_failed", "reason": str(exc), "workspace": str(child_ws), "parent_source_materialization": parent_source_materialization}
-
-    # The candidate patch is defined against the canonical data-agent prompt path.
-    # Baseline must include the selected parent source helpers and parent prompt before applying the candidate patch.
-    run_cmd(["git", "add", "."], cwd=child_ws)
-    run_cmd(["git", "commit", "--quiet", "--amend", "--no-edit"], cwd=child_ws)
-    apply_proc = run_cmd(["git", "apply", str(patch_path)], cwd=child_ws)
-    if apply_proc.returncode != 0:
-        return {"status": "patch_apply_failed", "stderr": apply_proc.stderr}
-    child_prompt = child_ws / DATA_AGENT_CANONICAL_PROMPT
-
-    child_version = f"meta_loop_child_iter{iteration:03d}_{utc_now_slug()}"
-    env = os.environ.copy()
-    env["PYTHONPATH"] = str(child_ws)
-    proc = run_cmd(
-        [
-            str(ROOT / ".venv/bin/python"),
-            str(child_ws / "experiments/run_dab_agent.py"),
-            "--case-dir",
-            str(case_dir),
-            "--prompt",
-            str(child_prompt),
-            "--version",
-            child_version,
-            "--dab-root",
-            str(dab_root),
-            "--timeout-sec",
-            str(timeout_sec),
-        ],
-        cwd=child_ws,
-        env=env,
-        stdout_path=loop_dir / "child_run.stdout",
-        stderr_path=loop_dir / "child_run.stderr",
-    )
-    # run_dab_agent writes under child_ws/logs; find newest matching run.
-    run_dirs = sorted((child_ws / "logs/dab_agent").glob(f"*{child_version}*"), key=lambda p: p.stat().st_mtime)
-    if not run_dirs:
-        return {"status": "child_run_failed_no_run_dir", "exit_code": proc.returncode, "workspace": str(child_ws)}
-    child_run_dir = run_dirs[-1]
-    child_analysis = analyze_run_quiet(
-        child_run_dir,
-        loop_dir / "child_analyze.stdout",
-        loop_dir / "child_analyze.stderr",
-    )
-    child_signal = extract_primary_signal(child_run_dir / "agent_error_summary.json")
-    child_eval_dir = candidate_dir / "child_eval"
-    child_eval_dir.mkdir(parents=True, exist_ok=True)
-    child_feedback = build_fine_grained_feedback_pack(
-        child_run_dir,
-        primary_signal=child_signal,
-        max_trace_events=12,
-    )
-    child_feedback = adapt_feedback_for_repair_profile(child_feedback, "data_agent_tool_repair")
-    child_helper_repair_plan = plan_helper_repair(child_feedback, "data_agent_tool_repair")
-    child_feedback["helper_repair_plan"] = child_helper_repair_plan
-    child_feedback_json_path = child_eval_dir / "child_fine_grained_evidence_pack.json"
-    child_feedback_md_path = child_eval_dir / "child_fine_grained_evidence_pack.md"
-    write_pack(child_feedback, child_feedback_json_path, child_feedback_md_path)
-    next_repair_seed = {
-        "seed_id": f"next_data_agent_repair_seed_iter{iteration:03d}",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "source": "child_eval_fine_grained_feedback",
-        "parent_candidate_dir": str(candidate_dir),
-        "child_run_dir": str(child_run_dir),
-        "selected_stage": child_feedback.get("selected_stage"),
-        "selected_signal": child_feedback.get("selected_signal"),
-        "analysis_summary": {
-            "passed": child_analysis.get("passed"),
-            "validation_reason": child_analysis.get("validation_reason"),
-        },
-        "repair_profile": "data_agent_tool_repair",
-        "repair_routing": child_feedback.get("repair_routing"),
-        "helper_repair_plan": child_helper_repair_plan,
-        "answer_delta": child_feedback.get("answer_delta"),
-        "fine_grained_feedback": {
-            "feedback_type": child_feedback.get("feedback_type"),
-            "source_run_dir": child_feedback.get("source_run_dir"),
-            "selected_stage": child_feedback.get("selected_stage"),
-            "selected_signal": child_feedback.get("selected_signal"),
-            "repair_routing": child_feedback.get("repair_routing"),
-            "helper_repair_plan": child_helper_repair_plan,
-            "parent_capabilities": child_feedback.get("parent_capabilities"),
-            "answer_delta": child_feedback.get("answer_delta"),
-            "runtime_trace_evidence": (child_feedback.get("runtime_trace_evidence") or [])[:8],
-            "ranked_feedback_signals": (child_feedback.get("ranked_feedback_signals") or [])[:5],
-            "repair_constraints": child_feedback.get("repair_constraints"),
-            "next_repair_focus": child_feedback.get("next_repair_focus"),
-            "full_evidence_pack_paths": {
-                "json": str(child_feedback_json_path),
-                "markdown": str(child_feedback_md_path),
-            },
-        },
+    Generic child eval used to execute experiments/run_dab_agent.py and analyze
+    generated_solve.py artifacts.  The active research mainline now evaluates
+    DAB tool-agent workflows through run_dab_tool_agent_child_eval or
+    run_multi_query_architecture_child_eval, both of which preserve full
+    execution traces for the observer-feedback architecture.
+    """
+    return {
+        "status": "legacy_generated_solve_child_eval_disabled",
+        "reason": "Use DAB tool-agent child eval; the generated_solve.py child eval path is archived and intentionally not run by the active loop.",
+        "candidate_dir": str(candidate_dir),
+        "case_dir": str(case_dir),
+        "prompt_path": str(prompt_path),
+        "dab_root": str(dab_root),
+        "loop_dir": str(loop_dir),
+        "iteration": iteration,
+        "parent_agent_id": (parent_agent_card or {}).get("agent_id") if isinstance(parent_agent_card, dict) else None,
     }
-    next_repair_seed_path = child_eval_dir / "next_data_agent_repair_seed.json"
-    attach_repair_mode_to_seed(next_repair_seed, next_repair_seed_path)
-    helper_usage = generated_code_uses_helper(
-        child_run_dir / "generated_solve.py",
-        candidate_patents_helper_modules(candidate_dir),
-    )
-    child_failure_gates: list[str] = []
-    if helper_usage.get("status") != "helper_called_by_child_generated_code" and helper_usage.get("required"):
-        child_failure_gates.append(str(helper_usage.get("status") or "helper_not_used_by_child_generated_code"))
-    final_answer_dependency = helper_usage.get("final_answer_dependency") if isinstance(helper_usage.get("final_answer_dependency"), dict) else {}
-    if (
-        final_answer_dependency.get("required")
-        and final_answer_dependency.get("status") != "helper_output_used_for_final_answer"
-    ):
-        child_failure_gates.append(str(final_answer_dependency.get("status") or "helper_output_not_used_for_final_answer"))
-    try:
-        from experiments.meta_agent_cycle import compute_answer_metrics
-
-        child_answer_metrics = compute_answer_metrics(child_analysis.get("validation_reason"))
-    except Exception:
-        child_answer_metrics = {"status": "unavailable"}
-    parent_answer_metrics = {}
-    evals = (parent_agent_card or {}).get("evals") if isinstance((parent_agent_card or {}).get("evals"), dict) else {}
-    for item in evals.values() if isinstance(evals, dict) else []:
-        if isinstance(item, dict) and isinstance(item.get("answer_metrics"), dict):
-            parent_answer_metrics = item.get("answer_metrics") or {}
-            break
-    try:
-        child_f1 = float(child_answer_metrics.get("f1") or 0.0)
-        parent_f1 = float(parent_answer_metrics.get("f1") or 0.0)
-        child_pred = int(child_answer_metrics.get("predicted_count") or 0)
-        parent_pred = int(parent_answer_metrics.get("predicted_count") or 0)
-    except Exception:
-        child_f1 = parent_f1 = 0.0
-        child_pred = parent_pred = 0
-    if parent_f1 > 0 and (child_f1 <= 0 or (parent_pred > 0 and child_pred > max(parent_pred * 5, parent_pred + 100))):
-        child_failure_gates.append("severe_child_answer_regression")
-    child_failure_gate = child_failure_gates[0] if child_failure_gates else None
-    changed_files_for_open_diagnosis: list[str] = []
-    patch_numstat = candidate_dir / "patch_numstat.txt"
-    if patch_numstat.exists():
-        for line in patch_numstat.read_text(encoding="utf-8", errors="replace").splitlines():
-            parts = line.split("\t", 2)
-            if len(parts) == 3:
-                changed_files_for_open_diagnosis.append(parts[2])
-    open_diagnosis_evidence = build_open_diagnosis_evidence(
-        candidate_dir=candidate_dir,
-        parent_candidate_dir=Path(str(parent_agent_card.get("candidate_dir"))) if isinstance(parent_agent_card, dict) and parent_agent_card.get("candidate_dir") else None,
-        child_run_dir=child_run_dir,
-        child_analysis=child_analysis,
-        child_signal=child_signal,
-        child_feedback=child_feedback,
-        child_answer_metrics=child_answer_metrics,
-        parent_answer_metrics=parent_answer_metrics,
-        helper_usage=helper_usage,
-        child_failure_gates=child_failure_gates,
-        changed_files=changed_files_for_open_diagnosis,
-    )
-    next_repair_seed["open_diagnosis_evidence"] = open_diagnosis_evidence
-    if isinstance(next_repair_seed.get("fine_grained_feedback"), dict):
-        next_repair_seed["fine_grained_feedback"]["open_diagnosis_evidence"] = compact_open_diagnosis_evidence(open_diagnosis_evidence)
-    write_json(next_repair_seed_path, next_repair_seed)
-    child_eval_passed = bool(child_analysis.get("passed")) and not child_failure_gates
-    report = {
-        "status": "completed",
-        "final_status": "candidate_child_eval_passed" if child_eval_passed else "candidate_child_eval_failed",
-        "workspace": str(child_ws),
-        "parent_source_materialization": parent_source_materialization,
-        "child_run_dir": str(child_run_dir),
-        "child_run_exit_code": proc.returncode,
-        "child_answer_metrics": child_answer_metrics,
-        "parent_answer_metrics": parent_answer_metrics,
-        "child_failure_gates": child_failure_gates,
-        "child_passed": child_eval_passed,
-        "child_original_dab_passed": child_analysis.get("passed"),
-        "child_validation_reason": child_analysis.get("validation_reason"),
-        "child_selected_stage": child_signal.get("selected_component"),
-        "child_selected_signal": child_signal.get("selected_signal"),
-        "child_fine_grained_feedback_pack": {
-            "json": str(child_feedback_json_path),
-            "markdown": str(child_feedback_md_path),
-        },
-        "next_data_agent_repair_seed": str(next_repair_seed_path),
-        "child_helper_repair_plan": child_helper_repair_plan,
-        "helper_usage": helper_usage,
-        "open_diagnosis_evidence": open_diagnosis_evidence,
-        "child_failure_gate": child_failure_gate,
-        "child_status": {
-            "status": "completed",
-            "passed_original_dab_validation": child_analysis.get("passed"),
-            "validation_reason": child_analysis.get("validation_reason"),
-            "selected_stage": child_feedback.get("selected_stage"),
-            "selected_signal": child_feedback.get("selected_signal"),
-            "helper_usage_status": helper_usage.get("status"),
-            "child_failure_gate": child_failure_gate,
-        },
-    }
-    write_json(child_eval_dir / "generic_child_eval_report.json", report)
-    write_json(child_eval_dir / "child_eval_report.json", report)
-    return report
-
-
-def scope_note_for_candidate_type(candidate_type: str) -> str:
-    if candidate_type == "data_agent_repair":
-        return "Data-agent prompt repair candidate; not feedback analyzer infrastructure repair."
-    if candidate_type == "feedback_analyzer_repair":
-        return "Feedback/error-analysis infrastructure repair only; not a PATENTS answer solver repair."
-    return f"Candidate type: {candidate_type}."
-
 
 def postprocess_candidate(
     *,
@@ -2291,6 +2959,8 @@ def postprocess_candidate(
     parent_agent_id: str,
     candidate_type: str,
     case_id: str,
+    query_workspace: str | None = None,
+    source_lineage_family: str | None = None,
 ) -> int:
     proc = run_cmd(
         [
@@ -2309,6 +2979,12 @@ def postprocess_candidate(
             scope_note_for_candidate_type(candidate_type),
             "--case-id",
             case_id,
+            "--query-workspace",
+            query_workspace or "",
+            "--source-lineage-family",
+            source_lineage_family or "",
+            "--recommended-goal",
+            f"Repair the data-agent side for {case_id} using the current child-eval feedback; improve answer quality while preserving benchmark integrity, query-local isolation, and helper/output wiring.",
         ],
         cwd=ROOT,
     )
@@ -2316,6 +2992,36 @@ def postprocess_candidate(
 
 
 def run_loop(args: argparse.Namespace) -> int:
+    query_workspace: Path | None = None
+    query_workspace_config: dict[str, Any] = {}
+    if args.query_workspace:
+        query_workspace = Path(args.query_workspace).resolve()
+        config_path = query_workspace / "workspace.json"
+        if not config_path.exists():
+            raise SystemExit(f"query workspace config not found: {config_path}")
+        query_workspace_config = load_json(config_path) or {}
+        try:
+            query_workspace_rel = query_workspace.relative_to(ROOT)
+        except ValueError as exc:
+            raise SystemExit("query workspace must live inside the project root") from exc
+        os.environ["DAB_QUERY_WORKSPACE"] = query_workspace_rel.as_posix()
+        configured_case_dir = query_workspace_config.get("query_dir")
+        if configured_case_dir:
+            args.case_dir = str(configured_case_dir)
+        args.case_id = f"{query_workspace_config.get('benchmark_family', 'DAB')}_{query_workspace_config.get('query_id', query_workspace.name)}"
+        query_initial_parent_agent_id = query_workspace_config.get("initial_parent_agent_id")
+        if args.query_parent_mode == "initial":
+            args.parent_agent_id = args.parent_agent_id or query_initial_parent_agent_id
+        args.source_lineage_family = query_workspace_config.get("source_lineage_family") or args.source_lineage_family
+        os.environ["META_LOOP_SOURCE_LINEAGE_FAMILY"] = str(args.source_lineage_family or "")
+        artifact_config = query_workspace_config.get("artifacts") if isinstance(query_workspace_config.get("artifacts"), dict) else {}
+        loop_rel = artifact_config.get("meta_agent_loops") or "runs/meta_agent_evolution"
+        args.loop_root = str((query_workspace / loop_rel).resolve())
+        candidate_rel = artifact_config.get("candidates") or "candidates"
+        args.candidate_root = str((query_workspace / candidate_rel).resolve())
+        if args.candidate_id_prefix == "codex_qwen_patents_iter004_data_agent_repair":
+            args.candidate_id_prefix = f"codex_native_{query_workspace_config.get('workspace_id', query_workspace.name)}"
+
     archive_root = Path(args.archive_root).resolve()
     loop_root = Path(args.loop_root).resolve()
     loop_root.mkdir(parents=True, exist_ok=True)
@@ -2323,22 +3029,95 @@ def run_loop(args: argparse.Namespace) -> int:
     loop_dir.mkdir(parents=True, exist_ok=False)
 
     parent_history: list[str] = []
-    parent = select_parent_agent(
-        archive_root,
-        args.parent_agent_id,
-        max_age_hours=args.archive_max_parent_age_hours,
-        repeated_parent_ids=parent_history,
-        repeated_parent_penalty=args.repeated_parent_penalty,
-        source_lineage_family=args.source_lineage_family or None,
-    )
+    try:
+        parent = select_parent_agent(
+            archive_root,
+            args.parent_agent_id,
+            max_age_hours=args.archive_max_parent_age_hours,
+            repeated_parent_ids=parent_history,
+            repeated_parent_penalty=args.repeated_parent_penalty,
+            source_lineage_family=args.source_lineage_family or None,
+        )
+    except SystemExit:
+        if not query_workspace or args.query_parent_mode != "best-archive" or not query_initial_parent_agent_id:
+            raise
+        parent = select_parent_agent(
+            archive_root,
+            query_initial_parent_agent_id,
+            max_age_hours=args.archive_max_parent_age_hours,
+            repeated_parent_ids=parent_history,
+            repeated_parent_penalty=args.repeated_parent_penalty,
+            source_lineage_family=args.source_lineage_family or None,
+        )
     parent_agent_id = parent["card"]["agent_id"]
     initial_parent_agent_id = parent_agent_id
     meta_agent = select_meta_agent(archive_root, args.meta_agent_id)
     meta_agent_id = meta_agent["card"]["agent_id"] if meta_agent else None
-    prompt_path = prompt_for_parent(parent, Path(args.prompt) if args.prompt else None)
+    prompt_override = Path(args.prompt).resolve() if args.prompt else None
+    if query_workspace and prompt_override is None:
+        agent_config = query_workspace_config.get("agent") if isinstance(query_workspace_config.get("agent"), dict) else {}
+        prompt_override = (query_workspace / str(agent_config.get("policy") or "agent/policy.txt")).resolve()
+    prompt_path = prompt_for_parent(parent, prompt_override)
     case_dir = Path(args.case_dir).resolve()
     dab_root = Path(args.dab_root).resolve()
+    skipped_parent_materialization_failures: list[dict[str, Any]] = []
+    max_parent_preflight_skips = max(0, int(getattr(args, "parent_materialization_preflight_max_skips", 3)))
     parent_materialization_preflight = preflight_parent_materialization(parent["card"])
+    while (
+        parent_materialization_preflight.get("status") == "failed"
+        and not args.parent_agent_id
+        and len(skipped_parent_materialization_failures) < max_parent_preflight_skips
+    ):
+        skipped_parent_materialization_failures.append(
+            {
+                "agent_id": parent.get("card", {}).get("agent_id"),
+                "reason": parent_materialization_preflight.get("reason"),
+                "patch_path": parent_materialization_preflight.get("patch_path"),
+                "stderr": parent_materialization_preflight.get("stderr"),
+            }
+        )
+        parent = select_parent_agent(
+            archive_root,
+            None,
+            max_age_hours=args.archive_max_parent_age_hours,
+            repeated_parent_ids=parent_history,
+            repeated_parent_penalty=args.repeated_parent_penalty,
+            source_lineage_family=args.source_lineage_family or None,
+            exclude_agent_ids=[str(row.get("agent_id")) for row in skipped_parent_materialization_failures if row.get("agent_id")],
+        )
+        parent_agent_id = parent["card"]["agent_id"]
+        initial_parent_agent_id = parent_agent_id
+        if query_workspace and prompt_override is None:
+            agent_config = query_workspace_config.get("agent") if isinstance(query_workspace_config.get("agent"), dict) else {}
+            prompt_override = (query_workspace / str(agent_config.get("policy") or "agent/policy.txt")).resolve()
+        prompt_path = prompt_for_parent(parent, prompt_override)
+        parent_materialization_preflight = preflight_parent_materialization(parent["card"])
+    if parent_materialization_preflight.get("status") == "failed" and not args.parent_agent_id and args.repair_seed:
+        try:
+            clean_parent = select_parent_agent(
+                archive_root,
+                "dab_tool_agent_zero_start_current",
+                max_age_hours=None,
+                repeated_parent_ids=parent_history,
+                repeated_parent_penalty=args.repeated_parent_penalty,
+                source_lineage_family=args.source_lineage_family or None,
+            )
+            skipped_parent_materialization_failures.append(
+                {
+                    "agent_id": parent.get("card", {}).get("agent_id"),
+                    "reason": parent_materialization_preflight.get("reason"),
+                    "patch_path": parent_materialization_preflight.get("patch_path"),
+                    "stderr": parent_materialization_preflight.get("stderr"),
+                    "fallback": "dab_tool_agent_zero_start_current",
+                }
+            )
+            parent = clean_parent
+            parent_agent_id = parent["card"]["agent_id"]
+            initial_parent_agent_id = parent_agent_id
+            prompt_path = prompt_for_parent(parent, prompt_override)
+            parent_materialization_preflight = preflight_parent_materialization(parent["card"])
+        except SystemExit:
+            pass
     plan = {
         "status": "planned",
         "mode": args.mode,
@@ -2351,14 +3130,21 @@ def run_loop(args: argparse.Namespace) -> int:
         "dab_root": str(dab_root),
         "candidate_launcher": args.candidate_launcher,
         "candidate_id_prefix": args.candidate_id_prefix,
+        "candidate_root": str(Path(args.candidate_root).resolve()),
         "repair_profile": args.repair_profile,
+        "query_parent_mode": args.query_parent_mode if query_workspace else None,
+        "query_workspace": str(query_workspace) if query_workspace else None,
+        "query_workspace_id": query_workspace_config.get("workspace_id"),
         "parent_materialization_preflight": parent_materialization_preflight,
+        "skipped_parent_materialization_failures": skipped_parent_materialization_failures,
+        "parent_materialization_preflight_max_skips": max_parent_preflight_skips,
         "parent_selection_policy": {
             "initial_parent_override": args.parent_agent_id,
             "subsequent_iterations": "select parent_pool via archive_selector after candidate postprocess",
             "archive_max_parent_age_hours": args.archive_max_parent_age_hours,
             "repeated_parent_penalty": args.repeated_parent_penalty,
             "source_lineage_family": args.source_lineage_family or None,
+            "query_parent_mode": args.query_parent_mode if query_workspace else None,
         },
         "stages": [
             "select_parent_pool_from_archive_selector",
@@ -2380,6 +3166,11 @@ def run_loop(args: argparse.Namespace) -> int:
         return 0
 
     parent_run = Path(args.parent_run).resolve() if args.parent_run else None
+    if parent_run is None and args.repair_seed:
+        seed_preload_path = Path(args.repair_seed).resolve()
+        seed_preload = safe_load_json(seed_preload_path)
+        if args.repair_profile == "multi_query_architecture_evolution" or is_multi_query_workflow_seed(seed_preload):
+            parent_run = seed_preload_path.parent
     results: list[dict[str, Any]] = []
     for iteration in range(1, args.iterations + 1):
         iteration_dir = loop_dir / f"iteration_{iteration:03d}"
@@ -2395,6 +3186,26 @@ def run_loop(args: argparse.Namespace) -> int:
             },
         )
         if parent_run is None or args.rerun_parent_each_iteration:
+            parent_llm_preflight = run_dab_tool_agent_llm_preflight(iteration_dir, "parent")
+            if parent_llm_preflight.get("status") != "passed":
+                results.append(
+                    {
+                        "iteration": iteration,
+                        "status": "infra_failed_llm_connection",
+                        "data_parent_agent_id": parent_agent_id,
+                        "meta_agent_protocol_id": meta_agent_id,
+                        "llm_preflight": parent_llm_preflight,
+                        "reason": "DataAgent LLM preflight failed before parent run; skipped parent analysis and candidate generation to avoid misleading missing_final_answer feedback.",
+                    }
+                )
+                return write_infra_failed_loop_summary(
+                    loop_dir=loop_dir,
+                    results=results,
+                    initial_parent_agent_id=initial_parent_agent_id,
+                    parent_agent_id=parent_agent_id,
+                    meta_agent_id=meta_agent_id,
+                    preflight=parent_llm_preflight,
+                )
             parent_run = run_parent_case(
                 case_dir=case_dir,
                 prompt_path=prompt_path,
@@ -2415,6 +3226,8 @@ def run_loop(args: argparse.Namespace) -> int:
                 archive_root=archive_root,
                 loop_dir=iteration_dir,
                 repeated_parent_ids=parent_history,
+                source_lineage_family=args.source_lineage_family or None,
+                query_workspace=os.environ.get("DAB_QUERY_WORKSPACE"),
             )
             attach_recent_loop_handoffs_to_seed(seed, seed_path, archive_root, iteration_dir)
             attach_repair_mode_to_seed(seed, seed_path)
@@ -2442,11 +3255,13 @@ def run_loop(args: argparse.Namespace) -> int:
                 archive_root=archive_root,
                 loop_dir=iteration_dir,
                 repeated_parent_ids=parent_history,
+                source_lineage_family=args.source_lineage_family or None,
+                query_workspace=os.environ.get("DAB_QUERY_WORKSPACE"),
             )
             attach_recent_loop_handoffs_to_seed(seed, seed_path, archive_root, iteration_dir)
             attach_repair_mode_to_seed(seed, seed_path)
         candidate_id = candidate_id_for(args.candidate_id_prefix, iteration)
-        candidate_dir = ROOT / "candidates/dab" / candidate_id
+        candidate_dir = Path(args.candidate_root).resolve() / candidate_id
         launcher_exit = None
         if args.candidate_launcher:
             launcher_exit = run_candidate_launcher(
@@ -2488,28 +3303,50 @@ def run_loop(args: argparse.Namespace) -> int:
 
         child_eval = None
         if launcher_exit == 0 and args.run_generic_child_eval:
-            if is_dab_tool_agent_workflow_seed(seed):
-                child_eval = run_dab_tool_agent_child_eval(
+            if args.repair_profile == "multi_query_architecture_evolution" or is_multi_query_workflow_seed(seed):
+                child_eval = run_multi_query_architecture_child_eval(
                     candidate_dir=candidate_dir,
-                    case_dir=case_dir,
-                    dab_root=dab_root,
+                    seed=seed,
                     loop_dir=iteration_dir,
                     iteration=iteration,
-                    parent_agent_card=parent["card"],
-                    parent_prompt=prompt_path,
-                    repair_seed=seed,
                 )
             else:
-                child_eval = run_generic_child_eval(
-                    candidate_dir=candidate_dir,
-                    case_dir=case_dir,
-                    prompt_path=prompt_path,
-                    dab_root=dab_root,
-                    timeout_sec=args.timeout_sec,
-                    loop_dir=iteration_dir,
-                    iteration=iteration,
-                    parent_agent_card=parent["card"],
-                )
+                child_llm_preflight = run_dab_tool_agent_llm_preflight(iteration_dir, "child")
+                if child_llm_preflight.get("status") != "passed":
+                    child_eval = {
+                        "status": "skipped",
+                        "final_status": "infra_failed_llm_connection",
+                        "eval_kind": "dab_tool_agent" if is_dab_tool_agent_workflow_seed(seed) else "generic",
+                        "llm_preflight": child_llm_preflight,
+                        "reason": "DataAgent LLM preflight failed before child eval; skipped answer-quality evaluation to avoid misleading missing_final_answer feedback.",
+                    }
+                    if candidate_dir.exists():
+                        child_eval_dir = candidate_dir / "child_eval"
+                        child_eval_dir.mkdir(parents=True, exist_ok=True)
+                        write_json(child_eval_dir / "child_eval_report.json", child_eval)
+                        write_json(child_eval_dir / "generic_child_eval_report.json", child_eval)
+                elif is_dab_tool_agent_workflow_seed(seed):
+                    child_eval = run_dab_tool_agent_child_eval(
+                        candidate_dir=candidate_dir,
+                        case_dir=case_dir,
+                        dab_root=dab_root,
+                        loop_dir=iteration_dir,
+                        iteration=iteration,
+                        parent_agent_card=parent["card"],
+                        parent_prompt=prompt_path,
+                        repair_seed=seed,
+                    )
+                else:
+                    child_eval = run_generic_child_eval(
+                        candidate_dir=candidate_dir,
+                        case_dir=case_dir,
+                        prompt_path=prompt_path,
+                        dab_root=dab_root,
+                        timeout_sec=args.timeout_sec,
+                        loop_dir=iteration_dir,
+                        iteration=iteration,
+                        parent_agent_card=parent["card"],
+                    )
 
         postprocess_exit = None
         if candidate_dir.exists():
@@ -2519,6 +3356,8 @@ def run_loop(args: argparse.Namespace) -> int:
                 parent_agent_id=parent_agent_id,
                 candidate_type=args.candidate_type,
                 case_id=args.case_id,
+                query_workspace=os.environ.get("DAB_QUERY_WORKSPACE"),
+                source_lineage_family=args.source_lineage_family or None,
             )
 
         handoff_path = None
@@ -2559,17 +3398,25 @@ def run_loop(args: argparse.Namespace) -> int:
 
         parent_history.append(parent_agent_id)
         if iteration < args.iterations:
-            next_parent = select_parent_agent(
-                archive_root,
-                None,
-                max_age_hours=args.archive_max_parent_age_hours,
-                repeated_parent_ids=parent_history,
-                repeated_parent_penalty=args.repeated_parent_penalty,
-            )
+            next_parent_status = "selected_from_archive_selector_parent_pool"
+            try:
+                next_parent = select_parent_agent(
+                    archive_root,
+                    None,
+                    max_age_hours=args.archive_max_parent_age_hours,
+                    repeated_parent_ids=parent_history,
+                    repeated_parent_penalty=args.repeated_parent_penalty,
+                    source_lineage_family=args.source_lineage_family or None,
+                )
+            except SystemExit:
+                if not query_workspace:
+                    raise
+                next_parent = parent
+                next_parent_status = "retained_current_parent_no_eligible_query_child"
             write_json(
                 iteration_dir / "next_parent_selection.json",
                 {
-                    "status": "selected_from_archive_selector_parent_pool",
+                    "status": next_parent_status,
                     "previous_parent_agent_id": parent_agent_id,
                     "next_parent_agent_id": next_parent["card"]["agent_id"],
                     "selection_score": next_parent.get("selection_score"),
@@ -2581,7 +3428,11 @@ def run_loop(args: argparse.Namespace) -> int:
             )
             parent = next_parent
             parent_agent_id = parent["card"]["agent_id"]
-            prompt_path = prompt_for_parent(parent, Path(args.prompt) if args.prompt else None)
+            if query_workspace:
+                agent_config = query_workspace_config.get("agent") if isinstance(query_workspace_config.get("agent"), dict) else {}
+                prompt_path = (query_workspace / str(agent_config.get("policy") or "agent/policy.txt")).resolve()
+            else:
+                prompt_path = prompt_for_parent(parent, Path(args.prompt) if args.prompt else None)
             parent_run = None
         else:
             write_json(
@@ -2645,9 +3496,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mode", choices=["dry-run", "run"], default="dry-run")
     parser.add_argument("--iterations", type=int, default=1)
     parser.add_argument("--archive-root", default=str(DEFAULT_ARCHIVE))
+    parser.add_argument("--query-workspace", default=os.environ.get("DAB_QUERY_WORKSPACE"), help="Query-local workspace.json plus isolated policy/helper registry.")
+    parser.add_argument("--query-parent-mode", choices=["initial", "best-archive"], default="initial", help="For query workspaces, choose the initial parent or the best eligible archive parent for the first iteration.")
+    parser.add_argument("--candidate-root", default=str(ROOT / "candidates/dab"), help="Candidate output root; query workspace candidates directory is used automatically.")
     parser.add_argument("--loop-root", default=str(ROOT / "trajectories/meta_agent_loops"))
     parser.add_argument("--parent-agent-id", help="Initial parent override for the first iteration only; later iterations reselect the current top-ranked archive parent.")
     parser.add_argument("--archive-max-parent-age-hours", type=float, default=24.0, help="Only auto-select data-agent parents whose archive agent_card was modified within this many hours; <=0 disables the freshness filter. Explicit --parent-agent-id bypasses this for the first iteration.")
+    parser.add_argument("--parent-materialization-preflight-max-skips", type=int, default=int(os.environ.get("META_LOOP_PARENT_PREFLIGHT_MAX_SKIPS", "3")), help="Maximum stale/unmaterializable archive parents to skip before falling back or failing.")
     parser.add_argument("--repeated-parent-penalty", type=float, default=0.15, help="Subtract this score per prior use of the same parent inside the current loop when selecting the next parent.")
     parser.add_argument("--source-lineage-family", default=os.environ.get("META_LOOP_SOURCE_LINEAGE_FAMILY", "dab_tool_agent_workflow"), help="Restrict automatic parent selection to one source lineage family; use empty string to disable.")
     parser.add_argument("--meta-agent-id")
@@ -2663,7 +3518,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--candidate-id-prefix", default="codex_qwen_patents_iter004_data_agent_repair")
     parser.add_argument("--candidate-id-env", default="ITER004_CANDIDATE_ID")
     parser.add_argument("--candidate-type", default="data_agent_repair")
-    parser.add_argument("--repair-profile", default="data_agent_prompt_repair", choices=["data_agent_prompt_repair", "data_agent_project_repair", "data_agent_tool_repair", "analyzer_infra_repair"], help="Repair profile passed to the candidate launcher. Use data_agent_tool_repair to prefer reusable adapters/patents helper scripts, or data_agent_project_repair for broader safe project-source edits.")
+    parser.add_argument("--repair-profile", default="data_agent_prompt_repair", choices=["data_agent_prompt_repair", "data_agent_project_repair", "data_agent_tool_repair", "analyzer_infra_repair", "multi_query_architecture_evolution"], help="Repair profile passed to the candidate launcher. Use data_agent_tool_repair to prefer reusable adapters/patents helper scripts, or data_agent_project_repair for broader safe project-source edits.")
     parser.add_argument("--run-generic-child-eval", action="store_true", help="Run child eval after candidate generation. For DAB tool-agent seeds this uses the DAB tool-agent child eval; legacy generated_solve eval is only used for legacy seeds.")
     parser.set_defaults(func=run_loop)
     return parser

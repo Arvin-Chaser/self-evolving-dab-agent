@@ -27,10 +27,14 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+from experiments.dab_answer_utils import semantic_final_answer_text
+
 DEFAULT_DAB_DATA_ROOT = Path("/home/m0st1ma/research/DataAgentBench")
 DEFAULT_DAB_UPSTREAM_ROOT = Path("/home/m0st1ma/research/DataAgentBench_upstream")
 DEFAULT_OUTPUT_ROOT = ROOT / "logs" / "dab_tool_agent"
 DEFAULT_TOOL_AGENT_POLICY = ROOT / "prompts" / "dab" / "dab_tool_agent_policy_zero_start.txt"
+DEFAULT_EVOLVED_HELPER_REGISTRY = ROOT / "adapters" / "dab_tool_agent_helpers" / "registry.py"
+DEFAULT_EVOLVED_HELPER_MODULE_ROOT = ROOT
 DEFAULT_BAILIAN_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"
 QWEN_MODEL_MARKERS = ("qwen", "qwq", "qvq")
 
@@ -118,6 +122,13 @@ def write_json(path: Path, value: Any) -> None:
     path.write_text(json.dumps(value, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
+def read_json_file(path: Path, default: Any) -> Any:
+    if not path.exists():
+        return default
+    try:
+        return json.loads(path.read_text(encoding="utf-8", errors="replace"))
+    except Exception:
+        return default
 def append_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
@@ -125,9 +136,31 @@ def append_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
             f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
+def _load_query_workspace(path: Path) -> dict[str, Any]:
+    config_path = path / "workspace.json"
+    if not config_path.exists():
+        raise FileNotFoundError(f"query workspace config not found: {config_path}")
+    value = json.loads(config_path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError(f"query workspace config must be a JSON object: {config_path}")
+    return value
+
+
+def _workspace_path(workspace: Path, value: str | None, default: str) -> Path:
+    path = Path(value or default)
+    return path.resolve() if path.is_absolute() else (workspace / path).resolve()
+
+
 def resolve_defaults(args: argparse.Namespace) -> argparse.Namespace:
+    query_workspace = Path(args.query_workspace).resolve() if args.query_workspace else None
+    workspace_config = _load_query_workspace(query_workspace) if query_workspace else {}
+    agent_config = workspace_config.get("agent") if isinstance(workspace_config.get("agent"), dict) else {}
+    artifact_config = workspace_config.get("artifacts") if isinstance(workspace_config.get("artifacts"), dict) else {}
+
     data_root = Path(args.dab_data_root).resolve()
-    query_dir = Path(args.query_dir).resolve() if args.query_dir else data_root / "query_PATENTS" / "query1"
+    configured_query_dir = workspace_config.get("query_dir")
+    query_dir_raw = args.query_dir or configured_query_dir
+    query_dir = Path(query_dir_raw).resolve() if query_dir_raw else data_root / "query_PATENTS" / "query1"
     query_family_dir = query_dir.parent
     db_description = Path(args.db_description).resolve() if args.db_description else query_family_dir / "db_description_withhint.txt"
     if not db_description.exists():
@@ -138,8 +171,40 @@ def resolve_defaults(args: argparse.Namespace) -> argparse.Namespace:
     args.db_description = db_description
     args.db_config = db_config
     args.dab_upstream_root = Path(args.dab_upstream_root).resolve()
-    args.output_root = Path(args.output_root).resolve()
-    args.tool_agent_policy = Path(args.tool_agent_policy).resolve() if args.tool_agent_policy else None
+    if args.output_root:
+        args.output_root = Path(args.output_root).resolve()
+    elif query_workspace:
+        args.output_root = _workspace_path(query_workspace, artifact_config.get("runs"), "runs/data_agent")
+    else:
+        args.output_root = DEFAULT_OUTPUT_ROOT.resolve()
+    if args.tool_agent_policy:
+        args.tool_agent_policy = Path(args.tool_agent_policy).resolve()
+    elif query_workspace:
+        args.tool_agent_policy = _workspace_path(query_workspace, agent_config.get("policy"), "agent/policy.txt")
+    else:
+        args.tool_agent_policy = DEFAULT_TOOL_AGENT_POLICY.resolve()
+    if args.evolved_helper_registry:
+        args.evolved_helper_registry = Path(args.evolved_helper_registry).resolve()
+    elif query_workspace:
+        args.evolved_helper_registry = _workspace_path(
+            query_workspace,
+            agent_config.get("helper_registry"),
+            "agent/helpers/registry.py",
+        )
+    else:
+        args.evolved_helper_registry = DEFAULT_EVOLVED_HELPER_REGISTRY.resolve()
+    if args.evolved_helper_module_root:
+        args.evolved_helper_module_root = Path(args.evolved_helper_module_root).resolve()
+    elif query_workspace:
+        args.evolved_helper_module_root = _workspace_path(
+            query_workspace,
+            agent_config.get("helper_module_root"),
+            "agent",
+        )
+    else:
+        args.evolved_helper_module_root = DEFAULT_EVOLVED_HELPER_MODULE_ROOT.resolve()
+    args.query_workspace = query_workspace
+    args.query_workspace_config = workspace_config
     if not args.run_id:
         args.run_id = f"dab_tool_agent_{utc_slug()}"
     return args
@@ -154,6 +219,15 @@ def validate_paths(args: argparse.Namespace) -> None:
         "db_description": args.db_description,
         "db_config": args.db_config,
     }
+    if args.query_workspace:
+        required.update(
+            {
+                "query_workspace": args.query_workspace,
+                "query_workspace_policy": args.tool_agent_policy,
+                "query_workspace_helper_registry": args.evolved_helper_registry,
+                "query_workspace_helper_module_root": args.evolved_helper_module_root,
+            }
+        )
     missing = [f"{name}: {path}" for name, path in required.items() if not Path(path).exists()]
     if missing:
         raise FileNotFoundError("Missing required DAB tool-agent path(s):\n" + "\n".join(missing))
@@ -209,21 +283,28 @@ def qwen_bailian_config(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
-def load_evolved_helper_specs() -> list[dict[str, str]]:
-    """Load meta-agent-created DAB tool-agent helper registry entries.
+def load_evolved_helper_specs(args: argparse.Namespace) -> list[dict[str, str]]:
+    """Load helper registry entries from the selected query workspace.
 
-    An empty registry is the zero-start baseline. Non-empty entries are exposed
-    as choices under the generic run_evolved_helper tool.
+    The legacy global registry remains the fallback when no query workspace is
+    selected. An empty query-local registry is a clean zero-start baseline.
     """
-    registry_path = ROOT / "adapters" / "dab_tool_agent_helpers" / "registry.py"
+    registry_path = Path(args.evolved_helper_registry)
     if not registry_path.exists():
         return []
-    module_name = "adapters.dab_tool_agent_helpers.registry"
+    module_root = Path(args.evolved_helper_module_root)
+    if str(module_root) not in sys.path:
+        sys.path.insert(0, str(module_root))
+    module_name = f"dab_query_workspace_registry_{abs(hash(registry_path))}"
     importlib.invalidate_caches()
     try:
-        module = importlib.import_module(module_name)
+        spec = importlib.util.spec_from_file_location(module_name, registry_path)
+        if spec is None or spec.loader is None:
+            raise ImportError(f"cannot create import spec for {registry_path}")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
     except Exception as exc:
-        raise RuntimeError(f"Failed to import evolved helper registry {module_name}: {type(exc).__name__}: {exc}") from exc
+        raise RuntimeError(f"Failed to import evolved helper registry {registry_path}: {type(exc).__name__}: {exc}") from exc
     helpers = getattr(module, "HELPERS", [])
     if not isinstance(helpers, list):
         raise RuntimeError("adapters.dab_tool_agent_helpers.registry.HELPERS must be a list")
@@ -250,7 +331,7 @@ def install_evolved_helper_tool(data_agent_module: Any, args: argparse.Namespace
     """Patch upstream DataAgent to expose registered local helpers as a real tool."""
     if getattr(args, "disable_evolved_helper_tools", False):
         return []
-    helper_specs = load_evolved_helper_specs()
+    helper_specs = load_evolved_helper_specs(args)
     if not helper_specs:
         return []
 
@@ -994,16 +1075,18 @@ def docker_failure_message() -> str:
 def ensure_docker_ready(args: argparse.Namespace) -> str:
     if args.skip_docker_check:
         return "skipped"
-    if command_succeeds(["docker", "info"], timeout=10):
-        return "already_running"
+    for docker_cli in ("docker", "docker.exe"):
+        if command_succeeds([docker_cli, "info"], timeout=10):
+            return f"already_running_via_{docker_cli}"
 
     docker_desktop = Path("/mnt/c/Program Files/Docker/Docker/Docker Desktop.exe")
     if docker_desktop.exists():
         subprocess.Popen([str(docker_desktop)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         deadline = time.time() + args.docker_start_timeout
         while time.time() < deadline:
-            if command_succeeds(["docker", "info"], timeout=10):
-                return "started_docker_desktop"
+            for docker_cli in ("docker", "docker.exe"):
+                if command_succeeds([docker_cli, "info"], timeout=10):
+                    return f"started_docker_desktop_via_{docker_cli}"
             time.sleep(5)
 
     raise RuntimeError(docker_failure_message())
@@ -1137,6 +1220,123 @@ def build_workflow_trace(upstream_run_dir: Path) -> list[dict[str, Any]]:
     return rows
 
 
+def build_full_execution_trace(upstream_run_dir: Path) -> list[dict[str, Any]]:
+    """Materialize the visible DataAgent execution transcript.
+
+    This is intentionally raw and low-inference: it preserves LLM request
+    messages, raw LLM responses, tool-call arguments/results, and timing where
+    available.  Fine-grained observer agents should infer failure structure from
+    this event stream instead of relying only on pre-shaped analyzer labels.
+    """
+    events: list[dict[str, Any]] = []
+    llm_rows = read_jsonl(upstream_run_dir / "llm_calls.jsonl")
+    tool_rows = read_jsonl(upstream_run_dir / "tool_calls.jsonl")
+
+    def event_time(value: Any) -> float | None:
+        try:
+            if value is None:
+                return None
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    for idx, row in enumerate(llm_rows, start=1):
+        if not isinstance(row, dict):
+            continue
+        response = row.get("response") if isinstance(row.get("response"), dict) else None
+        choices = response.get("choices") if isinstance(response, dict) and isinstance(response.get("choices"), list) else []
+        message = choices[0].get("message") if choices and isinstance(choices[0], dict) else {}
+        finish_reason = choices[0].get("finish_reason") if choices and isinstance(choices[0], dict) else None
+        events.append(
+            {
+                "event_type": "llm_request",
+                "llm_call_index": idx,
+                "timestamp": row.get("timestamp"),
+                "event_time": event_time(row.get("start_time")),
+                "model": row.get("model"),
+                "messages": row.get("messages"),
+                "local_retry_config": row.get("local_retry_config"),
+            }
+        )
+        events.append(
+            {
+                "event_type": "llm_response",
+                "llm_call_index": idx,
+                "timestamp": row.get("timestamp"),
+                "event_time": event_time(row.get("end_time")),
+                "duration": row.get("duration"),
+                "model": row.get("model"),
+                "message": message,
+                "content": message.get("content") if isinstance(message, dict) else None,
+                "tool_calls": message.get("tool_calls") if isinstance(message, dict) else None,
+                "finish_reason": finish_reason,
+                "raw_response": response,
+                "last_error": row.get("last_error"),
+            }
+        )
+
+    for idx, row in enumerate(tool_rows, start=1):
+        if not isinstance(row, dict):
+            continue
+        result = row.get("result") if isinstance(row.get("result"), dict) else {}
+        events.append(
+            {
+                "event_type": "tool_call_start",
+                "tool_call_index": idx,
+                "tool_name": row.get("tool_name"),
+                "event_time": event_time(row.get("start")),
+                "args": row.get("args"),
+                "validated_args": row.get("val_args"),
+                "raw_tool_call": row,
+            }
+        )
+        events.append(
+            {
+                "event_type": "tool_call_end",
+                "tool_call_index": idx,
+                "tool_name": row.get("tool_name"),
+                "event_time": event_time(row.get("end")),
+                "duration": row.get("time"),
+                "success": result.get("success"),
+                "result": result,
+                "raw_tool_call": row,
+            }
+        )
+
+    final_agent = read_json_file(upstream_run_dir / "final_agent.json", {})
+    if isinstance(final_agent, dict):
+        events.append(
+            {
+                "event_type": "agent_termination",
+                "event_time": None,
+                "final_result": final_agent.get("final_result"),
+                "terminate_reason": final_agent.get("terminate_reason"),
+                "llm_call_count": final_agent.get("llm_call_count"),
+                "raw_final_agent": final_agent,
+            }
+        )
+
+    event_type_order = {
+        "llm_request": 0,
+        "llm_response": 1,
+        "tool_call_start": 2,
+        "tool_call_end": 3,
+        "agent_termination": 99,
+    }
+    for original_index, event in enumerate(events):
+        event["_original_index"] = original_index
+    events.sort(
+        key=lambda item: (
+            item.get("event_time") is None,
+            item.get("event_time") if item.get("event_time") is not None else 0.0,
+            event_type_order.get(str(item.get("event_type") or ""), 50),
+            item.get("_original_index", 0),
+        )
+    )
+    for seq, event in enumerate(events, start=1):
+        event.pop("_original_index", None)
+        event["sequence"] = seq
+    return events
 def copy_if_exists(src: Path, dst: Path) -> str | None:
     if not src.exists():
         return None
@@ -1151,6 +1351,8 @@ def normalize_run_artifacts(*, args: argparse.Namespace, upstream_run_dir: Path,
 
     workflow_trace = build_workflow_trace(upstream_run_dir)
     append_jsonl(normalized_dir / "workflow_trace.jsonl", workflow_trace)
+    full_execution_trace = build_full_execution_trace(upstream_run_dir)
+    append_jsonl(normalized_dir / "full_execution_trace.jsonl", full_execution_trace)
 
     final_agent = {}
     final_agent_path = upstream_run_dir / "final_agent.json"
@@ -1160,18 +1362,21 @@ def normalize_run_artifacts(*, args: argparse.Namespace, upstream_run_dir: Path,
         except json.JSONDecodeError as exc:
             final_agent = {"_parse_error": str(exc)}
 
-    answer = final_result
-    if answer is None:
-        answer = final_agent.get("final_result") if isinstance(final_agent, dict) else None
-    if answer is None:
-        answer = ""
-    (normalized_dir / "final_answer.txt").write_text(str(answer), encoding="utf-8")
+    raw_answer = final_result
+    if raw_answer is None:
+        raw_answer = final_agent.get("final_result") if isinstance(final_agent, dict) else None
+    if raw_answer is None:
+        raw_answer = ""
+    answer = semantic_final_answer_text(raw_answer)
+    (normalized_dir / "final_answer.txt").write_text(answer, encoding="utf-8")
+    (normalized_dir / "raw_final_answer.txt").write_text(str(raw_answer), encoding="utf-8")
 
     copied = {
         "llm_calls": copy_if_exists(upstream_run_dir / "llm_calls.jsonl", normalized_dir / "llm_calls.jsonl"),
         "tool_calls": copy_if_exists(upstream_run_dir / "tool_calls.jsonl", normalized_dir / "tool_calls.jsonl"),
         "final_agent": copy_if_exists(upstream_run_dir / "final_agent.json", normalized_dir / "final_agent.json"),
         "validation": copy_if_exists(upstream_run_dir / "validation.jsonl", normalized_dir / "validation.jsonl"),
+        "full_execution_trace": str(normalized_dir / "full_execution_trace.jsonl"),
         "execute_python_artifacts": copy_if_exists(
             upstream_run_dir / "execute_python_artifacts.jsonl",
             normalized_dir / "execute_python_artifacts.jsonl",
@@ -1204,9 +1409,13 @@ def normalize_run_artifacts(*, args: argparse.Namespace, upstream_run_dir: Path,
         "postgres_status": getattr(args, "postgres_status", None),
         "pg_client": os.getenv("PG_CLIENT"),
         "query_dir": str(args.query_dir),
+        "query_workspace": str(args.query_workspace) if args.query_workspace else None,
+        "query_workspace_id": (args.query_workspace_config or {}).get("workspace_id"),
         "db_description": str(args.db_description),
         "db_config": str(args.db_config),
         "tool_agent_policy": str(args.tool_agent_policy) if args.tool_agent_policy else None,
+        "evolved_helper_registry": str(args.evolved_helper_registry),
+        "evolved_helper_module_root": str(args.evolved_helper_module_root),
         "evolved_helper_tool_enabled": bool(getattr(args, "evolved_helper_specs", [])),
         "evolved_helper_specs": getattr(args, "evolved_helper_specs", []),
         "query_capacity_guard_enabled": not getattr(args, "disable_query_capacity_guard", False),
@@ -1217,12 +1426,15 @@ def normalize_run_artifacts(*, args: argparse.Namespace, upstream_run_dir: Path,
         "upstream_run_dir": str(upstream_run_dir),
         "normalized_run_dir": str(normalized_dir),
         "final_answer_path": str(normalized_dir / "final_answer.txt"),
-        "final_answer_nonempty": bool(str(answer).strip()),
-        "final_answer_preview": str(answer)[:1000],
+        "raw_final_answer_path": str(normalized_dir / "raw_final_answer.txt"),
+        "final_answer_nonempty": bool(answer.strip()),
+        "final_answer_preview": answer[:1000],
+        "raw_final_answer_preview": str(raw_answer)[:1000],
         "run_error": run_error,
         "llm_call_count": final_agent.get("llm_call_count") if isinstance(final_agent, dict) else None,
         "terminate_reason": final_agent.get("terminate_reason") if isinstance(final_agent, dict) else None,
         "workflow_event_count": len(workflow_trace),
+        "full_execution_event_count": len(full_execution_trace),
         "tool_call_count": sum(1 for item in workflow_trace if item.get("event") == "tool_call"),
         "artifacts": copied,
     }
@@ -1295,6 +1507,10 @@ def run_agent(args: argparse.Namespace) -> int:
             "status": "prepared",
             "run_id": args.run_id,
             "query_dir": str(args.query_dir),
+            "query_workspace": str(args.query_workspace) if args.query_workspace else None,
+            "query_workspace_id": (args.query_workspace_config or {}).get("workspace_id"),
+            "tool_agent_policy": str(args.tool_agent_policy) if args.tool_agent_policy else None,
+            "evolved_helper_registry": str(args.evolved_helper_registry),
             "db_description": str(args.db_description),
             "db_config": str(args.db_config),
             "dab_upstream_root": str(args.dab_upstream_root),
@@ -1353,6 +1569,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dab-data-root", default=str(DEFAULT_DAB_DATA_ROOT))
     parser.add_argument("--dab-upstream-root", default=str(DEFAULT_DAB_UPSTREAM_ROOT))
     parser.add_argument("--query-dir")
+    parser.add_argument("--query-workspace", default=os.environ.get("DAB_QUERY_WORKSPACE"), help="Query-local overlay containing workspace.json, agent policy, and helper registry.")
     parser.add_argument("--db-description")
     parser.add_argument("--db-config")
     parser.add_argument("--deployment-name", default=os.environ.get("DAB_TOOL_AGENT_MODEL", "qwen-plus"))
@@ -1364,9 +1581,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--llm-retries", type=int, default=int(os.environ.get("DAB_TOOL_AGENT_LLM_RETRIES", "4")), help="Number of DataAgent LLM retry attempts per turn.")
     parser.add_argument("--llm-retry-sleep", type=float, default=float(os.environ.get("DAB_TOOL_AGENT_LLM_RETRY_SLEEP", "20")), help="Seconds to sleep between DataAgent LLM retry attempts.")
     parser.add_argument("--client-max-retries", type=int, default=int(os.environ.get("DAB_TOOL_AGENT_CLIENT_MAX_RETRIES", "2")), help="OpenAI SDK internal retry count for the patched Qwen/DashScope client.")
-    parser.add_argument("--output-root", default=str(DEFAULT_OUTPUT_ROOT))
-    parser.add_argument("--tool-agent-policy", default=os.environ.get("DAB_TOOL_AGENT_POLICY", str(DEFAULT_TOOL_AGENT_POLICY)), help="Local prompt-policy overlay appended to the upstream DAB DataAgent system prompt.")
-    parser.add_argument("--disable-evolved-helper-tools", action="store_true", help="Do not expose registered adapters/dab_tool_agent_helpers as DataAgent tools.")
+    parser.add_argument("--output-root", default=os.environ.get("DAB_TOOL_AGENT_OUTPUT_ROOT"))
+    parser.add_argument("--tool-agent-policy", default=os.environ.get("DAB_TOOL_AGENT_POLICY"), help="Prompt-policy overlay; query workspace policy is used when omitted.")
+    parser.add_argument("--evolved-helper-registry", default=os.environ.get("DAB_EVOLVED_HELPER_REGISTRY"), help="Helper registry path; query workspace registry is used when omitted.")
+    parser.add_argument("--evolved-helper-module-root", default=os.environ.get("DAB_EVOLVED_HELPER_MODULE_ROOT"), help="Import root for modules referenced by the selected helper registry.")
+    parser.add_argument("--disable-evolved-helper-tools", action="store_true", help="Do not expose registered query-local or legacy helper registry entries as DataAgent tools.")
     parser.add_argument("--disable-query-capacity-guard", action="store_true", help="Allow raw unbounded SELECT query_db calls. Default blocks likely full-table materialization hazards before DB execution.")
     parser.add_argument("--disable-self-observation-tool", action="store_true", help="Do not expose the open-ended record_self_observation tool to the DataAgent.")
     parser.add_argument("--self-observation-tool-name", default=os.environ.get("DAB_SELF_OBSERVATION_TOOL_NAME", "record_self_observation"), help="Tool name used for open-ended DataAgent self-observation logging.")

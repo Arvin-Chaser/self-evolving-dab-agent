@@ -1,0 +1,221 @@
+{
+  "schema_version": "dab_query_registry_v001",
+  "created_at": "2026-07-19T06:32:41.191755+00:00",
+  "dab_root": "external/DataAgentBench_sparse",
+  "counts": {
+    "domains": 17,
+    "queries": 104,
+    "definition_ready": 104,
+    "dataset_materialized_complete": 104,
+    "runnable": 104
+  },
+  "domains": [
+    {
+      "domain": "agnews",
+      "domain_dir": "external/DataAgentBench_sparse/query_agnews",
+      "query_count": 4,
+      "dataset_materialization_status": "materialized_complete",
+      "data_modalities": [
+        "sqlite",
+        "bson"
+      ],
+      "expected_dataset_file_count": 1,
+      "discovered_dataset_file_count": 2
+    },
+    {
+      "domain": "bookreview",
+      "domain_dir": "external/DataAgentBench_sparse/query_bookreview",
+      "query_count": 3,
+      "dataset_materialization_status": "materialized_complete",
+      "data_modalities": [
+        "sqlite",
+        "sql"
+      ],
+      "expected_dataset_file_count": 2,
+      "discovered_dataset_file_count": 2
+    },
+    {
+      "domain": "civic_unstructured",
+      "domain_dir": "external/DataAgentBench_sparse/query_civic_unstructured",
+      "query_count": 10,
+      "dataset_materialization_status": "materialized_complete",
+      "data_modalities": [
+        "sqlite",
+        "bson"
+      ],
+      "expected_dataset_file_count": 2,
+      "discovered_dataset_file_count": 2
+    },
+    {
+      "domain": "crmarenapro",
+      "domain_dir": "external/DataAgentBench_sparse/query_crmarenapro",
+      "query_count": 13,
+      "dataset_materialization_status": "materialized_complete",
+      "data_modalities": [
+        "sqlite",
+        "duckdb",
+        "sql"
+      ],
+      "expected_dataset_file_count": 6,
+      "discovered_dataset_file_count": 6
+    },
+    {
+      "domain": "cve",
+      "domain_dir": "external/DataAgentBench_sparse/query_cve",
+      "query_count": 10,
+      "dataset_materialization_status": "materialized_complete",
+      "data_modalities": [
+        "sqlite",
+        "duckdb",
+        "sql",
+        "files",
+        "bson"
+      ],
+      "expected_dataset_file_count": 2,
+      "discovered_dataset_file_count": 5
+    },
+    {
+      "domain": "DEPS_DEV_V1",
+      "domain_dir": "external/DataAgentBench_sparse/query_DEPS_DEV_V1",
+      "query_count": 2,
+      "dataset_materialization_status": "materialized_complete",
+      "data_modalities": [
+        "sqlite"
+      ],
+      "expected_dataset_file_count": 2,
+      "discovered_dataset_file_count": 2
+    },
+    {
+      "domain": "GITHUB_REPOS",
+      "domain_dir": "external/DataAgentBench_sparse/query_GITHUB_REPOS",
+      "query_count": 4,
+      "dataset_materialization_status": "materialized_complete",
+      "data_modalities": [
+        "sqlite"
+      ],
+      "expected_dataset_file_count": 2,
+      "discovered_dataset_file_count": 2
+    },
+    {
+      "domain": "googlelocal",
+      "domain_dir": "external/DataAgentBench_sparse/query_googlelocal",
+      "query_count": 4,
+      "dataset_materialization_status": "materialized_complete",
+      "data_modalities": [
+        "sqlite",
+        "sql"
+      ],
+      "expected_dataset_file_count": 2,
+      "discovered_dataset_file_count": 2
+    },
+    {
+      "domain": "imdb",
+      "domain_dir": "external/DataAgentBench_sparse/query_imdb",
+      "query_count": 10,
+      "dataset_materialization_status": "materialized_complete",
+      "data_modalities": [
+        "sqlite",
+        "sql"
+      ],
+      "expected_dataset_file_count": 2,
+      "discovered_dataset_file_count": 2
+    },
+    {
+      "domain": "krama",
+      "domain_dir": "external/DataAgentBench_sparse/query_krama",
+      "query_count": 10,
+      "dataset_materialization_status": "materialized_complete",
+      "data_modalities": [
+        "sqlite",
+        "bson"
+      ],
+      "expected_dataset_file_count": 3,
+      "discovered_dataset_file_count": 3
+    },
+    {
+      "domain": "music_brainz_20k",
+      "domain_dir": "external/DataAgentBench_sparse/query_music_brainz_20k",
+      "query_count": 3,
+      "dataset_materialization_status": "materialized_complete",
+      "data_modalities": [
+        "sqlite",
+        "duckdb"
+      ],
+      "expected_dataset_file_count": 1,
+      "discovered_dataset_file_count": 2
+    },
+    {
+      "domain": "PANCANCER_ATLAS",
+      "domain_dir": "external/DataAgentBench_sparse/query_PANCANCER_ATLAS",
+      "query_count": 3,
+      "dataset_materialization_status": "materialized_complete",
+      "data_modalities": [
+        "sqlite",
+        "sql"
+      ],
+      "expected_dataset_file_count": 2,
+      "discovered_dataset_file_count": 2
+    },
+    {
+      "domain": "PATENTS",
+      "domain_dir": "external/DataAgentBench_sparse/query_PATENTS",
+      "query_count": 3,
+      "dataset_materialization_status": "materialized_complete",
+      "data_modalities": [
+        "sqlite",
+        "sql"
+      ],
+      "expected_dataset_file_count": 2,
+      "discovered_dataset_file_count": 2
+    },
+    {
+      "domain": "stockindex",
+      "domain_dir": "external/DataAgentBench_sparse/query_stockindex",
+      "query_count": 3,
+      "dataset_materialization_status": "materialized_complete",
+      "data_modalities": [
+        "sqlite"
+      ],
+      "expected_dataset_file_count": 2,
+      "discovered_dataset_file_count": 2
+    },
+    {
+      "domain": "stockmarket",
+      "domain_dir": "external/DataAgentBench_sparse/query_stockmarket",
+      "query_count": 5,
+      "dataset_materialization_status": "materialized_complete",
+      "data_modalities": [
+        "sqlite"
+      ],
+      "expected_dataset_file_count": 2,
+      "discovered_dataset_file_count": 2
+    },
+    {
+      "domain": "usaspending",
+      "domain_dir": "external/DataAgentBench_sparse/query_usaspending",
+      "query_count": 10,
+      "dataset_materialization_status": "materialized_complete",
+      "data_modalities": [
+        "sqlite",
+        "duckdb",
+        "sql",
+        "files",
+        "bson"
+      ],
+      "expected_dataset_file_count": 2,
+      "discovered_dataset_file_count": 5
+    },
+    {
+      "domain": "yelp",
+      "domain_dir": "external/DataAgentBench_sparse/query_yelp",
+      "query_count": 7,
+      "dataset_materialization_status": "materialized_complete",
+      "data_modalities": [
+        "sqlite",
+        "bson"
+      ],
+      "expected_dataset_file_count": 1,
+      "discovered_dataset_file_count": 3
+    }
+  ]
+}

@@ -81,3 +81,15 @@ Key outcome measures:
 ## Script-first meta-agent repair preference
 
 When repeated workflow or answer-quality evidence indicates missing capability, the meta-agent should first consider creating or registering an executable helper/script/tool, runner glue, workflow observer, or evidence-pack improvement. Prompt edits should normally be minimal glue that helps the DataAgent discover and use that executable capability. A prompt-only candidate should explain why no script/tool/runner repair was the right minimal move for the evidence.
+
+## Boundary Evidence Logging for Future Meta-Agent Repair
+
+When the workflow produces candidate answer items, the DataAgent should leave generic evidence that helps a later meta-agent understand boundary errors without seeing hidden ground truth. Useful evidence includes:
+
+- what candidate items were generated or retrieved;
+- which items were filtered, ranked, merged, or excluded;
+- the reason or uncertainty behind important keep/drop decisions;
+- which intermediate result directly fed the final answer;
+- any uncertainty about schema grounding, normalization, grouping, or answer formatting.
+
+Use the generic self-observation/logging channel when available. Keep this evidence domain-neutral: do not mention expected counts, benchmark answers, validator-only missing items, or hidden ground truth. The purpose is to support later near-miss causal diagnosis, where the meta-agent compares post-run missing/extra samples against workflow artifacts and infers whether items were never generated, generated but dropped, or present but malformed.

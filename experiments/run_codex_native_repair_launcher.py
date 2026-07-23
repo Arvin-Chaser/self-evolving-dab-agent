@@ -67,17 +67,35 @@ def codex_native_eval_instructions(
     profile: base.RepairProfile,
     candidate_dir: Path,
     parent_run: Path | None,
+    repair_seed: Path | None = None,
 ) -> str:
     case_dir = os.environ.get("META_LOOP_CASE_DIR")
     dab_root = os.environ.get("META_LOOP_DAB_ROOT")
     parent_agent_id = os.environ.get("META_LOOP_PARENT_AGENT_ID")
     parent_prompt = os.environ.get("META_LOOP_PARENT_PROMPT")
+    query_workspace = os.environ.get("META_LOOP_QUERY_WORKSPACE")
     max_iterations = os.environ.get(
         "CODEX_NATIVE_DATA_AGENT_MAX_ITERATIONS",
         os.environ.get("DAB_TOOL_AGENT_CHILD_MAX_ITERATIONS", "4"),
     )
     child_run_id = f"codex_native_inner_child_{base.utc_slug()}"
     inner_output_root = candidate_dir / "codex_native_inner_runs"
+    multi_query_batch_path: Path | None = None
+    multi_query_dab_root = Path("external/DataAgentBench_sparse")
+    if profile.name == "multi_query_architecture_evolution" and repair_seed and repair_seed.exists():
+        try:
+            seed = json.loads(repair_seed.read_text(encoding="utf-8", errors="replace"))
+            batch = seed.get("batch") if isinstance(seed.get("batch"), dict) else {}
+            batch_id = str(seed.get("batch_id") or batch.get("batch_id") or "").strip()
+            if batch_id:
+                candidate_batch = ROOT / "dab_corpus" / "batches" / f"{batch_id}.json"
+                if candidate_batch.exists():
+                    multi_query_batch_path = Path("dab_corpus") / "batches" / f"{batch_id}.json"
+            batch_dab_root = str(batch.get("dab_root") or "").strip()
+            if batch_dab_root:
+                multi_query_dab_root = Path(batch_dab_root)
+        except Exception:
+            multi_query_batch_path = None
 
     lines = [
         "## Codex-native self-debug loop",
@@ -108,11 +126,32 @@ def codex_native_eval_instructions(
         "If patch replay, compile, import, or focused behavior checks fail, treat that as a repair input and revise the patch in this same Codex task instead of ending with a failed candidate.",
         "Before your final response, run the patch replay self-check below. If it fails, inspect the reported file conflicts and revise your patch in this same Codex task.",
         "",
+        "### Multi-query architecture evolution",
+        "",
+        "If this task uses `multi_query_architecture_evolution`, do not optimize a single query in isolation.",
+        "Use the multi-query evidence to identify cross-query workflow weaknesses and decide whether the candidate should be a planner, verifier, tool-use controller, schema explorer, observer, memory/performance tracker, near-miss refinement controller, helper script, prompt glue, or no-op.",
+        "Before finishing, explicitly state `candidate_structure_type` and whether the patch is query-specific or cross-query reusable.",
+        "",
+        "### Evolvable observability / fine-grained feedback",
+        "",
+        "The DataAgent observability layer is part of the evolvable agent, not a fixed human-designed interface.",
+        "If current parent/child behavior logs are insufficient to explain, prevent, or compare a failure, you may evolve how the DataAgent records runtime behavior.",
+        "Valid observability repairs include new or changed logging/tracing/self-observation events, helper contract records, answer-dependency records, fallback-decision records, or richer parent/child behavior artifacts.",
+        "Do not assume fixed observer artifact filenames or schemas; future observers read raw run directories and infer from whatever artifacts the DataAgent emits.",
+        "Prefer reusable observability improvements that help future meta-agent iterations diagnose multiple queries over one-off query-specific comments.",
+        "",
         "### Open self-observation evidence",
         "",
         "If the evidence pack contains `agent_self_observation_summary` or raw `agent_self_observations.jsonl`, treat those as DataAgent-authored open self-observations.",
         "Use them as high-priority causal clues, but do not reduce them to fixed analyzer labels; infer the repair layer yourself from the observations plus raw trace/tool evidence.",
         "If self-observations mention uncertainty, missing evidence, interface mismatch, unused helper output, or an intended next step that never happened, inspect the corresponding files/logs and repair the reusable workflow capability when safe.",
+        "",
+        "### Query workspace isolation",
+        "",
+        "When META_LOOP_QUERY_WORKSPACE is set, treat that query-local agent policy and helper registry as the mutable DataAgent state.",
+        "Create query-specific helpers under <query_workspace>/agent/helpers and register them only in that workspace registry.",
+        "Do not copy a helper or policy from another query workspace unless current trace/validation evidence independently justifies the transfer.",
+        f"Active query workspace: `{query_workspace or 'legacy_global_fallback'}`",
         "",
         "### Interface-alignment observations to perform yourself",
         "",
@@ -139,7 +178,38 @@ def codex_native_eval_instructions(
         ),
         "```",
     ]
-    if case_dir and dab_root and profile.name in {"data_agent_project_repair", "data_agent_tool_repair", "data_agent_prompt_repair"}:
+    if profile.name == "multi_query_architecture_evolution" and multi_query_batch_path:
+        multi_query_run_id = f"codex_native_inner_multi_query_{base.utc_slug()}"
+        lines.extend(
+            [
+                "",
+                "For multi-query architecture evolution, prefer this two-query inner child attempt before relying on a single-query smoke:",
+                "",
+                "```bash",
+                "mkdir -p " + quote(inner_output_root),
+                (
+                    ".venv/bin/python experiments/run_multi_query_baseline.py "
+                    f"--batch {quote(multi_query_batch_path)} "
+                    "--registry dab_corpus/registry.json "
+                    f"--dab-root {quote(multi_query_dab_root)} "
+                    f"--output-root {quote(inner_output_root)} "
+                    f"--run-id {quote(multi_query_run_id)} "
+                    f"--max-iterations {quote(max_iterations)}"
+                ),
+                "```",
+                "",
+                "After this run, inspect the multi-query summary and per-query feedback:",
+                "",
+                "```bash",
+                f"sed -n '1,220p' {quote(inner_output_root / multi_query_run_id / 'multi_query_summary.json')}",
+                f"find {quote(inner_output_root / multi_query_run_id / 'runs')} -maxdepth 2 -type f | sort",
+                "```",
+                "",
+                "If the summary shows helper_registered_but_not_called, max_iterations, empty final answers, or tool failures, keep debugging the patch in this same Codex task.",
+            ]
+        )
+
+    if case_dir and dab_root and profile.name in {"data_agent_project_repair", "data_agent_tool_repair", "data_agent_prompt_repair", "multi_query_architecture_evolution"}:
         lines.extend(
             [
                 "",
@@ -196,7 +266,7 @@ def codex_native_eval_instructions(
 
 
 def script_first_policy_text(profile: base.RepairProfile) -> str:
-    if profile.name not in {"data_agent_project_repair", "data_agent_tool_repair", "data_agent_prompt_repair"}:
+    if profile.name not in {"data_agent_project_repair", "data_agent_tool_repair", "data_agent_prompt_repair", "multi_query_architecture_evolution"}:
         return ""
     return "\n".join([
         "## Script-first repair policy",
@@ -210,6 +280,9 @@ def script_first_policy_text(profile: base.RepairProfile) -> str:
         "4. Prompt/policy edits only as glue for a concrete capability, or when you can explain why an executable repair is unnecessary or unsafe.",
         "",
         "If you create or modify a helper/script/tool, wire it into the active path in the same patch. Do not merely append an unused function.",
+        "",
+        "For multi-query architecture evolution, every candidate must declare one `candidate_structure_type`: helper_script, workflow_controller, planner, verifier, memory, observer, tool_policy, schema_explorer, near_miss_refinement_controller, performance_tracker, architecture_refactor, prompt_glue, or no_op.",
+        "Prefer changes that create reusable DataAgent structure when multiple query failures share the same workflow weakness.",
         "If your final patch is prompt-only, explicitly include `why_not_script_first` in your final response: explain why no helper/script/tool/runner repair was the right minimal move for this evidence.",
         "If the evidence is too weak to choose a helper, improve generic logging/observer/evidence plumbing rather than adding benchmark-specific prompt text.",
         "",
@@ -264,7 +337,7 @@ def build_codex_task_prompt(
         "8. If you create or modify `adapters/dab_tool_agent_helpers`, ensure `registry.py` uses entries with `name`, `function`, `description`, and `input_contract`, and helper functions accept `(payload, inputs)`.",
         "9. Do not spend time on broad refactors. If the task is not safely repairable, no-op rather than fabricating a patch.",
         "",
-        codex_native_eval_instructions(profile=profile, candidate_dir=candidate_dir, parent_run=parent_run),
+        codex_native_eval_instructions(profile=profile, candidate_dir=candidate_dir, parent_run=parent_run, repair_seed=repair_seed),
         "",
         "## Final response format",
         "",
@@ -418,7 +491,7 @@ def run_launcher(args: argparse.Namespace) -> int:
     parent_run = Path(args.parent_run or os.environ.get("META_LOOP_PARENT_RUN", "")) if (args.parent_run or os.environ.get("META_LOOP_PARENT_RUN")) else None
     parent_prompt = Path(args.parent_prompt or os.environ.get("META_LOOP_PARENT_PROMPT", "")) if (args.parent_prompt or os.environ.get("META_LOOP_PARENT_PROMPT")) else None
     parent_agent_id = os.environ.get("META_LOOP_PARENT_AGENT_ID")
-    if parent_prompt is None and profile.name in {"data_agent_prompt_repair", "data_agent_project_repair", "data_agent_tool_repair"}:
+    if parent_prompt is None and profile.name in {"data_agent_prompt_repair", "data_agent_project_repair", "data_agent_tool_repair", "multi_query_architecture_evolution"}:
         parent_prompt = Path("prompts/dab/dab_code_agent_prompt_v005_runtime_observer.txt")
 
     workspace = base.make_workspace(candidate_dir)

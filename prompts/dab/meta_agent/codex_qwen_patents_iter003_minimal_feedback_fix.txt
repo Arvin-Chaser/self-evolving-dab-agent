@@ -1,0 +1,25 @@
+Act only as a constrained code editor. Do not inspect PATENTS evidence or logs.
+
+Apply the smallest repair for these already-established clean-parent facts:
+
+1. In `adapters/feedback/dab_patents_checks.py`,
+   `extract_patents_trace_errors` uses `errors.append` before `errors` is
+   initialized on the `patent_aggregation_summary` path.
+2. That function imports and calls `extract_zero_mapping_and_year_errors`, but
+   `adapters/feedback/common_trace_checks.py` does not define it.
+
+You may modify only:
+
+- `adapters/feedback/dab_patents_checks.py`
+- `adapters/feedback/common_trace_checks.py`
+
+Your first tool action must make a real source edit and leave a non-empty git
+diff. Initialize `errors` once at the beginning of the PATENTS extractor and
+add only the missing focused helper. Do not read files first. Do not print tool
+JSON or patch payloads as assistant text. Do not use whole-file replacement,
+`cat >`, or broad refactoring. Preserve all existing generic helpers, including
+`extract_operation_event_errors` and `extract_trace_based_errors`.
+
+After editing, run only py_compile, module import checks, and a focused behavior
+test for `no_years_found` and `parsed_patents=0`, then finish. Total project diff
+must remain at or below 80 changed lines.

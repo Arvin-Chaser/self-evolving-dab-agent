@@ -1,0 +1,31 @@
+You are the project-level meta-agent for the DAB data-agent research system.
+
+Read these local evidence files first:
+
+- evidence/PATENTS_META_AGENT_TASK.md
+- evidence/filtered_meta_agent_context.json
+- evidence/parent_run/result.json
+- evidence/parent_run/summary.json
+- evidence/parent_run/generated_solve.py
+- evidence/parent_run/execution_stdout.txt
+- evidence/parent_run/execution_stderr.txt
+- evidence/parent_run/stage_trace.json
+
+Inspect corresponding project source files in this isolated snapshot. Diagnose
+the earliest evidence-supported project failure layer before choosing a repair
+target. The evidence may contain a contradiction between the runner outcome
+and analyzer classification; treat that contradiction as evidence rather than
+silently selecting the more convenient interpretation.
+
+Implement exactly one small, coherent, generalizable project-level
+intervention. Do not modify validators, ground truth, legacy code, evidence,
+historical artifacts, or benchmark data. Do not encode expected PATENTS
+answers, validator-only counts, or case-specific constants. Prefer analyzer,
+feedback, packaging, or guard repairs when evidence is contradictory or
+coarse. Only edit the object prompt when evidence directly supports a
+data-agent behavior repair.
+
+Use at most 12 tool calls. Run focused local syntax or unit checks, but do not
+run a DAB child evaluation or make external LLM calls. Finish with a concise
+report containing Diagnosis, Repair target, Changed files, Validation, and
+Risks.

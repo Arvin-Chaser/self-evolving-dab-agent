@@ -16,15 +16,20 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from experiments.archive_observation import build_archive_observation
 
 
 def load_json(path: Path) -> dict[str, Any] | None:
@@ -40,6 +45,81 @@ def read_text(path: Path) -> str:
 def write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def compact_failure_observation(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {}
+    compact = {
+        "schema_version": value.get("schema_version"),
+        "observer_mode": value.get("observer_mode"),
+        "input_policy": value.get("input_policy"),
+        "primary_failure_mechanism": value.get("primary_failure_mechanism"),
+        "confidence": value.get("confidence"),
+        "affected_queries": value.get("affected_queries"),
+        "not_to_repeat": (value.get("not_to_repeat") or [])[:8],
+        "open_questions_for_meta_agent": (value.get("open_questions_for_meta_agent") or [])[:8],
+        "repair_decision_policy": value.get("repair_decision_policy"),
+        "source_pack": value.get("source_pack"),
+        "direct_behavior_input": value.get("direct_behavior_input"),
+    }
+    evidence = value.get("evidence_chain")
+    if isinstance(evidence, list):
+        compact["evidence_chain"] = evidence[:8]
+    effects = value.get("fine_grained_effect")
+    if isinstance(effects, dict):
+        compact["fine_grained_effect"] = effects
+    return {k: v for k, v in compact.items() if v not in (None, [], {})}
+
+
+def ensure_failure_observation(candidate_dir: Path, *, use_llm: bool = True, parent_agent_id: str | None = None, archive_root: Path | None = None) -> dict[str, Any]:
+    """Generate candidate failure-observation artifacts if possible.
+
+    This is observer-only evidence. It must not gate, repair, or mutate the
+    candidate patch. LLM observer failures fall back to deterministic evidence
+    extraction so postprocess remains robust.
+    """
+    child_eval = candidate_dir / "child_eval/child_eval_report.json"
+    generic_child_eval = candidate_dir / "child_eval/generic_child_eval_report.json"
+    if not child_eval.exists() and not generic_child_eval.exists():
+        return {}
+    output = candidate_dir / "failure_observation.json"
+    direct_input = candidate_dir / "direct_behavior_observation_input.json"
+    cmd = [
+        sys.executable,
+        str(ROOT / "experiments/run_direct_failure_observer_agent.py"),
+        "--candidate-dir",
+        str(candidate_dir),
+        "--archive-root",
+        str(archive_root or (ROOT / "archive")),
+    ]
+    parent_agent_id = parent_agent_id or os.getenv("FAILURE_OBSERVER_PARENT_AGENT_ID")
+    if parent_agent_id:
+        cmd.extend(["--parent-agent-id", parent_agent_id])
+    if not use_llm:
+        cmd.append("--no-llm")
+    try:
+        subprocess.run(cmd, cwd=str(ROOT), text=True, capture_output=True, check=True)
+    except Exception:
+        fallback_cmd = [
+            sys.executable,
+            str(ROOT / "experiments/run_direct_failure_observer_agent.py"),
+            "--candidate-dir",
+            str(candidate_dir),
+            "--archive-root",
+            str(ROOT / "archive"),
+            "--no-llm",
+        ]
+        if parent_agent_id:
+            fallback_cmd.extend(["--parent-agent-id", parent_agent_id])
+        try:
+            subprocess.run(fallback_cmd, cwd=str(ROOT), text=True, capture_output=True, check=False)
+        except Exception:
+            return {}
+    observation = load_json(output) or {}
+    if observation:
+        observation.setdefault("direct_behavior_input", str(direct_input))
+    return observation
 
 
 def parse_numstat(text: str) -> list[dict[str, Any]]:
@@ -130,6 +210,54 @@ def compute_answer_metrics(validation_reason: str | None) -> dict[str, Any]:
     }
 
 
+
+def normalize_answer_quality_metrics(value: Any) -> dict[str, Any]:
+    """Normalize analyzer-native answer_quality into archive answer_metrics keys."""
+    if not isinstance(value, dict):
+        return {}
+    if value.get("available") is False and not any(key in value for key in ("f1", "precision", "recall")):
+        return {}
+    metrics = dict(value)
+    if "true_positive" not in metrics and "true_positive_count" in metrics:
+        metrics["true_positive"] = metrics.get("true_positive_count")
+    if "false_positive" not in metrics and "extra_count" in metrics:
+        metrics["false_positive"] = metrics.get("extra_count")
+    if "false_negative" not in metrics and "missing_count" in metrics:
+        metrics["false_negative"] = metrics.get("missing_count")
+    if "status" not in metrics:
+        metrics["status"] = "computed"
+    return metrics
+
+
+def first_answer_metrics_from_child_eval(child_eval: dict[str, Any], *, role: str) -> tuple[dict[str, Any], str | None]:
+    """Extract child/parent metrics from the materialized child-eval report.
+
+    The new DAB tool-agent loop evaluates a materialized parent workspace and
+    writes both parent_answer_quality and child_answer_quality into the child
+    eval report. Those metrics are the correct local baseline for this
+    candidate. Archive parent-card metrics are only a fallback for legacy
+    generated-solve reports that do not contain materialized-parent quality.
+    """
+    if not isinstance(child_eval, dict):
+        return {}, None
+    if role == "child":
+        direct_keys = ("child_answer_metrics", "child_answer_quality", "answer_metrics", "answer_quality")
+    elif role == "parent":
+        direct_keys = ("parent_answer_metrics", "parent_answer_quality")
+    else:
+        direct_keys = ()
+    for key in direct_keys:
+        metrics = normalize_answer_quality_metrics(child_eval.get(key))
+        if metrics:
+            return metrics, f"child_eval.{key}"
+    child_status = child_eval.get("child_status") if isinstance(child_eval.get("child_status"), dict) else {}
+    if role == "child":
+        for source_name, source in (("child_status", child_status), ("child_eval", child_eval)):
+            metrics = normalize_answer_quality_metrics(source.get("answer_quality") if isinstance(source, dict) else None)
+            if metrics:
+                return metrics, f"{source_name}.answer_quality"
+    return {}, None
+
 def parent_answer_metrics(archive_root: Path | None, parent_agent_id: str | None, case_id: str = "PATENTS_query1") -> dict[str, Any]:
     if not archive_root or not parent_agent_id:
         return {}
@@ -144,6 +272,167 @@ def parent_answer_metrics(archive_root: Path | None, parent_agent_id: str | None
     return metrics if isinstance(metrics, dict) else {}
 
 
+def _int_metric(mapping: dict[str, Any], key: str, default: int = 0) -> int:
+    value = mapping.get(key)
+    if isinstance(value, bool):
+        return int(value)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def summarize_multi_query_child_eval(child_eval: dict[str, Any]) -> dict[str, Any]:
+    """Extract non-template multi-query improvement evidence from child eval.
+
+    The archive selector should not only reward final all-query success. For
+    multi-query evolution, a candidate can be a useful next parent when it turns
+    empty answers into concrete answers, removes tool failures, or makes
+    registered helper tools actually participate in answer generation, even if
+    one strict validator still reports a near miss. This keeps the gate from
+    rejecting genuine answer-path progress while still leaving merge eligibility
+    tied to strict validation.
+    """
+    summary = child_eval.get("child_multi_query_summary")
+    if not isinstance(summary, dict):
+        summary = {}
+    delta = child_eval.get("parent_child_delta")
+    if not isinstance(delta, dict):
+        delta = {}
+
+    per_query = summary.get("per_query_feedback")
+    if not isinstance(per_query, list):
+        per_query = []
+
+    strict_total = 0
+    strict_pass_count = 0
+    strict_failures: list[dict[str, Any]] = []
+    near_miss_count = 0
+    for item in per_query:
+        if not isinstance(item, dict):
+            continue
+        aq = item.get("answer_quality")
+        if not isinstance(aq, dict):
+            continue
+        if "strict_match_passed" not in aq:
+            continue
+        strict_total += 1
+        passed = bool(aq.get("strict_match_passed"))
+        if passed:
+            strict_pass_count += 1
+            continue
+        reason = str(aq.get("strict_match_reason") or aq.get("reason") or "")
+        strict_failures.append(
+            {
+                "query_id": item.get("query_id"),
+                "domain": item.get("domain"),
+                "selected_stage": item.get("selected_stage"),
+                "selected_signal": item.get("selected_signal"),
+                "reason": reason,
+            }
+        )
+        missing_count = aq.get("missing_count")
+        extra_count = aq.get("extra_count")
+        f1_value = aq.get("f1")
+        has_full_delta = isinstance(missing_count, (int, float)) and isinstance(extra_count, (int, float))
+        full_delta_near_miss = bool(
+            has_full_delta
+            and bool(item.get("final_answer_nonempty"))
+            and (
+                int(missing_count) + int(extra_count) <= 5
+                or (isinstance(f1_value, (int, float)) and float(f1_value) >= 0.90 and int(missing_count) <= 5)
+            )
+        )
+        lowered = reason.lower()
+        strict_reason_near_miss = bool(
+            not has_full_delta
+            and "missing" in lowered
+            and "," not in reason
+            and ";" not in reason
+            and _int_metric(item, "tool_call_count", 0) > 0
+            and bool(item.get("final_answer_nonempty"))
+        )
+        if full_delta_near_miss or strict_reason_near_miss:
+            near_miss_count += 1
+
+    child_failure_gates = child_eval.get("child_failure_gates")
+    if not isinstance(child_failure_gates, list):
+        child_failure_gates = []
+
+    query_count = _int_metric(child_eval, "query_count", _int_metric(summary, "query_count", 0))
+    child_final_answer_nonempty_count = _int_metric(
+        delta, "child_final_answer_nonempty_count", _int_metric(child_eval, "final_answer_nonempty_count", 0)
+    )
+    answer_parent_gate_blocked_empty_child_answer = bool(
+        query_count > 0
+        and child_final_answer_nonempty_count <= 0
+        and strict_pass_count <= 0
+    )
+
+    metrics = {
+        "available": bool(summary or delta),
+        "query_count": query_count,
+        "strict_validation_total": strict_total,
+        "strict_validation_pass_count": strict_pass_count,
+        "strict_validation_failed_count": max(0, strict_total - strict_pass_count),
+        "strict_validation_pass_ratio": round(strict_pass_count / strict_total, 6) if strict_total else None,
+        "strict_validation_failures": strict_failures,
+        "strict_near_miss_count": near_miss_count,
+        "child_final_answer_nonempty_count": child_final_answer_nonempty_count,
+        "child_has_nonempty_answer": child_final_answer_nonempty_count > 0,
+        "answer_parent_gate_blocked_empty_child_answer": answer_parent_gate_blocked_empty_child_answer,
+        "delta_final_answer_nonempty_count": _int_metric(delta, "delta_final_answer_nonempty_count", 0),
+        "delta_successful_run_count": _int_metric(delta, "delta_successful_run_count", 0),
+        "delta_tool_failure_count": _int_metric(delta, "delta_tool_failure_count", 0),
+        "delta_helper_registered_but_not_called_count": _int_metric(
+            delta, "delta_helper_registered_but_not_called_count", 0
+        ),
+        "reduced_tool_failures": bool(delta.get("reduced_tool_failures")),
+        "reduced_helper_registered_but_not_called": bool(delta.get("reduced_helper_registered_but_not_called")),
+        "improved_answer_count": bool(delta.get("improved_answer_count")),
+        "improved_success_count": bool(delta.get("improved_success_count")),
+        "severe_regression": bool(delta.get("severe_regression")),
+        "child_failure_gates": child_failure_gates,
+    }
+    return metrics
+
+
+def score_multi_query_progress(metrics: dict[str, Any]) -> tuple[float, list[str]]:
+    if not metrics.get("available") or metrics.get("severe_regression"):
+        return 0.0, []
+    reasons: list[str] = []
+    if metrics.get("answer_parent_gate_blocked_empty_child_answer"):
+        return 0.0, ["blocked_empty_child_answers_no_parent_reward"]
+    reward = 0.0
+    if _int_metric(metrics, "delta_final_answer_nonempty_count", 0) > 0:
+        reward += 0.22
+        reasons.append("increased_final_answer_nonempty_count")
+    if _int_metric(metrics, "delta_successful_run_count", 0) > 0:
+        reward += 0.12
+        reasons.append("increased_successful_run_count")
+    if _int_metric(metrics, "delta_tool_failure_count", 0) < 0:
+        reward += 0.18
+        reasons.append("reduced_tool_failures")
+    if _int_metric(metrics, "delta_helper_registered_but_not_called_count", 0) < 0:
+        reward += 0.18
+        reasons.append("converted_registered_helpers_into_called_helpers")
+    pass_ratio = metrics.get("strict_validation_pass_ratio")
+    if isinstance(pass_ratio, (int, float)) and pass_ratio > 0:
+        reward += min(0.25, 0.25 * float(pass_ratio))
+        reasons.append("some_strict_validators_passed")
+    if _int_metric(metrics, "strict_near_miss_count", 0) > 0:
+        reward += 0.08
+        reasons.append("strict_validator_near_miss_with_nonempty_answer")
+    if metrics.get("child_failure_gates"):
+        reward = min(reward, 0.30)
+        reasons.append("capped_due_to_child_failure_gates")
+    return round(min(0.90, reward), 6), reasons
+
+
 def compute_evolution_assessment(
     candidate_type: str,
     child_eval: dict[str, Any],
@@ -152,26 +441,139 @@ def compute_evolution_assessment(
     parent_agent_id: str | None = None,
     case_id: str = "PATENTS_query1",
 ) -> dict[str, Any]:
+    child_final_status = child_eval.get("final_status") or child_eval.get("status")
+    if child_final_status == "infra_failed_llm_connection":
+        return {
+            "evolution_status": "infra_failed_llm_connection",
+            "evolution_parent_eligible": False,
+            "reward": 0.0,
+            "answer_metrics": {"status": "unavailable_infra_failed_llm_connection"},
+            "parent_comparison_metrics": {
+                "parent_agent_id": parent_agent_id,
+                "parent_answer_metrics": parent_answer_metrics(archive_root, parent_agent_id, case_id),
+                "parent_metrics_source": "archive_parent_card",
+                "child_answer_metrics_source": "unavailable_infra_failed_llm_connection",
+                "comparison_baseline": "not_comparable_infra_failure",
+                "child_f1": None,
+                "parent_f1": None,
+                "delta_f1": None,
+                "relative_improved": False,
+                "severe_regression": False,
+            },
+            "execution_metrics": {
+                "child_exit_code": child_eval.get("child_run_exit_code"),
+                "child_execution_success": False,
+                "child_has_answer_like_output": False,
+            },
+            "signal_metrics": {
+                "useful_new_signal": False,
+                "child_selected_stage": child_eval.get("child_selected_stage"),
+                "child_selected_signal": child_eval.get("child_selected_signal"),
+            },
+            "merge_eligible": False,
+            "selection_rationale": "Child eval was skipped because the DataAgent LLM preflight failed; candidate answer quality is not comparable and should not be treated as a semantic regression.",
+        }
     child_status = child_eval.get("child_status") or {}
     validation_reason = child_status.get("validation_reason") or child_eval.get("child_validation_reason")
-    answer_metrics = compute_answer_metrics(validation_reason)
+    answer_metrics, child_metrics_source = first_answer_metrics_from_child_eval(child_eval, role="child")
+    if not answer_metrics:
+        answer_metrics = compute_answer_metrics(validation_reason)
+        child_metrics_source = "parsed_child_validation_reason"
     child_passed = bool(child_status.get("passed_original_dab_validation") or child_eval.get("child_passed"))
     child_exit_code = child_eval.get("child_run_exit_code")
     predicted_count = answer_metrics.get("predicted_count") or 0
     execution_success = child_exit_code == 0
     has_answer_like_output = predicted_count > 0
     useful_new_signal = bool(child_status.get("selected_stage") or child_eval.get("child_selected_stage"))
+    multi_query_metrics = summarize_multi_query_child_eval(child_eval)
+    multi_query_reward, multi_query_reward_reasons = score_multi_query_progress(multi_query_metrics)
+    all_strict_validators_passed = bool(
+        multi_query_metrics.get("strict_validation_total")
+        and multi_query_metrics.get("strict_validation_pass_count") == multi_query_metrics.get("strict_validation_total")
+    )
 
     answer_f1 = float(answer_metrics.get("f1") or 0.0)
-    parent_metrics = parent_answer_metrics(archive_root, parent_agent_id, case_id)
+    materialized_parent_metrics, materialized_parent_metrics_source = first_answer_metrics_from_child_eval(child_eval, role="parent")
+    archive_parent_metrics = parent_answer_metrics(archive_root, parent_agent_id, case_id)
+    archive_parent_metrics_source = "archive_parent_card" if archive_parent_metrics else None
+
+    parent_metrics = materialized_parent_metrics or archive_parent_metrics
+    parent_metrics_source = materialized_parent_metrics_source or archive_parent_metrics_source
     has_parent_answer_metrics = parent_metrics.get("f1") is not None
     parent_f1 = float(parent_metrics.get("f1") or 0.0) if has_parent_answer_metrics else None
     delta_f1 = round(answer_f1 - parent_f1, 6) if parent_f1 is not None else None
-    relative_improved = bool(child_passed or parent_f1 is None or answer_f1 > parent_f1 + 1e-6)
 
-    if child_passed:
+    has_archive_parent_metrics = archive_parent_metrics.get("f1") is not None
+    archive_parent_f1 = float(archive_parent_metrics.get("f1") or 0.0) if has_archive_parent_metrics else None
+    delta_f1_vs_archive_parent = round(answer_f1 - archive_parent_f1, 6) if archive_parent_f1 is not None else None
+    materialized_parent_f1 = (
+        float(materialized_parent_metrics.get("f1") or 0.0)
+        if materialized_parent_metrics.get("f1") is not None
+        else None
+    )
+    delta_f1_vs_materialized_parent = (
+        round(answer_f1 - materialized_parent_f1, 6)
+        if materialized_parent_f1 is not None
+        else None
+    )
+    archive_parent_tolerance = 1e-6
+    archive_parent_regression = bool(
+        candidate_type == "data_agent_repair"
+        and archive_parent_f1 is not None
+        and not multi_query_metrics.get("available")
+        and answer_f1 < archive_parent_f1 - archive_parent_tolerance
+    )
+    materialized_parent_reproduction_gap = bool(
+        archive_parent_f1 is not None
+        and materialized_parent_f1 is not None
+        and materialized_parent_f1 < archive_parent_f1 - archive_parent_tolerance
+    )
+    restored_to_archive_parent_level = bool(
+        candidate_type == "data_agent_repair"
+        and materialized_parent_reproduction_gap
+        and answer_f1 >= archive_parent_f1 - archive_parent_tolerance
+        and answer_f1 <= archive_parent_f1 + archive_parent_tolerance
+    )
+
+    relative_improved = bool(child_passed or parent_f1 is None or answer_f1 > parent_f1 + 1e-6)
+    parent_predicted_count = int(parent_metrics.get("predicted_count") or 0) if parent_metrics else 0
+    severe_regression = bool(
+        candidate_type == "data_agent_repair"
+        and parent_f1 is not None
+        and parent_f1 > 0
+        and not multi_query_metrics.get("available")
+        and (
+            answer_f1 <= 0
+            or (parent_predicted_count > 0 and predicted_count > max(parent_predicted_count * 5, parent_predicted_count + 100))
+        )
+    )
+    severe_regression = bool(severe_regression or multi_query_metrics.get("severe_regression"))
+
+    if child_passed or all_strict_validators_passed:
         evolution_status = "passed"
         eligible = True
+    elif severe_regression:
+        evolution_status = "failed_severe_child_regression"
+        eligible = False
+    elif archive_parent_regression:
+        evolution_status = "failed_archive_parent_regression"
+        eligible = False
+    elif multi_query_metrics.get("answer_parent_gate_blocked_empty_child_answer"):
+        evolution_status = "failed_empty_child_answers_not_parent_eligible"
+        eligible = False
+    elif (
+        candidate_type == "data_agent_repair"
+        and multi_query_reward > 0
+        and not multi_query_metrics.get("child_failure_gates")
+    ):
+        evolution_status = "partial_multi_query_improvement"
+        eligible = True
+    elif candidate_type == "data_agent_repair" and multi_query_reward > 0:
+        evolution_status = "failed_multi_query_improvement_capped_by_child_gates"
+        eligible = False
+    elif restored_to_archive_parent_level:
+        evolution_status = "stabilization_or_reproduction_repair"
+        eligible = False
     elif candidate_type == "data_agent_repair" and answer_f1 > 0 and relative_improved:
         evolution_status = "improved_but_failed"
         eligible = True
@@ -188,15 +590,33 @@ def compute_evolution_assessment(
     reward = 1.0 if child_passed else 0.0
     if evolution_status == "improved_but_failed":
         reward = round(min(0.85, 0.20 + 0.70 * answer_f1 + (0.05 if execution_success else 0.0)), 6)
+    elif evolution_status == "stabilization_or_reproduction_repair":
+        reward = round(min(0.35, 0.10 + 0.20 * answer_f1 + (0.05 if execution_success else 0.0)), 6)
+    elif evolution_status == "partial_multi_query_improvement":
+        reward = multi_query_reward
+    elif evolution_status == "failed_multi_query_improvement_capped_by_child_gates":
+        reward = multi_query_reward
 
-    if child_passed:
+    if child_passed or all_strict_validators_passed:
         rationale = "Strict validation passed."
+    elif evolution_status == "stabilization_or_reproduction_repair":
+        rationale = "Candidate recovered a degraded materialized-parent run back to the selected archive parent's recorded quality, but did not exceed the archive parent best; keep as evidence/stability repair, not as a new answer parent."
+    elif evolution_status == "partial_multi_query_improvement":
+        rationale = "Candidate remains non-mergeable, but multi-query child eval shows answer-path progress: " + ", ".join(multi_query_reward_reasons)
+    elif evolution_status == "failed_multi_query_improvement_capped_by_child_gates":
+        rationale = "Candidate has some multi-query improvement evidence, but child failure gates prevent it from becoming a parent."
+    elif evolution_status == "failed_empty_child_answers_not_parent_eligible":
+        rationale = "Candidate executed multi-query child runs but produced no non-empty final answers and no strict validation pass; keep it as failure evidence, not as an answer parent."
     elif eligible:
-        rationale = "Candidate remains non-mergeable, but child answer improved relative to its archive parent."
+        rationale = "Candidate remains non-mergeable, but child answer improved relative to both the materialized parent baseline and the selected archive parent baseline."
+    elif evolution_status == "failed_severe_child_regression":
+        rationale = "Candidate caused a severe child answer regression relative to the selected parent baseline, so it is not parent-eligible."
+    elif evolution_status == "failed_archive_parent_regression":
+        rationale = "Candidate improved or recovered relative to the materialized parent run but is below the selected archive parent's recorded best F1, so it must not replace the archive parent."
     elif evolution_status == "failed_negative_delta":
-        rationale = "Candidate reduced answer F1 relative to its archive parent, so it is not parent-eligible."
+        rationale = "Candidate reduced answer F1 relative to the selected parent baseline, so it is not parent-eligible."
     elif evolution_status == "failed_no_relative_answer_improvement":
-        rationale = "Candidate has non-zero answer overlap but did not improve relative to its archive parent, so it is not parent-eligible."
+        rationale = "Candidate has non-zero answer overlap but did not improve relative to the selected parent baseline, so it is not parent-eligible."
     else:
         rationale = "Candidate did not produce measurable answer overlap."
 
@@ -205,13 +625,32 @@ def compute_evolution_assessment(
         "evolution_parent_eligible": eligible,
         "reward": reward,
         "answer_metrics": answer_metrics,
+        "multi_query_metrics": {
+            **multi_query_metrics,
+            "reward_reasons": multi_query_reward_reasons,
+        },
         "parent_comparison_metrics": {
             "parent_agent_id": parent_agent_id,
             "parent_answer_metrics": parent_metrics,
+            "parent_metrics_source": parent_metrics_source,
+            "materialized_parent_answer_metrics": materialized_parent_metrics,
+            "materialized_parent_metrics_source": materialized_parent_metrics_source,
+            "archive_parent_answer_metrics": archive_parent_metrics,
+            "archive_parent_metrics_source": archive_parent_metrics_source,
+            "child_answer_metrics_source": child_metrics_source,
+            "comparison_baseline": "dual_materialized_and_archive_parent" if materialized_parent_metrics and archive_parent_metrics else ("materialized_parent_child_eval" if parent_metrics_source and parent_metrics_source.startswith("child_eval.") else "archive_parent_fallback"),
             "child_f1": answer_f1,
             "parent_f1": parent_f1,
+            "archive_parent_f1": archive_parent_f1,
+            "materialized_parent_f1": materialized_parent_f1,
             "delta_f1": delta_f1,
+            "delta_f1_vs_archive_parent": delta_f1_vs_archive_parent,
+            "delta_f1_vs_materialized_parent": delta_f1_vs_materialized_parent,
             "relative_improved": relative_improved,
+            "archive_parent_regression": archive_parent_regression,
+            "materialized_parent_reproduction_gap": materialized_parent_reproduction_gap,
+            "restored_to_archive_parent_level": restored_to_archive_parent_level,
+            "severe_regression": severe_regression,
         },
         "execution_metrics": {
             "child_exit_code": child_exit_code,
@@ -524,6 +963,7 @@ def generate_next_seed(candidate_dir: Path, case_id: str, recommended_goal: str)
     selected_signal = compact_signal(child_status.get("selected_signal"))
     selected_stage = child_status.get("selected_stage")
     runtime_repair_evidence = extract_child_runtime_repair_evidence(child_eval)
+    failure_observation = compact_failure_observation(load_json(candidate_dir / "failure_observation.json") or {})
     seed = {
         "seed_id": f"next_data_agent_repair_seed_from_{candidate_dir.name}",
         "created_for": "iter004_data_agent_repair",
@@ -532,12 +972,14 @@ def generate_next_seed(candidate_dir: Path, case_id: str, recommended_goal: str)
         "case": {
             "case_id": case_id,
             "parent_run_id": parent_run_id,
-            "parent_run_dir": "logs/dab_agent/run_demo_full_loop_20260619_200238_parent_query_PATENTS_query1_20260619_200238",
+            "parent_run_dir": child_eval.get("parent_run_dir") or child_eval.get("parent_run"),
         },
         "selected_stage": selected_stage,
         "selected_signal": "no_years_found" if selected_signal.get("event") == "no_years_found" else child_status.get("selected_signal"),
         "selected_signal_evidence": selected_signal,
         "runtime_repair_evidence": runtime_repair_evidence,
+        "failure_observation": failure_observation,
+        "failure_observation_path": str(candidate_dir / "failure_observation.json") if failure_observation else None,
         "original_dab_validation": {
             "passed": child_status.get("passed_original_dab_validation"),
             "validation_reason": child_status.get("validation_reason"),
@@ -552,7 +994,7 @@ def generate_next_seed(candidate_dir: Path, case_id: str, recommended_goal: str)
         ],
         "recommended_focus_areas": [
             "CPC definition metadata grounding",
-            "CPC level-5 mapping logic",
+            "CPC definition/group mapping logic",
             "filing_date year extraction",
             "EMA/best-year calculation path",
             "final_answer non-empty contract",
@@ -587,6 +1029,17 @@ def generate_next_seed(candidate_dir: Path, case_id: str, recommended_goal: str)
                 "",
                 "```json",
                 json.dumps(runtime_repair_evidence, indent=2, ensure_ascii=False),
+                "```",
+            ]
+        )
+    if failure_observation:
+        md.extend(
+            [
+                "",
+                "## Failure observation",
+                "",
+                "```json",
+                json.dumps(failure_observation, indent=2, ensure_ascii=False),
                 "```",
             ]
         )
@@ -653,7 +1106,12 @@ def resolve_parent_prompt_source(archive_root: Path, parent_agent_id: str, sourc
         prompt_path = Path(prompt_ref)
         if not prompt_path.is_absolute():
             prompt_path = ROOT / prompt_path
-        if prompt_path.exists():
+        # Only inherit the archived parent prompt when it is the same logical
+        # prompt/policy file being patched.  A legacy data-agent prompt is not a
+        # valid base for the new DAB tool-agent policy overlay, and using it can
+        # silently prevent improved tool-agent candidates from becoming shadow
+        # parents.
+        if prompt_path.exists() and Path(prompt_ref).name == Path(source_rel).name:
             return prompt_path, prompt_ref
     return ROOT / source_rel, source_rel
 
@@ -701,22 +1159,34 @@ def create_shadow_parent_agent(
     candidate_type: str,
     patch_review: dict[str, Any],
     assessment: dict[str, Any],
+    case_id: str,
+    query_workspace: str | None = None,
+    source_lineage_family: str | None = None,
 ) -> dict[str, Any] | None:
     if candidate_type != "data_agent_repair":
         return None
     if not assessment.get("evolution_parent_eligible"):
         return None
     agent_id = f"data_agent_shadow_{candidate_dir.name}"
-    prompt_ref, base_prompt_ref = materialize_prompt_patch(
-        candidate_dir,
-        archive_root,
-        agent_id,
-        parent_agent_id,
-        patch_review["diff_files"],
-    )
-    if not prompt_ref:
-        return None
+    query_agent_changes = [
+        path for path in patch_review["diff_files"]
+        if query_workspace and path.startswith(query_workspace.rstrip("/") + "/agent/")
+    ]
+    if query_workspace and query_agent_changes:
+        prompt_ref = f"{query_workspace.rstrip('/')}/agent/policy.txt"
+        base_prompt_ref = prompt_ref
+    else:
+        prompt_ref, base_prompt_ref = materialize_prompt_patch(
+            candidate_dir,
+            archive_root,
+            agent_id,
+            parent_agent_id,
+            patch_review["diff_files"],
+        )
+        if not prompt_ref:
+            return None
 
+    is_tool_agent = bool(query_workspace or prompt_ref.endswith("dab_tool_agent_policy_zero_start.txt"))
     card = {
         "agent_id": agent_id,
         "agent_type": "data_agent",
@@ -724,29 +1194,31 @@ def create_shadow_parent_agent(
         if assessment.get("evolution_status") == "improved_but_failed"
         else "shadow_parent_validated_child",
         "created_or_observed_at": candidate_dir.name.rsplit("_", 2)[-2] if "_" in candidate_dir.name else None,
+        "source_lineage_family": source_lineage_family,
+        "query_workspace": query_workspace,
         "source_refs": {
             "prompt": prompt_ref,
             "base_prompt": base_prompt_ref,
             "candidate_patch": str((candidate_dir / "patch.diff").relative_to(ROOT)),
             "candidate_card": str((archive_root / "candidates" / candidate_dir.name / "candidate_card.json").relative_to(ROOT)),
-            "runner": "experiments/run_dab_agent.py",
+            "runner": "experiments/run_dab_tool_agent.py" if is_tool_agent else "experiments/run_dab_agent.py",
         },
         "capabilities": [
-            "DAB code generation",
-            "runtime observer instrumentation",
-            "stage_trace emission",
+            "DAB multi-turn tool workflow" if is_tool_agent else "DAB code generation",
+            "tool-agent policy overlay" if is_tool_agent else "runtime observer instrumentation",
+            "workflow trace/tool/LLM logging" if is_tool_agent else "stage_trace emission",
             "partial-improvement continuation parent",
         ],
         "known_failures": [
             {
-                "case": "PATENTS_query1",
+                "case": case_id,
                 "status": "failed_strict_validation",
                 "reason": assessment.get("signal_metrics", {}).get("child_selected_stage"),
                 "merge_note": "Do not merge this shadow parent into main without a later strict-validation pass.",
             }
         ],
         "evals": {
-            "PATENTS_query1": {
+            case_id: {
                 "passed_original_dab_validation": assessment.get("merge_eligible"),
                 "evolution_status": assessment.get("evolution_status"),
                 "answer_metrics": assessment.get("answer_metrics"),
@@ -778,19 +1250,121 @@ def create_shadow_parent_agent(
             "can_use_as_parent": True,
         },
     )
-    score = max(0.56, float(assessment.get("reward") or 0.0))
+    runner_ref = str(card.get("source_refs", {}).get("runner") or "")
+    base_reward = float(assessment.get("reward") or 0.0)
+    if runner_ref == "experiments/run_dab_tool_agent.py":
+        # The active mainline is the DAB tool-agent workflow.  Partial-improvement
+        # tool-agent parents should outrank legacy generated-solve shadow parents
+        # so the next loop continues evolving the current workflow instead of
+        # drifting back to the retired chain.
+        score = max(0.70, base_reward + 0.18)
+        score_policy = "tool_agent_mainline_partial_improvement_floor"
+    else:
+        score = max(0.56, base_reward)
+        score_policy = "legacy_partial_improvement_floor"
     upsert_selection_score(
         archive_root,
         {
             "arm_id": agent_id,
             "arm_type": "data_agent",
             "score": round(score, 6),
+            "score_policy": score_policy,
             "evidence": assessment.get("selection_rationale"),
             "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
             "source_candidate": candidate_dir.name,
         },
     )
     return {"agent_id": agent_id, "card": str(card_path.relative_to(ROOT)), "prompt": prompt_ref, "selection_score": round(score, 6)}
+
+
+def retract_shadow_parent_agent(
+    *,
+    candidate_dir: Path,
+    archive_root: Path,
+    reason: str,
+) -> dict[str, Any] | None:
+    """Retract a stale shadow parent if an older postprocess had promoted it.
+
+    Reprocessing a candidate with stricter dual-baseline logic can make a
+    previously generated shadow parent invalid. Keep the artifact for audit, but
+    make it unselectable as a future parent.
+    """
+
+    agent_id = f"data_agent_shadow_{candidate_dir.name}"
+    card_path = archive_root / "agents" / agent_id / "agent_card.json"
+    if not card_path.exists():
+        return None
+    card = load_json(card_path) or {"agent_id": agent_id, "agent_type": "data_agent"}
+    card["status"] = "shadow_parent_retracted"
+    card["retraction"] = {
+        "reason": reason,
+        "source_candidate": candidate_dir.name,
+    }
+    evolve_policy = card.setdefault("evolve_policy", {})
+    if isinstance(evolve_policy, dict):
+        evolve_policy["can_use_as_parent"] = False
+        evolve_policy["recommended_next_use"] = "Do not use as parent; keep only as audit/evidence artifact."
+    write_json(card_path, card)
+    upsert_jsonl(
+        archive_root / "indexes/agents.jsonl",
+        "agent_id",
+        {
+            "agent_id": agent_id,
+            "agent_type": "data_agent",
+            "status": "shadow_parent_retracted",
+            "card": str(card_path.relative_to(ROOT)),
+            "can_use_as_parent": False,
+            "retraction_reason": reason,
+        },
+    )
+    upsert_selection_score(
+        archive_root,
+        {
+            "arm_id": agent_id,
+            "arm_type": "data_agent",
+            "score": 0.0,
+            "score_policy": "retracted_shadow_parent",
+            "evidence": reason,
+            "recommended_use": "Do not select as parent; retained for audit only.",
+            "source_candidate": candidate_dir.name,
+        },
+    )
+    return {"agent_id": agent_id, "card": str(card_path.relative_to(ROOT)), "status": "shadow_parent_retracted"}
+
+
+def observation_index_fields(observation: dict[str, Any]) -> dict[str, Any]:
+    observations = observation.get("observations") if isinstance(observation.get("observations"), dict) else {}
+    metric_delta = observations.get("metric_delta") if isinstance(observations.get("metric_delta"), dict) else {}
+    f1_delta = metric_delta.get("f1") if isinstance(metric_delta.get("f1"), dict) else {}
+    proposed = observations.get("proposed_contracts") if isinstance(observations.get("proposed_contracts"), dict) else {}
+    contract_eval = observations.get("contract_eval") if isinstance(observations.get("contract_eval"), dict) else {}
+    promotion = observation.get("promotion") if isinstance(observation.get("promotion"), dict) else {}
+    reuse = observation.get("reuse_policy") if isinstance(observation.get("reuse_policy"), dict) else {}
+    gate_summary = observation.get("gate_policy_summary") if isinstance(observation.get("gate_policy_summary"), dict) else {}
+    return {
+        "archive_observation_schema_version": observation.get("schema_version"),
+        "gate_policy_schema_version": gate_summary.get("schema_version"),
+        "eligible_as_parent": promotion.get("eligible_as_parent"),
+        "promotion_reason": promotion.get("reason"),
+        "promotion_score": promotion.get("promotion_score"),
+        "parent_f1_tolerance": promotion.get("parent_f1_tolerance"),
+        "f1_close_enough": promotion.get("f1_close_enough"),
+        "catastrophic_answer_failure": promotion.get("catastrophic_answer_failure"),
+        "can_seed_next_repair": reuse.get("can_seed_next_repair"),
+        "use_as_negative_example": reuse.get("use_as_negative_example"),
+        "has_open_diagnosis": bool(observations.get("open_diagnosis")),
+        "metric_delta_f1": f1_delta.get("delta"),
+        "failure_observation_tags": (observations.get("failure_observation_tags") or [])[:16],
+        "proposed_contracts_schema_version": proposed.get("schema_version"),
+        "proposed_contracts_present": proposed.get("present"),
+        "proposed_contract_count": (proposed.get("summary") or {}).get("contract_count"),
+        "contract_eval_schema_version": contract_eval.get("schema_version"),
+        "contract_eval_status": contract_eval.get("status"),
+        "contract_eval_violated_count": (contract_eval.get("summary") or {}).get("violated_count"),
+        "contract_eval_supported_count": (contract_eval.get("summary") or {}).get("supported_count"),
+        "contract_eval_unknown_count": (contract_eval.get("summary") or {}).get("unknown_count"),
+    }
+
 
 def archive_candidate(
     candidate_dir: Path,
@@ -799,13 +1373,17 @@ def archive_candidate(
     parent_agent_id: str,
     candidate_type: str,
     scope_note: str,
+    case_id: str,
+    query_workspace: str | None = None,
+    source_lineage_family: str | None = None,
 ) -> Path:
     candidate_id = candidate_dir.name
     patch_review = build_patch_review(candidate_dir)
     manifest = load_json(candidate_dir / "manifest.json") or {}
     child_eval = load_json(candidate_dir / "child_eval/child_eval_report.json") or load_json(candidate_dir / "child_eval/generic_child_eval_report.json") or {}
     review = load_json(candidate_dir / "post_child_eval_review/post_child_eval_review.json") or {}
-    assessment = compute_evolution_assessment(candidate_type, child_eval, archive_root=archive_root, parent_agent_id=parent_agent_id)
+    failure_observation = compact_failure_observation(load_json(candidate_dir / "failure_observation.json") or {})
+    assessment = compute_evolution_assessment(candidate_type, child_eval, archive_root=archive_root, parent_agent_id=parent_agent_id, case_id=case_id)
     derived_parent = create_shadow_parent_agent(
         candidate_dir=candidate_dir,
         archive_root=archive_root,
@@ -813,7 +1391,17 @@ def archive_candidate(
         candidate_type=candidate_type,
         patch_review=patch_review,
         assessment=assessment,
+        case_id=case_id,
+        query_workspace=query_workspace,
+        source_lineage_family=source_lineage_family,
     )
+    retracted_parent = None
+    if derived_parent is None and candidate_type == "data_agent_repair" and not assessment.get("evolution_parent_eligible"):
+        retracted_parent = retract_shadow_parent_agent(
+            candidate_dir=candidate_dir,
+            archive_root=archive_root,
+            reason=assessment.get("selection_rationale") or "Candidate is not parent-eligible under current evolution assessment.",
+        )
     patch_path = candidate_dir / "patch.diff"
     patch_artifact = str(patch_path.relative_to(ROOT)) if patch_path.exists() and patch_path.is_relative_to(ROOT) else str(patch_path) if patch_path.exists() else None
 
@@ -821,6 +1409,9 @@ def archive_candidate(
         "candidate_id": candidate_id,
         "candidate_type": candidate_type,
         "parent_agent_id": parent_agent_id,
+        "case_id": case_id,
+        "query_workspace": query_workspace,
+        "source_lineage_family": source_lineage_family,
         "status": state["status"],
         "changed_files": patch_review["diff_files"],
         "artifacts": {
@@ -832,6 +1423,9 @@ def archive_candidate(
             "post_child_eval_review": str((candidate_dir / "post_child_eval_review/post_child_eval_review.json").relative_to(ROOT)) if (candidate_dir / "post_child_eval_review/post_child_eval_review.json").exists() else None,
             "merge_review_package": str((candidate_dir / "merge_review_package.md").relative_to(ROOT)) if (candidate_dir / "merge_review_package.md").exists() else None,
             "next_repair_seed": str((candidate_dir / "next_data_agent_repair_seed.json").relative_to(ROOT)) if (candidate_dir / "next_data_agent_repair_seed.json").exists() else None,
+            "failure_observation_pack_legacy": str((candidate_dir / "failure_observation_pack.json").relative_to(ROOT)) if (candidate_dir / "failure_observation_pack.json").exists() else None,
+            "direct_behavior_observation_input": str((candidate_dir / "direct_behavior_observation_input.json").relative_to(ROOT)) if (candidate_dir / "direct_behavior_observation_input.json").exists() else None,
+            "failure_observation": str((candidate_dir / "failure_observation.json").relative_to(ROOT)) if (candidate_dir / "failure_observation.json").exists() else None,
         },
         "eval_summary": {
             "manifest_status": manifest.get("status"),
@@ -844,25 +1438,63 @@ def archive_candidate(
             "promoted_to_agent": state.get("post_child_eval_review_status") == "post_child_eval_review_passed",
             "merge_recommendation": state.get("merge_recommendation"),
         },
+        "failure_observation": failure_observation,
         "evolution": {
             **assessment,
             "derived_parent_agent": derived_parent,
+            "retracted_parent_agent": retracted_parent,
         },
     }
     card_path = archive_root / "candidates" / candidate_id / "candidate_card.json"
     write_json(card_path, card)
+    observation = build_archive_observation(candidate_dir)
+    observation_path = card_path.parent / "archive_observation.json"
+    write_json(observation_path, observation)
+    card["archive_observation_schema_version"] = observation.get("schema_version")
+    card["gate_policy_summary"] = observation.get("gate_policy_summary")
+    card["observations"] = observation.get("observations")
+    card["reuse_policy"] = observation.get("reuse_policy")
+    card["observation_source_artifacts"] = observation.get("source_artifacts")
+    promotion = dict(card.get("promotion") or {})
+    promotion.update(observation.get("promotion") or {})
+    card["promotion"] = promotion
+    write_json(card_path, card)
     reward = 1.0 if state.get("post_child_eval_review_status") == "post_child_eval_review_passed" else assessment.get("reward", 0.0)
+    index_row = {
+        "candidate_id": candidate_id,
+        "status": state["status"],
+        "candidate_type": candidate_type,
+        "parent_agent_id": parent_agent_id,
+        "source_lineage_family": source_lineage_family,
+        "query_workspace": query_workspace,
+        "card": str(card_path.relative_to(ROOT)),
+        "reward": reward,
+        "evolution_parent_eligible": assessment.get("evolution_parent_eligible"),
+        "evolution_status": assessment.get("evolution_status"),
+        "comparison_baseline": (assessment.get("parent_comparison_metrics") or {}).get("comparison_baseline"),
+        "failure_observer_primary_mechanism": failure_observation.get("primary_failure_mechanism"),
+        "failure_observer_confidence": failure_observation.get("confidence"),
+    }
+    index_row.update(observation_index_fields(observation))
+    comparison = assessment.get("parent_comparison_metrics") if isinstance(assessment.get("parent_comparison_metrics"), dict) else {}
+    if comparison.get("delta_f1_vs_archive_parent") is not None:
+        index_row["metric_delta_f1"] = comparison.get("delta_f1_vs_archive_parent")
+    index_row.update(
+        {
+            "metric_delta_f1_vs_archive_parent": comparison.get("delta_f1_vs_archive_parent"),
+            "metric_delta_f1_vs_materialized_parent": comparison.get("delta_f1_vs_materialized_parent"),
+            "archive_parent_f1": comparison.get("archive_parent_f1"),
+            "materialized_parent_f1": comparison.get("materialized_parent_f1"),
+            "child_f1": comparison.get("child_f1"),
+            "archive_parent_regression": comparison.get("archive_parent_regression"),
+            "materialized_parent_reproduction_gap": comparison.get("materialized_parent_reproduction_gap"),
+            "restored_to_archive_parent_level": comparison.get("restored_to_archive_parent_level"),
+        }
+    )
     upsert_jsonl(
         archive_root / "indexes/candidates.jsonl",
         "candidate_id",
-        {
-            "candidate_id": candidate_id,
-            "status": state["status"],
-            "candidate_type": candidate_type,
-            "parent_agent_id": parent_agent_id,
-            "card": str(card_path.relative_to(ROOT)),
-            "reward": reward,
-        },
+        index_row,
     )
     return card_path
 
@@ -877,8 +1509,23 @@ def postprocess_candidate(args: argparse.Namespace) -> int:
     assessment = compute_evolution_assessment(args.candidate_type, child_eval, archive_root=archive_root, parent_agent_id=args.parent_agent_id, case_id=args.case_id)
     if state.get("status") == "candidate_child_eval_failed" and assessment.get("evolution_status") == "improved_but_failed":
         state["status"] = "candidate_child_eval_improved_but_failed"
+    elif state.get("status") == "candidate_child_eval_failed" and assessment.get("evolution_status") == "stabilization_or_reproduction_repair":
+        state["status"] = "candidate_child_eval_stabilization_repair"
     state["evolution_assessment"] = assessment
     write_json(candidate_dir / "candidate_state.json", state)
+    if not args.skip_failure_observer:
+        failure_observation = ensure_failure_observation(
+            candidate_dir,
+            use_llm=not args.failure_observer_no_llm,
+            parent_agent_id=args.parent_agent_id,
+            archive_root=archive_root,
+        )
+        if failure_observation:
+            state["failure_observation"] = compact_failure_observation(failure_observation)
+            state["failure_observation_path"] = str(candidate_dir / "failure_observation.json")
+            state["failure_observation_pack_path"] = str(candidate_dir / "failure_observation_pack.json") if (candidate_dir / "failure_observation_pack.json").exists() else None
+            state["direct_behavior_observation_input_path"] = str(candidate_dir / "direct_behavior_observation_input.json")
+            write_json(candidate_dir / "candidate_state.json", state)
     review_path = generate_merge_review(candidate_dir, state, args.scope_note)
     seed_json, seed_md = generate_next_seed(candidate_dir, args.case_id, args.recommended_goal)
     card_path = archive_candidate(
@@ -888,6 +1535,9 @@ def postprocess_candidate(args: argparse.Namespace) -> int:
         parent_agent_id=args.parent_agent_id,
         candidate_type=args.candidate_type,
         scope_note=args.scope_note,
+        case_id=args.case_id,
+        query_workspace=args.query_workspace,
+        source_lineage_family=args.source_lineage_family,
     )
     summary = {
         "status": "postprocess_complete",
@@ -918,12 +1568,16 @@ def build_parser() -> argparse.ArgumentParser:
         default="Feedback/error-analysis infrastructure repair only; not a PATENTS answer solver repair.",
     )
     post.add_argument("--case-id", default="PATENTS_query1")
+    post.add_argument("--skip-failure-observer", action="store_true")
+    post.add_argument("--failure-observer-no-llm", action="store_true")
+    post.add_argument("--query-workspace")
+    post.add_argument("--source-lineage-family")
     post.add_argument(
         "--recommended-goal",
         default=(
-            "Repair the data-agent side for PATENTS_query1 so CPC level-5 mapping, "
-            "filing-date year extraction, EMA/best-year calculation, and final answer "
-            "generation produce a non-empty validated answer."
+            "Repair the data-agent side for the active DAB case using the current child-eval "
+            "feedback so metadata grounding, date extraction, aggregation, and final "
+            "answer generation produce a validated answer."
         ),
     )
     post.set_defaults(func=postprocess_candidate)
@@ -937,4 +1591,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

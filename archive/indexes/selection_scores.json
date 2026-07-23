@@ -30,6 +30,51 @@
       "source_candidate": "codex_native_iter10_two_step_selfobs_iter002_20260715_082928"
     },
     {
+      "arm_id": "data_agent_shadow_codex_native_patents_query2_generic_v1_iter001_20260716_041117",
+      "arm_type": "data_agent",
+      "score": 1.03,
+      "score_policy": "tool_agent_mainline_partial_improvement_floor",
+      "evidence": "Candidate remains non-mergeable, but child answer improved relative to the materialized parent baseline.",
+      "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+      "source_candidate": "codex_native_patents_query2_generic_v1_iter001_20260716_041117"
+    },
+    {
+      "arm_id": "data_agent_shadow_codex_native_patents_query2_generic_v1_iter001_20260716_070404",
+      "arm_type": "data_agent",
+      "score": 1.03,
+      "score_policy": "tool_agent_mainline_partial_improvement_floor",
+      "evidence": "Candidate remains non-mergeable, but child answer improved relative to the materialized parent baseline.",
+      "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+      "source_candidate": "codex_native_patents_query2_generic_v1_iter001_20260716_070404"
+    },
+    {
+      "arm_id": "data_agent_shadow_codex_native_patents_query2_generic_v1_iter001_20260717_081646",
+      "arm_type": "data_agent",
+      "score": 1.03,
+      "score_policy": "tool_agent_mainline_partial_improvement_floor",
+      "evidence": "Candidate remains non-mergeable, but child answer improved relative to the materialized parent baseline.",
+      "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+      "source_candidate": "codex_native_patents_query2_generic_v1_iter001_20260717_081646"
+    },
+    {
+      "arm_id": "data_agent_shadow_codex_native_patents_query2_generic_v1_iter001_20260717_083802",
+      "arm_type": "data_agent",
+      "score": 1.03,
+      "score_policy": "tool_agent_mainline_partial_improvement_floor",
+      "evidence": "Candidate remains non-mergeable, but child answer improved relative to the materialized parent baseline.",
+      "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+      "source_candidate": "codex_native_patents_query2_generic_v1_iter001_20260717_083802"
+    },
+    {
+      "arm_id": "data_agent_shadow_codex_native_patents_stockindex_arch_loop_iter004_iter001_20260722_083043",
+      "arm_type": "data_agent",
+      "score": 0.885,
+      "score_policy": "tool_agent_mainline_partial_improvement_floor",
+      "evidence": "Candidate remains non-mergeable, but multi-query child eval shows answer-path progress: increased_final_answer_nonempty_count, reduced_tool_failures, converted_registered_helpers_into_called_helpers, some_strict_validators_passed",
+      "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+      "source_candidate": "codex_native_patents_stockindex_arch_loop_iter004_iter001_20260722_083043"
+    },
+    {
       "arm_id": "codex_qwen_meta_v4_structured_patch_spec",
       "arm_type": "meta_agent_protocol",
       "score": 0.85,
@@ -53,6 +98,15 @@
       "evidence": "Candidate remains non-mergeable, but child answer improved relative to the materialized parent baseline.",
       "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
       "source_candidate": "dab_tool_agent_codex_native_tool_mainline_iter001_20260709_024708"
+    },
+    {
+      "arm_id": "data_agent_shadow_codex_native_patents_query2_generic_v1_iter001_20260716_052846",
+      "arm_type": "data_agent",
+      "score": 0.7,
+      "score_policy": "tool_agent_mainline_partial_improvement_floor",
+      "evidence": "Candidate remains non-mergeable, but child answer improved relative to the materialized parent baseline.",
+      "recommended_use": "Use as next isolated evolution parent, not as a merge-ready data agent.",
+      "source_candidate": "codex_native_patents_query2_generic_v1_iter001_20260716_052846"
     },
     {
       "arm_id": "data_agent_shadow_codex_qwen_proxy_patents_iter045_cpc_mapping_level_type_replay_gate_iter001_20260701_143850",
@@ -123,6 +177,24 @@
       "score": 0.15,
       "evidence": "Historical parent has analyzer ImportError/Traceback in child eval.",
       "recommended_use": "Historical reference only."
+    },
+    {
+      "arm_id": "data_agent_shadow_codex_native_patents_stockindex_arch_loop_iter007_batch_fallback_iter001_20260723_052450",
+      "arm_type": "data_agent",
+      "score": 0.0,
+      "score_policy": "retracted_shadow_parent",
+      "evidence": "Candidate executed multi-query child runs but produced no non-empty final answers and no strict validation pass; keep it as failure evidence, not as an answer parent.",
+      "recommended_use": "Do not select as parent; retained for audit only.",
+      "source_candidate": "codex_native_patents_stockindex_arch_loop_iter007_batch_fallback_iter001_20260723_052450"
+    },
+    {
+      "arm_id": "data_agent_shadow_codex_native_patents_query2_generic_v1_iter001_20260717_093011",
+      "arm_type": "data_agent",
+      "score": 0.0,
+      "score_policy": "retracted_shadow_parent",
+      "evidence": "Candidate recovered a degraded materialized-parent run back to the selected archive parent's recorded quality, but did not exceed the archive parent best; keep as evidence/stability repair, not as a new answer parent.",
+      "recommended_use": "Do not select as parent; retained for audit only.",
+      "source_candidate": "codex_native_patents_query2_generic_v1_iter001_20260717_093011"
     },
     {
       "arm_id": "data_agent_shadow_codex_qwen_proxy_patents_iter046_answer_delta_ema_ranking_iter001_20260702_015100",

@@ -462,6 +462,8 @@ def build_archive_observation(candidate_dir: Path) -> dict[str, Any]:
     candidate_dir = candidate_dir.resolve()
     manifest = load_json(candidate_dir / "manifest.json")
     child_eval = load_json(candidate_dir / "child_eval/child_eval_report.json") or load_json(candidate_dir / "child_eval/generic_child_eval_report.json")
+    candidate_state = load_json(candidate_dir / "candidate_state.json")
+    state_assessment = candidate_state.get("evolution_assessment") if isinstance(candidate_state.get("evolution_assessment"), dict) else {}
     patch_spec = load_patch_spec(candidate_dir)
     next_seed = load_json(candidate_dir / "child_eval/next_data_agent_repair_seed.json") or load_json(candidate_dir / "next_data_agent_repair_seed.json")
     child_metrics = child_eval.get("child_answer_metrics") if isinstance(child_eval.get("child_answer_metrics"), dict) else {}
@@ -510,12 +512,22 @@ def build_archive_observation(candidate_dir: Path) -> dict[str, Any]:
         )
     )
     f1_close_enough = parent_f1 is None or child_f1 is None or child_f1 >= parent_f1 - PARENT_F1_TOLERANCE
-    eligible = bool(passed and not severe and not catastrophic and f1_close_enough)
-    promotion_reason = "child_eval_passed" if eligible else "not_parent_eligible"
+    strict_parent_eligible = bool(passed and not severe and not catastrophic and f1_close_enough)
+    evolution_parent_eligible = bool(state_assessment.get("evolution_parent_eligible"))
+    eligible = bool((strict_parent_eligible or evolution_parent_eligible) and not severe and not catastrophic and f1_close_enough)
+    if strict_parent_eligible:
+        promotion_reason = "child_eval_passed"
+    elif evolution_parent_eligible:
+        promotion_reason = str(state_assessment.get("evolution_status") or "evolution_parent_eligible")
+    else:
+        promotion_reason = "not_parent_eligible"
     if severe:
         promotion_reason = "severe_child_answer_regression"
-    elif child_eval.get("child_validation_reason"):
+    elif child_eval.get("child_validation_reason") and not evolution_parent_eligible:
         promotion_reason = str(child_eval.get("child_validation_reason"))[:240]
+    promotion_score = float(state_assessment.get("reward") or 0.0) if evolution_parent_eligible else 0.0
+    if not promotion_score and isinstance(deltas.get("f1"), dict):
+        promotion_score = max(0.0, deltas.get("f1", {}).get("delta") or 0.0)
     gate_policy_summary = summarize_gate_policy(manifest.get("validation_results") or [], child_eval) if summarize_gate_policy else {}
     contract_eval = evaluate_contracts(
         proposed_contracts,
@@ -531,7 +543,10 @@ def build_archive_observation(candidate_dir: Path) -> dict[str, Any]:
         "promotion": {
             "eligible_as_parent": eligible,
             "reason": promotion_reason,
-            "promotion_score": max(0.0, deltas.get("f1", {}).get("delta") or 0.0) if isinstance(deltas.get("f1"), dict) else 0.0,
+            "promotion_score": promotion_score,
+            "strict_parent_eligible": strict_parent_eligible,
+            "evolution_parent_eligible": evolution_parent_eligible,
+            "evolution_status": state_assessment.get("evolution_status"),
             "parent_f1_tolerance": PARENT_F1_TOLERANCE,
             "f1_close_enough": f1_close_enough,
             "catastrophic_answer_failure": catastrophic,
