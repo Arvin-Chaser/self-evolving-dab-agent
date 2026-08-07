@@ -76,10 +76,12 @@ def summarize_query(
     run_dir: Path,
     run_exit: int,
     analyze_exit: int | None,
+    observer_exit: int | None = None,
 ) -> dict[str, Any]:
     summary = read_json(run_dir / "summary.json") if (run_dir / "summary.json").exists() else {}
     feedback = read_json(run_dir / "feedback_summary.json") if (run_dir / "feedback_summary.json").exists() else {}
     observations = read_json(run_dir / "observations.json") if (run_dir / "observations.json").exists() else []
+    observer_feedback = read_json(run_dir / "observer_fine_grained_feedback.json") if (run_dir / "observer_fine_grained_feedback.json").exists() else {}
     f1 = answer_quality_f1(feedback) if isinstance(feedback, dict) else None
     return {
         "query_id": query_id,
@@ -89,6 +91,9 @@ def summarize_query(
         "run_dir": str(run_dir),
         "run_exit_code": run_exit,
         "analyze_exit_code": analyze_exit,
+        "observer_exit_code": observer_exit,
+        "observer_feedback_path": str(run_dir / "observer_fine_grained_feedback.json") if (run_dir / "observer_fine_grained_feedback.json").exists() else None,
+        "observer_generated_feedback": observer_feedback if isinstance(observer_feedback, dict) else {},
         "status": summary.get("status"),
         "terminate_reason": summary.get("terminate_reason"),
         "final_answer_nonempty": summary.get("final_answer_nonempty"),
@@ -164,6 +169,8 @@ def main() -> int:
     parser.add_argument("--prepare-only", action="store_true")
     parser.add_argument("--skip-docker-check", action="store_true")
     parser.add_argument("--skip-postgres-check", action="store_true")
+    parser.add_argument("--skip-observer", action="store_true", help="Do not run the fine-grained ObserverAgent for each query.")
+    parser.add_argument("--observer-no-llm", action="store_true", help="Use deterministic ObserverAgent fallback instead of calling the observer LLM.")
     args = parser.parse_args()
 
     batch = read_json(args.batch.resolve())
@@ -219,6 +226,7 @@ def main() -> int:
         )
 
         analyze_exit: int | None = None
+        observer_exit: int | None = None
         if run_dir.exists() and (run_dir / "summary.json").exists():
             analyze_proc = run_cmd(
                 [
@@ -235,6 +243,31 @@ def main() -> int:
                 stderr_path=output_dir / "logs" / f"{safe_query_id}.analyze.stderr",
             )
             analyze_exit = analyze_proc.returncode
+            if not args.skip_observer:
+                observer_cmd = [
+                    str(PYTHON),
+                    str(ROOT / "experiments/run_fine_grained_observer_agent.py"),
+                    "--run-dir",
+                    str(run_dir),
+                    "--query-id",
+                    query_id,
+                    "--domain",
+                    str(case.get("domain") or ""),
+                    "--output",
+                    str(run_dir / "observer_fine_grained_feedback.json"),
+                    "--behavior-input-output",
+                    str(run_dir / "observer_raw_behavior_input.json"),
+                ]
+                if args.observer_no_llm:
+                    observer_cmd.append("--no-llm")
+                observer_proc = run_cmd(
+                    observer_cmd,
+                    cwd=ROOT,
+                    env=env,
+                    stdout_path=output_dir / "logs" / f"{safe_query_id}.observer.stdout",
+                    stderr_path=output_dir / "logs" / f"{safe_query_id}.observer.stderr",
+                )
+                observer_exit = observer_proc.returncode
 
         query_summaries.append(
             summarize_query(
@@ -244,6 +277,7 @@ def main() -> int:
                 run_dir=run_dir,
                 run_exit=run_proc.returncode,
                 analyze_exit=analyze_exit,
+                observer_exit=observer_exit,
             )
         )
         write_json(output_dir / "multi_query_progress.json", {"created_at": utc_now(), "queries": query_summaries})

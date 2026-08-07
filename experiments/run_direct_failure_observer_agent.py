@@ -29,6 +29,18 @@ if str(ROOT) not in sys.path:
 
 TEXT_ARTIFACT_SUFFIXES = {".json", ".jsonl", ".txt", ".log", ".md", ".py", ".csv", ".tsv"}
 SKIP_ARTIFACT_NAMES = {"__pycache__", ".git"}
+OBSERVER_EXCLUDED_EXPLANATION_ARTIFACTS = {
+    "feedback_summary.json",
+    "meta_agent_seed.json",
+    "observations.json",
+    "fine_grained_evidence_pack.json",
+    "fine_grained_evidence_pack.md",
+    "observer_fine_grained_feedback.json",
+    "observer_raw_behavior_input.json",
+    "failure_observation.json",
+    "direct_behavior_observation_input.json",
+    "failure_observation_pack.json",
+}
 
 
 def utc_now() -> str:
@@ -140,6 +152,8 @@ def parent_runs(*, candidate_dir: Path, parent_run_dir: Path | None, parent_agen
 
 def should_collect_artifact(path: Path) -> bool:
     if any(part in SKIP_ARTIFACT_NAMES for part in path.parts):
+        return False
+    if path.name in OBSERVER_EXCLUDED_EXPLANATION_ARTIFACTS:
         return False
     if not path.is_file():
         return False

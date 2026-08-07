@@ -30,6 +30,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from experiments.archive_observation import build_archive_observation
+from experiments.evidence_sufficiency import assess_evidence_sufficiency
 
 
 def load_json(path: Path) -> dict[str, Any] | None:
@@ -964,6 +965,12 @@ def generate_next_seed(candidate_dir: Path, case_id: str, recommended_goal: str)
     selected_stage = child_status.get("selected_stage")
     runtime_repair_evidence = extract_child_runtime_repair_evidence(child_eval)
     failure_observation = compact_failure_observation(load_json(candidate_dir / "failure_observation.json") or {})
+    evidence_sufficiency = assess_evidence_sufficiency(
+        seed={},
+        child_eval=child_eval,
+        failure_observation=failure_observation,
+    )
+    child_batch = child_eval.get("batch") if isinstance(child_eval.get("batch"), dict) else {}
     seed = {
         "seed_id": f"next_data_agent_repair_seed_from_{candidate_dir.name}",
         "created_for": "iter004_data_agent_repair",
@@ -980,6 +987,12 @@ def generate_next_seed(candidate_dir: Path, case_id: str, recommended_goal: str)
         "runtime_repair_evidence": runtime_repair_evidence,
         "failure_observation": failure_observation,
         "failure_observation_path": str(candidate_dir / "failure_observation.json") if failure_observation else None,
+        "evidence_sufficiency": evidence_sufficiency,
+        "feedback_evolution_opportunity": evidence_sufficiency.get("feedback_evolution_opportunity"),
+        "recommended_evolution_target": evidence_sufficiency.get("recommended_evolution_target"),
+        "recommended_observer_subtarget": evidence_sufficiency.get("recommended_observer_subtarget"),
+        "batch": child_batch,
+        "batch_id": child_batch.get("batch_id") if isinstance(child_batch, dict) else None,
         "original_dab_validation": {
             "passed": child_status.get("passed_original_dab_validation"),
             "validation_reason": child_status.get("validation_reason"),
@@ -1029,6 +1042,17 @@ def generate_next_seed(candidate_dir: Path, case_id: str, recommended_goal: str)
                 "",
                 "```json",
                 json.dumps(runtime_repair_evidence, indent=2, ensure_ascii=False),
+                "```",
+            ]
+        )
+    if evidence_sufficiency:
+        md.extend(
+            [
+                "",
+                "## Evidence sufficiency",
+                "",
+                "```json",
+                json.dumps(evidence_sufficiency, indent=2, ensure_ascii=False),
                 "```",
             ]
         )
@@ -1383,6 +1407,11 @@ def archive_candidate(
     child_eval = load_json(candidate_dir / "child_eval/child_eval_report.json") or load_json(candidate_dir / "child_eval/generic_child_eval_report.json") or {}
     review = load_json(candidate_dir / "post_child_eval_review/post_child_eval_review.json") or {}
     failure_observation = compact_failure_observation(load_json(candidate_dir / "failure_observation.json") or {})
+    evidence_sufficiency = state.get("evidence_sufficiency") if isinstance(state.get("evidence_sufficiency"), dict) else assess_evidence_sufficiency(
+        seed={},
+        child_eval=child_eval,
+        failure_observation=failure_observation,
+    )
     assessment = compute_evolution_assessment(candidate_type, child_eval, archive_root=archive_root, parent_agent_id=parent_agent_id, case_id=case_id)
     derived_parent = create_shadow_parent_agent(
         candidate_dir=candidate_dir,
@@ -1439,6 +1468,10 @@ def archive_candidate(
             "merge_recommendation": state.get("merge_recommendation"),
         },
         "failure_observation": failure_observation,
+        "evidence_sufficiency": evidence_sufficiency,
+        "feedback_evolution_opportunity": evidence_sufficiency.get("feedback_evolution_opportunity"),
+        "recommended_evolution_target": evidence_sufficiency.get("recommended_evolution_target"),
+        "recommended_observer_subtarget": evidence_sufficiency.get("recommended_observer_subtarget"),
         "evolution": {
             **assessment,
             "derived_parent_agent": derived_parent,
@@ -1474,6 +1507,11 @@ def archive_candidate(
         "comparison_baseline": (assessment.get("parent_comparison_metrics") or {}).get("comparison_baseline"),
         "failure_observer_primary_mechanism": failure_observation.get("primary_failure_mechanism"),
         "failure_observer_confidence": failure_observation.get("confidence"),
+        "evidence_sufficiency_status": evidence_sufficiency.get("status"),
+        "evidence_sufficiency_score": evidence_sufficiency.get("score"),
+        "feedback_evolution_opportunity": evidence_sufficiency.get("feedback_evolution_opportunity"),
+        "recommended_evolution_target": evidence_sufficiency.get("recommended_evolution_target"),
+        "recommended_observer_subtarget": evidence_sufficiency.get("recommended_observer_subtarget"),
     }
     index_row.update(observation_index_fields(observation))
     comparison = assessment.get("parent_comparison_metrics") if isinstance(assessment.get("parent_comparison_metrics"), dict) else {}
@@ -1512,6 +1550,10 @@ def postprocess_candidate(args: argparse.Namespace) -> int:
     elif state.get("status") == "candidate_child_eval_failed" and assessment.get("evolution_status") == "stabilization_or_reproduction_repair":
         state["status"] = "candidate_child_eval_stabilization_repair"
     state["evolution_assessment"] = assessment
+    state["evidence_sufficiency"] = assess_evidence_sufficiency(seed={}, child_eval=child_eval)
+    state["feedback_evolution_opportunity"] = state["evidence_sufficiency"].get("feedback_evolution_opportunity")
+    state["recommended_evolution_target"] = state["evidence_sufficiency"].get("recommended_evolution_target")
+    state["recommended_observer_subtarget"] = state["evidence_sufficiency"].get("recommended_observer_subtarget")
     write_json(candidate_dir / "candidate_state.json", state)
     if not args.skip_failure_observer:
         failure_observation = ensure_failure_observation(
@@ -1525,6 +1567,14 @@ def postprocess_candidate(args: argparse.Namespace) -> int:
             state["failure_observation_path"] = str(candidate_dir / "failure_observation.json")
             state["failure_observation_pack_path"] = str(candidate_dir / "failure_observation_pack.json") if (candidate_dir / "failure_observation_pack.json").exists() else None
             state["direct_behavior_observation_input_path"] = str(candidate_dir / "direct_behavior_observation_input.json")
+            state["evidence_sufficiency"] = assess_evidence_sufficiency(
+                seed={},
+                child_eval=child_eval,
+                failure_observation=state["failure_observation"],
+            )
+            state["feedback_evolution_opportunity"] = state["evidence_sufficiency"].get("feedback_evolution_opportunity")
+            state["recommended_evolution_target"] = state["evidence_sufficiency"].get("recommended_evolution_target")
+            state["recommended_observer_subtarget"] = state["evidence_sufficiency"].get("recommended_observer_subtarget")
             write_json(candidate_dir / "candidate_state.json", state)
     review_path = generate_merge_review(candidate_dir, state, args.scope_note)
     seed_json, seed_md = generate_next_seed(candidate_dir, args.case_id, args.recommended_goal)

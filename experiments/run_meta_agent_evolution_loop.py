@@ -37,6 +37,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from experiments.archive_selector import select_from_archive
+from experiments.evidence_sufficiency import assess_evidence_sufficiency
 from experiments.open_diagnosis import build_open_diagnosis_evidence, compact_open_diagnosis_evidence
 from experiments.near_miss_causal_diagnosis import build_near_miss_causal_diagnosis
 
@@ -332,39 +333,96 @@ def safe_load_json(path: Path) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
 
+DEFAULT_MULTI_QUERY_BATCH = ROOT / "dab_corpus/batches/multi_query_patents_stockindex_001.json"
+
+
+def valid_multi_query_batch(batch: Any) -> bool:
+    if not isinstance(batch, dict):
+        return False
+    query_ids = batch.get("query_ids")
+    return isinstance(query_ids, list) and any(str(item).strip() for item in query_ids)
+
+
+def load_multi_query_batch(path: Path) -> dict[str, Any]:
+    batch = safe_load_json(path)
+    if valid_multi_query_batch(batch):
+        batch = dict(batch)
+        batch.setdefault("recovered_from", str(path))
+        return batch
+    return {}
+
+
+def read_text_tail(path: Path, max_chars: int = 4000) -> str:
+    if not path.exists():
+        return ""
+    text = path.read_text(encoding="utf-8", errors="replace")
+    if len(text) <= max_chars:
+        return text
+    return text[-max_chars:]
+
+
 def recover_multi_query_batch_from_seed(seed: dict[str, Any]) -> dict[str, Any]:
     """Return a runnable multi-query batch for child eval.
 
-    Some handoff seeds are deliberately compact and keep only the previous
-    failure observation, not the original batch object. Full child rerun still
-    needs query_ids, so recover them from the source candidate's child eval
-    report when the seed does not carry a complete batch.
+    Full child rerun requires query_ids.  Handoff seeds from failed candidates
+    can be compact and may lose the original batch, so recover it from several
+    lineage locations before falling back to the disk-safe local smoke batch.
     """
     batch = seed.get("batch") if isinstance(seed.get("batch"), dict) else {}
-    query_ids = batch.get("query_ids")
-    if isinstance(query_ids, list) and query_ids:
+    if valid_multi_query_batch(batch):
         return batch
 
-    source_candidate_dir = seed.get("source_candidate_dir")
-    if source_candidate_dir:
-        report_path = Path(str(source_candidate_dir)) / "child_eval" / "child_eval_report.json"
-        report = safe_load_json(report_path)
-        recovered: list[str] = []
-        for item in report.get("per_query_results") or []:
-            if not isinstance(item, dict):
-                continue
-            query_id = str(item.get("query_id") or "").strip()
-            if query_id and query_id not in recovered:
-                recovered.append(query_id)
-        if recovered:
-            return {
-                "schema_version": "dab_query_batch_v001",
-                "batch_id": str(seed.get("batch_id") or report.get("batch_id") or "recovered_child_eval_batch"),
-                "query_ids": recovered,
-                "recovered_from": str(report_path),
-            }
+    batch_id = str(seed.get("batch_id") or "").strip()
+    if batch_id:
+        for candidate_path in (
+            ROOT / "dab_corpus/batches" / f"{batch_id}.json",
+            ROOT / "dab_corpus/batches" / batch_id,
+        ):
+            recovered_batch = load_multi_query_batch(candidate_path)
+            if recovered_batch:
+                return recovered_batch
 
-    return batch
+    for key in ("source_candidate_dir", "parent_candidate_dir", "source_candidate"):
+        candidate_dir = seed.get(key)
+        if not candidate_dir:
+            continue
+        candidate_path = Path(str(candidate_dir))
+        if not candidate_path.is_absolute():
+            candidate_path = ROOT / candidate_path
+        for seed_path in (
+            candidate_path / "child_eval/next_data_agent_repair_seed.json",
+            candidate_path / "next_data_agent_repair_seed.json",
+            candidate_path / "child_eval/child_eval_report.json",
+        ):
+            report = safe_load_json(seed_path)
+            recovered_batch = report.get("batch") if isinstance(report.get("batch"), dict) else {}
+            if valid_multi_query_batch(recovered_batch):
+                recovered_batch = dict(recovered_batch)
+                recovered_batch.setdefault("recovered_from", str(seed_path))
+                return recovered_batch
+            recovered: list[str] = []
+            for item in report.get("per_query_results") or report.get("per_query_feedback") or []:
+                if not isinstance(item, dict):
+                    continue
+                query_id = str(item.get("query_id") or "").strip()
+                if query_id and query_id not in recovered:
+                    recovered.append(query_id)
+            if recovered:
+                return {
+                    "schema_version": "dab_query_batch_v001",
+                    "batch_id": str(seed.get("batch_id") or report.get("batch_id") or "recovered_child_eval_batch"),
+                    "query_ids": recovered,
+                    "recovered_from": str(seed_path),
+                }
+
+    default_batch = load_multi_query_batch(DEFAULT_MULTI_QUERY_BATCH)
+    if default_batch:
+        default_batch["recovery_reason"] = "seed_missing_batch_query_ids"
+        return default_batch
+
+    return {}
+
+
 def upsert_jsonl(path: Path, key: str, row: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     rows = load_jsonl(path)
@@ -845,10 +903,23 @@ def run_cmd(
     stdout_path: Path | None = None,
     stderr_path: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
+    if stdout_path:
+        stdout_path.parent.mkdir(parents=True, exist_ok=True)
+    if stderr_path:
+        stderr_path.parent.mkdir(parents=True, exist_ok=True)
     stdout = stdout_path.open("w", encoding="utf-8") if stdout_path else subprocess.PIPE
     stderr = stderr_path.open("w", encoding="utf-8") if stderr_path else subprocess.PIPE
     try:
         return subprocess.run(args, cwd=cwd, env=env, text=True, stdout=stdout, stderr=stderr, check=False)
+    except (OSError, subprocess.SubprocessError) as exc:
+        message = f"{type(exc).__name__}: {exc}"
+        if stderr_path:
+            stderr.write(message + "\n")
+            stderr_value = None
+        else:
+            stderr_value = message
+        stdout_value = None if stdout_path else ""
+        return subprocess.CompletedProcess(args, 127, stdout_value, stderr_value)
     finally:
         if stdout_path:
             stdout.close()
@@ -1625,6 +1696,10 @@ def analyze_dab_tool_agent_and_seed(
         stderr_path=loop_dir / "parent_fine_grained_observer.stderr",
     )
     observer_feedback = load_json(observer_feedback_path)
+    evidence_sufficiency = assess_evidence_sufficiency(
+        seed=meta_agent_seed if isinstance(meta_agent_seed, dict) else {},
+        observer_feedback=observer_feedback if isinstance(observer_feedback, dict) else {},
+    )
     obs_top = observations[:8] if isinstance(observations, list) else []
     seed = dict(meta_agent_seed) if isinstance(meta_agent_seed, dict) else {}
     seed.update(
@@ -1655,6 +1730,7 @@ def analyze_dab_tool_agent_and_seed(
                 "observer_generated_feedback": observer_feedback,
                 "observer_generated_feedback_path": str(observer_feedback_path),
                 "observer_raw_behavior_input_path": str(observer_input_path),
+                "evidence_sufficiency": evidence_sufficiency,
                 "top_observations": obs_top,
                 "structured_observations": evidence_pack.get("structured_observations"),
                 "repair_guidance": evidence_pack.get("repair_guidance"),
@@ -1667,6 +1743,9 @@ def analyze_dab_tool_agent_and_seed(
             "observer_generated_feedback": observer_feedback,
             "observer_generated_feedback_path": str(observer_feedback_path),
             "observer_raw_behavior_input_path": str(observer_input_path),
+            "evidence_sufficiency": evidence_sufficiency,
+            "feedback_evolution_opportunity": evidence_sufficiency.get("feedback_evolution_opportunity"),
+            "recommended_evolution_target": evidence_sufficiency.get("recommended_evolution_target"),
             "full_evidence_pack_paths": {
                 "json": str(fine_grained_json_path),
                 "markdown": str(fine_grained_md_path),
@@ -1680,6 +1759,9 @@ def analyze_dab_tool_agent_and_seed(
     seed.setdefault("candidate_repair_layers", feedback_summary.get("candidate_repair_layers") or [])
     seed.setdefault("routing_policy", feedback_summary.get("routing_policy") or {})
     seed.setdefault("top_observations", obs_top)
+    seed.setdefault("evidence_sufficiency", evidence_sufficiency)
+    seed.setdefault("feedback_evolution_opportunity", evidence_sufficiency.get("feedback_evolution_opportunity"))
+    seed.setdefault("recommended_evolution_target", evidence_sufficiency.get("recommended_evolution_target"))
     seed_path = loop_dir / "repair_seed.json"
     write_json(seed_path, seed)
     return seed, seed_path
@@ -2480,12 +2562,60 @@ def run_dab_tool_agent_child_eval(
     return report
 
 
+OBSERVER_INFRASTRUCTURE_EVAL_FILES = {
+    "experiments/run_meta_agent_evolution_loop.py",
+    "experiments/evidence_sufficiency.py",
+    "experiments/run_fine_grained_observer_agent.py",
+    "experiments/run_direct_failure_observer_agent.py",
+    "experiments/analyze_dab_tool_agent_trace.py",
+    "experiments/build_dab_tool_agent_evidence_pack.py",
+}
+
+
+def is_observer_infrastructure_candidate(changed_files: list[str]) -> bool:
+    if not changed_files:
+        return False
+    return all(path in OBSERVER_INFRASTRUCTURE_EVAL_FILES for path in changed_files)
+
+
+def run_observer_infrastructure_child_eval(*, child_ws: Path, child_eval_dir: Path, loop_dir: Path) -> dict[str, Any]:
+    """Evaluate observer/harness patches with the patched workspace itself."""
+    eval_dir = child_eval_dir / "observer_infrastructure_eval"
+    eval_dir.mkdir(parents=True, exist_ok=True)
+    loop_dir.mkdir(parents=True, exist_ok=True)
+    smoke_script = eval_dir / "observer_infra_smoke.py"
+    smoke_report = eval_dir / "observer_infra_smoke_report.json"
+    smoke_work = eval_dir / "smoke_work"
+    smoke_script.write_text('\nimport json\nimport sys\nfrom pathlib import Path\n\nchild_ws = Path(sys.argv[1])\nwork = Path(sys.argv[2])\nreport_path = Path(sys.argv[3])\nwork.mkdir(parents=True, exist_ok=True)\nsys.path.insert(0, str(child_ws))\n\nreport = {"status": "failed", "checks": {}}\ntry:\n    from experiments.run_meta_agent_evolution_loop import run_cmd, read_text_tail\n    from experiments.evidence_sufficiency import assess_evidence_sufficiency\n\n    stdout_path = work / "startup_failure.stdout"\n    stderr_path = work / "startup_failure.stderr"\n    proc = run_cmd(\n        [str(work / "definitely_missing_command_for_observer_infra_smoke")],\n        cwd=work,\n        stdout_path=stdout_path,\n        stderr_path=stderr_path,\n    )\n    stderr_tail = read_text_tail(stderr_path)\n    child_eval = {\n        "child_selected_signal": "multi_query_child_eval_failed",\n        "query_count": 0,\n        "final_answer_nonempty_count": 0,\n        "full_child_rerun": {\n            "required": True,\n            "status": "failed",\n            "exit_code": proc.returncode,\n            "stdout_path": str(stdout_path),\n            "stderr_path": str(stderr_path),\n            "artifact_paths": {"stdout": str(stdout_path), "stderr": str(stderr_path)},\n            "stderr_tail": stderr_tail,\n            "failure_mechanism": "full_child_rerun_command_failed",\n        },\n        "parent_child_delta": {\n            "comparison_available": False,\n            "reason": "observer_infra_smoke_failed_before_multi_query_summary",\n        },\n    }\n    sufficiency = assess_evidence_sufficiency(child_eval=child_eval)\n    missing = sufficiency.get("missing_evidence") or []\n    checks = {\n        "run_cmd_returned_failed_process": proc.returncode != 0,\n        "stderr_path_exists": stderr_path.exists(),\n        "stderr_tail_nonempty": bool(stderr_tail.strip()),\n        "sufficiency_sees_full_child_traceback": bool((sufficiency.get("available_evidence") or {}).get("has_full_child_traceback")),\n        "missing_full_child_stderr_resolved": "full_child_rerun_stderr_or_traceback" not in missing,\n        "parent_child_delta_preserved": bool(child_eval.get("parent_child_delta")),\n    }\n    passed = all(checks.values())\n    report = {\n        "status": "passed" if passed else "failed",\n        "checks": checks,\n        "completed_process": {"returncode": proc.returncode},\n        "stderr_tail": stderr_tail,\n        "synthetic_child_eval": child_eval,\n        "sufficiency_probe": sufficiency,\n    }\nexcept Exception as exc:\n    report = {\n        "status": "failed",\n        "exception_type": type(exc).__name__,\n        "exception_message": str(exc),\n        "checks": report.get("checks", {}),\n    }\n\nreport_path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\\n", encoding="utf-8")\nsys.exit(0 if report.get("status") == "passed" else 1)\n', encoding="utf-8")
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(child_ws)
+    proc = run_cmd(
+        [str(ROOT / ".venv/bin/python"), str(smoke_script), str(child_ws), str(smoke_work), str(smoke_report)],
+        cwd=child_ws,
+        env=env,
+        stdout_path=loop_dir / "observer_infra_child_eval.stdout",
+        stderr_path=loop_dir / "observer_infra_child_eval.stderr",
+    )
+    report = safe_load_json(smoke_report)
+    report.update(
+        {
+            "eval_kind": "observer_infrastructure_child_eval",
+            "exit_code": proc.returncode,
+            "report_path": str(smoke_report),
+            "stdout_path": str(loop_dir / "observer_infra_child_eval.stdout"),
+            "stderr_path": str(loop_dir / "observer_infra_child_eval.stderr"),
+        }
+    )
+    return report
+
+
 def run_multi_query_architecture_child_eval(
     *,
     candidate_dir: Path,
     seed: dict[str, Any],
     loop_dir: Path,
     iteration: int,
+    parent_agent_card: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Evaluate a multi-query architecture/observer candidate without hand repair.
 
@@ -2534,6 +2664,24 @@ def run_multi_query_architecture_child_eval(
     run_cmd(["git", "config", "user.email", "meta-loop-multi-query-child-eval@localhost"], cwd=child_ws)
     run_cmd(["git", "add", "."], cwd=child_ws)
     run_cmd(["git", "commit", "--quiet", "-m", "baseline"], cwd=child_ws)
+
+    parent_source_materialization = materialize_child_parent_source(child_ws, parent_agent_card)
+    if parent_source_materialization.get("status") == "failed":
+        report = {
+            "status": "parent_source_materialization_failed",
+            "final_status": "candidate_child_eval_failed",
+            "eval_kind": "multi_query_architecture_reanalysis",
+            "workspace": str(child_ws),
+            "parent_source_materialization": parent_source_materialization,
+            "child_failure_gates": ["parent_source_materialization_failed"],
+        }
+        write_json(child_eval_dir / "child_eval_report.json", report)
+        write_json(child_eval_dir / "generic_child_eval_report.json", report)
+        return report
+    if parent_source_materialization.get("status") == "applied":
+        run_cmd(["git", "add", "."], cwd=child_ws)
+        run_cmd(["git", "commit", "--quiet", "--amend", "--no-edit"], cwd=child_ws)
+
     apply_proc = run_cmd(["git", "apply", str(patch_path)], cwd=child_ws)
     patch_apply_mode = "strict"
     if apply_proc.returncode != 0:
@@ -2544,6 +2692,11 @@ def run_multi_query_architecture_child_eval(
 
     manifest = safe_load_json(candidate_dir / "manifest.json")
     changed_files = [str(path) for path in manifest.get("project_changed_files") or []]
+    observer_infra_eval_applicable = is_observer_infrastructure_candidate(changed_files)
+    observer_infrastructure_eval: dict[str, Any] = {
+        "required": observer_infra_eval_applicable,
+        "status": "not_required" if not observer_infra_eval_applicable else "pending",
+    }
     child_failure_gates: list[str] = []
     if apply_proc.returncode != 0:
         child_failure_gates.append("patch_apply_failed")
@@ -2554,6 +2707,7 @@ def run_multi_query_architecture_child_eval(
             "workspace": str(child_ws),
             "stderr": apply_proc.stderr,
             "patch_apply_mode": patch_apply_mode,
+            "parent_source_materialization": parent_source_materialization,
             "child_failure_gates": child_failure_gates,
         }
         write_json(child_eval_dir / "child_eval_report.json", report)
@@ -2575,6 +2729,15 @@ def run_multi_query_architecture_child_eval(
         compile_exit_code = compile_proc.returncode
         if compile_proc.returncode != 0:
             child_failure_gates.append("child_py_compile_failed")
+
+    if observer_infra_eval_applicable and compile_exit_code == 0 and not any(g in {"patch_apply_failed", "child_py_compile_failed"} for g in child_failure_gates):
+        observer_infrastructure_eval = run_observer_infrastructure_child_eval(
+            child_ws=child_ws,
+            child_eval_dir=child_eval_dir,
+            loop_dir=loop_dir,
+        )
+        if observer_infrastructure_eval.get("status") != "passed":
+            child_failure_gates.append("observer_infrastructure_child_eval_failed")
 
     reanalysis_root = child_eval_dir / "patched_reanalysis"
     reanalysis_root.mkdir(parents=True, exist_ok=True)
@@ -2686,8 +2849,9 @@ def run_multi_query_architecture_child_eval(
         "experiments/gate_policy.py",
         "experiments/contract_eval.py",
     }
-    full_rerun_required_files = [path for path in changed_files if path not in reanalysis_only_safe_files]
-    reanalysis_only_applicable = not full_rerun_required_files
+    full_rerun_required_files = [] if observer_infra_eval_applicable else [path for path in changed_files if path not in reanalysis_only_safe_files]
+    reanalysis_only_applicable = not full_rerun_required_files and not observer_infra_eval_applicable
+    recovered_batch_for_next_seed = recover_multi_query_batch_from_seed(seed)
 
     full_child_rerun: dict[str, Any] = {
         "required": bool(full_rerun_required_files),
@@ -2696,7 +2860,7 @@ def run_multi_query_architecture_child_eval(
     full_child_summary: dict[str, Any] = {}
     parent_child_delta: dict[str, Any] = {}
     if full_rerun_required_files and compile_exit_code == 0 and not any(g in {"patch_apply_failed", "child_py_compile_failed"} for g in child_failure_gates):
-        batch = recover_multi_query_batch_from_seed(seed)
+        batch = recovered_batch_for_next_seed
         batch_id = str(seed.get("batch_id") or batch.get("batch_id") or f"multi_query_child_iter{iteration:03d}")
         child_batch_path = child_ws / "dab_corpus" / "batches" / f"{batch_id}.json"
         if not child_batch_path.exists():
@@ -2708,41 +2872,72 @@ def run_multi_query_architecture_child_eval(
         env_full["PYTHONPATH"] = str(child_ws)
         env_full.setdefault("DAB_TOOL_AGENT_API_KEY_ENV", "DASHSCOPE_API_KEY")
         max_iterations = str(env_full.get("DAB_TOOL_AGENT_CHILD_MAX_ITERATIONS") or env_full.get("DAB_MULTI_QUERY_MAX_ITERATIONS") or "10")
+        full_child_stdout_path = loop_dir / "multi_query_full_child_run.stdout"
+        full_child_stderr_path = loop_dir / "multi_query_full_child_run.stderr"
+        full_child_command = [
+            str(ROOT / ".venv/bin/python"),
+            str(child_ws / "experiments/run_multi_query_baseline.py"),
+            "--batch",
+            str(child_batch_path),
+            "--registry",
+            str(child_ws / "dab_corpus/registry.json"),
+            "--dab-root",
+            str(child_ws / "external/DataAgentBench_sparse"),
+            "--output-root",
+            str(child_output_root),
+            "--run-id",
+            child_run_id,
+            "--max-iterations",
+            max_iterations,
+        ]
         full_proc = run_cmd(
-            [
-                str(ROOT / ".venv/bin/python"),
-                str(child_ws / "experiments/run_multi_query_baseline.py"),
-                "--batch",
-                str(child_batch_path),
-                "--registry",
-                str(child_ws / "dab_corpus/registry.json"),
-                "--dab-root",
-                str(child_ws / "external/DataAgentBench_sparse"),
-                "--output-root",
-                str(child_output_root),
-                "--run-id",
-                child_run_id,
-                "--max-iterations",
-                max_iterations,
-            ],
+            full_child_command,
             cwd=child_ws,
             env=env_full,
-            stdout_path=loop_dir / "multi_query_full_child_run.stdout",
-            stderr_path=loop_dir / "multi_query_full_child_run.stderr",
+            stdout_path=full_child_stdout_path,
+            stderr_path=full_child_stderr_path,
         )
         child_summary_path = child_output_root / child_run_id / "multi_query_summary.json"
         full_child_summary = safe_load_json(child_summary_path)
+        full_child_artifacts = {
+            "stdout": str(full_child_stdout_path),
+            "stderr": str(full_child_stderr_path),
+            "batch": str(child_batch_path),
+            "summary": str(child_summary_path),
+            "output_dir": str(child_output_root / child_run_id),
+        }
+        failure_mechanism = None
+        if full_proc.returncode != 0:
+            failure_mechanism = "full_child_rerun_command_failed"
+        elif not full_child_summary:
+            failure_mechanism = "full_child_rerun_missing_multi_query_summary"
         full_child_rerun = {
             "required": True,
             "status": "completed" if full_proc.returncode == 0 and full_child_summary else "failed",
             "exit_code": full_proc.returncode,
+            "command": full_child_command,
             "run_id": child_run_id,
             "output_dir": str(child_output_root / child_run_id),
             "summary_path": str(child_summary_path),
+            "stdout_path": str(full_child_stdout_path),
+            "stderr_path": str(full_child_stderr_path),
+            "artifact_paths": full_child_artifacts,
+            "stdout_tail": read_text_tail(full_child_stdout_path),
+            "stderr_tail": read_text_tail(full_child_stderr_path),
+            "failure_mechanism": failure_mechanism,
             "max_iterations": max_iterations,
         }
         if full_proc.returncode != 0 or not full_child_summary:
             child_failure_gates.append("multi_query_full_child_rerun_failed")
+            parent_child_delta = {
+                "comparison_available": False,
+                "reason": "full_child_rerun_failed_before_multi_query_summary",
+                "blocked_by": failure_mechanism,
+                "full_child_exit_code": full_proc.returncode,
+                "full_child_stdout_path": str(full_child_stdout_path),
+                "full_child_stderr_path": str(full_child_stderr_path),
+                "full_child_output_dir": str(child_output_root / child_run_id),
+            }
         else:
             def as_int(value: Any) -> int:
                 try:
@@ -2817,7 +3012,14 @@ def run_multi_query_architecture_child_eval(
         or parent_child_delta.get("reduced_tool_failures")
         or parent_child_delta.get("reduced_helper_registered_but_not_called")
     )
-    if reanalysis_only_applicable:
+    if observer_infra_eval_applicable:
+        child_passed = bool(
+            observer_infrastructure_eval.get("status") == "passed"
+            and compile_exit_code == 0
+            and not child_failure_gates
+        )
+        child_improved_but_failed = False
+    elif reanalysis_only_applicable:
         child_passed = bool(
             query_count
             and successful_reanalysis_count == query_count
@@ -2848,6 +3050,23 @@ def run_multi_query_architecture_child_eval(
     effective_helper_status_counts = full_child_summary.get("helper_usage_status_counts") if isinstance(full_child_summary.get("helper_usage_status_counts"), dict) else helper_usage_status_counts
     effective_helper_not_called_count = full_child_summary.get("helper_registered_but_not_called_count", effective_helper_status_counts.get("helper_tool_registered_but_not_called", 0))
     effective_per_query_feedback = full_child_summary.get("per_query_feedback") if isinstance(full_child_summary.get("per_query_feedback"), list) else per_query_results
+    if observer_infra_eval_applicable and isinstance(observer_infrastructure_eval.get("sufficiency_probe"), dict):
+        child_evidence_sufficiency = observer_infrastructure_eval["sufficiency_probe"]
+    else:
+        child_evidence_sufficiency = assess_evidence_sufficiency(
+            seed=seed if isinstance(seed, dict) else {},
+            child_eval={
+                "query_count": effective_query_count,
+                "final_answer_nonempty_count": effective_final_answer_count,
+                "selected_stage_counts": effective_stage_counts,
+                "selected_problem_type_counts": effective_problem_counts,
+                "helper_usage_status_counts": effective_helper_status_counts,
+                "full_child_rerun": full_child_rerun,
+                "parent_child_delta": parent_child_delta,
+                "child_selected_stage": next(iter(effective_stage_counts), None) if isinstance(effective_stage_counts, dict) else None,
+                "child_selected_signal": "multi_query_full_child_rerun_passed" if child_passed and full_child_rerun.get("required") else ("multi_query_reanalysis_passed" if child_passed else "multi_query_child_eval_failed"),
+            },
+        )
     next_seed = dict(seed)
     next_seed.update(
         {
@@ -2856,6 +3075,8 @@ def run_multi_query_architecture_child_eval(
             "source": "child_eval_multi_query_architecture_reanalysis",
             "parent_candidate_dir": str(candidate_dir),
             "repair_profile": "multi_query_architecture_evolution",
+            "batch": recovered_batch_for_next_seed,
+            "batch_id": recovered_batch_for_next_seed.get("batch_id") if isinstance(recovered_batch_for_next_seed, dict) else None,
             "query_count": effective_query_count,
             "successful_run_count": effective_successful_count,
             "successful_reanalysis_count": successful_reanalysis_count,
@@ -2870,6 +3091,11 @@ def run_multi_query_architecture_child_eval(
             "full_child_rerun": full_child_rerun,
             "parent_child_delta": parent_child_delta,
             "child_multi_query_summary": full_child_summary,
+            "observer_infrastructure_eval": observer_infrastructure_eval,
+            "evidence_sufficiency": child_evidence_sufficiency,
+            "feedback_evolution_opportunity": child_evidence_sufficiency.get("feedback_evolution_opportunity"),
+            "recommended_evolution_target": child_evidence_sufficiency.get("recommended_evolution_target"),
+            "recommended_observer_subtarget": child_evidence_sufficiency.get("recommended_observer_subtarget"),
         }
     )
     next_seed_path = child_eval_dir / "next_data_agent_repair_seed.json"
@@ -2886,10 +3112,18 @@ def run_multi_query_architecture_child_eval(
         "patch_apply_mode": patch_apply_mode,
         "child_py_compile_exit_code": compile_exit_code,
         "reanalysis_only_applicable": reanalysis_only_applicable,
+        "observer_infra_eval_applicable": observer_infra_eval_applicable,
+        "observer_infrastructure_eval": observer_infrastructure_eval,
+        "batch": recovered_batch_for_next_seed,
+        "batch_id": recovered_batch_for_next_seed.get("batch_id") if isinstance(recovered_batch_for_next_seed, dict) else None,
         "full_rerun_required_files": full_rerun_required_files,
         "full_child_rerun": full_child_rerun,
         "parent_child_delta": parent_child_delta,
         "child_multi_query_summary": full_child_summary,
+        "evidence_sufficiency": child_evidence_sufficiency,
+        "feedback_evolution_opportunity": child_evidence_sufficiency.get("feedback_evolution_opportunity"),
+        "recommended_evolution_target": child_evidence_sufficiency.get("recommended_evolution_target"),
+        "recommended_observer_subtarget": child_evidence_sufficiency.get("recommended_observer_subtarget"),
         "full_child_strict_mismatch_count": full_child_strict_mismatch_count,
         "child_improved_but_failed": child_improved_but_failed,
         "query_count": effective_query_count,
@@ -2952,6 +3186,20 @@ def run_generic_child_eval(
         "parent_agent_id": (parent_agent_card or {}).get("agent_id") if isinstance(parent_agent_card, dict) else None,
     }
 
+
+def scope_note_for_candidate_type(candidate_type: str) -> str:
+    """Human-readable archive scope note for candidate postprocessing."""
+    if candidate_type == "data_agent_multi_query_architecture_repair":
+        return (
+            "Multi-query DataAgent architecture repair candidate. Evaluate through "
+            "batch child eval and archive observations; do not treat helper creation "
+            "alone as answer success."
+        )
+    if candidate_type == "data_agent_project_repair":
+        return "DataAgent project-source repair candidate; child eval decides parent eligibility."
+    if candidate_type == "data_agent_tool_repair":
+        return "DataAgent helper/tool repair candidate; verify helper is registered, called, and used in final answer behavior."
+    return "Meta-agent repair candidate; child eval and archive scoring decide promotion, not candidate text alone."
 def postprocess_candidate(
     *,
     candidate_dir: Path,
@@ -3309,6 +3557,7 @@ def run_loop(args: argparse.Namespace) -> int:
                     seed=seed,
                     loop_dir=iteration_dir,
                     iteration=iteration,
+                    parent_agent_card=parent["card"],
                 )
             else:
                 child_llm_preflight = run_dab_tool_agent_llm_preflight(iteration_dir, "child")
