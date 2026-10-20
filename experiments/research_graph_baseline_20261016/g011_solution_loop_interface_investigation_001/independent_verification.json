@@ -1,0 +1,48 @@
+{
+  "boundary": {
+    "benchmark_run": false,
+    "not_formal_candidate": true,
+    "real_model_behavior_tested": false,
+    "score_or_causal_benefit_established": false,
+    "semantic_support_verified": false
+  },
+  "intent_coverage": {
+    "behavior_use": "implemented_bounded_synthetic",
+    "record_lifecycle": "implemented_bounded",
+    "structural_validation": "implemented_bounded"
+  },
+  "manifest_sha256": "3fac0dbe10a18c16ef3fc226bbdc1235903397ccffda8be5043d041be3912b44",
+  "manifest_status": "feasible_bounded",
+  "parent_tree_sha256": "206c4f5186a66d72b851aa888eb75d975d5ce2085970a322881997b119f16d0d",
+  "research_sha256": "8ac5183d11f4ff1eb948abb0eec95990ebd644be4addddb0a18209f973f8b934",
+  "schema_version": "g011_solution_loop_interface_independent_verification_v1",
+  "status": "artifacts_verified_transport_incomplete",
+  "tests": {
+    "command": "python -B -m unittest discover -s tests -t . -v",
+    "returncode": 0,
+    "status": "passed_independently",
+    "tests_run": 66
+  },
+  "transport_incident": {
+    "final_message_present": false,
+    "interpretation": "The model wrote the prototype, tests, findings, and manifest before the SSE idle timeout. The independent verification establishes artifact integrity only; it does not repair or invent a missing final model message.",
+    "meta_process_returned_success": false,
+    "terminal_event": {
+      "error": {
+        "message": "stream disconnected before completion: idle timeout waiting for SSE"
+      },
+      "type": "turn.failed"
+    }
+  },
+  "verified_output_sha256": {
+    "BOUNDED_FINDINGS.md": "445f578014d1677117665287491a871cf2cd4202541bcfab81ab98d710ae1ff8",
+    "prototype/__init__.py": "4ec42d25ccaf2b742dc66dbd709470c4a29d632b8e54bd4e82042816ba7e25fb",
+    "prototype/plan_evidence_record.py": "b9b6d521e68b16bb788f795132946a09fc3ba535477eb84f439bd979f31cfef8",
+    "prototype/runtime_plan_evidence_channel.py": "fcab12b556a0fc876368b87fc567e774729deabae47f324f1f199cad8130eb1c",
+    "tests/__init__.py": "9f6c2ca1982cce7060f31cdbbb98c2639a413570fdcae18b2ef9ef49febc9363",
+    "tests/support.py": "e1f1a5be57743c044340ed86a3de2121add73de0c32355b4a93f423b80cd7a43",
+    "tests/test_input_binding.py": "7030b4168a284b42593e666f8e97bc20d97dbfb0fcf0f4ba83794c3c28968116",
+    "tests/test_plan_evidence_record.py": "556006a3682c3508bf7bf27913cf6f6ec5466a40f045a04a0e88c03b65d1ca1e",
+    "tests/test_runtime_plan_channel.py": "c37ab7679e84b5224d03a9d9103a509c85e595ffe32201bfc4339591dc027579"
+  }
+}

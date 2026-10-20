@@ -1,0 +1,21 @@
+{
+  "schema_version": "dab_research_graph_meta_handoff_v2",
+  "source_generation": 0,
+  "proposed_generation": 1,
+  "g000_graph_sha256": "256570b3813f79bced5332994c5e3506765cd88ebdbaf6371115e9e3290bc86e",
+  "g000_root_view_sha256": "641a77ca836e246ba4002c53ba3ef246d0d9f869c8bc467a17e02c07f599d5c1",
+  "g000_behavior_sha256": "95133a681753af1e2d432aebfdc6718003a9668c75284ce982099cbd15085fb6",
+  "g000_fact_cards_sha256": "7c8e6ff5d10451e5e5f9edf7035ce6bf0cb96cd0354b251e396f68f252c2605e",
+  "observer_result": "g001_observer_004/result.json",
+  "observer_result_sha256": "38dd0ff4b31dfe3ca8bf675084b0f16761f43fd1977fba456bd143ca5dce8b22",
+  "research_meta_result": "g001_research_meta_002/result.json",
+  "research_meta_result_sha256": "0eac67794208b4099eb0b36a08583fb1ac4e829d8b21b62c1bc32c83c0b00c0d",
+  "research_meta_implementation_ready": false,
+  "status": "halted_before_candidate_implementation_and_evaluation",
+  "reason": "No specific bounded G1 intervention is supported by the answer-blind G0 behavior counts; timeout behavior lacks full traces and tool failure occurs in both strict-pass and strict-fail cohorts.",
+  "forbidden_until_ready": [
+    "Freeze G1 Problem, Hypothesis, or Experiment nodes",
+    "Call Repair Meta or launch a G1 formal evaluation",
+    "Change frozen G0 records or use answer-bearing evidence"
+  ]
+}

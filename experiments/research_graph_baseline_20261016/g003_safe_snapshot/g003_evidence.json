@@ -1,0 +1,72 @@
+{
+  "attempt": 2,
+  "generation": 3,
+  "node": {
+    "artifact_refs": {
+      "extractor_sha256": "8d0567ba5b83154abdd01c4f1f862fbbf06385084a8af1e8fe4a151807c32dd8",
+      "input_manifest_sha256": "b46a7f13588eb8cdb156a3ccbfb9619b7ebc20b08d1775ce65d9c19183ff7325",
+      "launch_manifest_sha256": "9ecd9ca9171fdc040dbbab2f3feab39adabf0b612e1912ce4340d75bb1693103",
+      "pre_execution_sha256": "6cf77f0715812dabca98c41f6765406f42e116d77108180d4375133aa1811145",
+      "progress_sha256": "d7a75e3469641145eaf84e05531701f40a919855b8e4e4370b458a8a100247f8",
+      "specialized_evidence_sha256": "45e2ef06a60783a5d5de2a37f81003a2113573f66aca976cee34288d2018283c",
+      "summary_sha256": "5ca329da4efa60b389d76773204d4ab38c140c68afdb8a797020e5a7ebbfbc2a",
+      "trace_manifest_sha256": "1e7e371047b4f7b1e68d7f61ea15f9b058b33d127244d2ed4beaed1f315fbac5"
+    },
+    "completed_count": 54,
+    "ended_count": 56,
+    "frozen_task_count": 56,
+    "id": "evidence:g003",
+    "kind": "evidence",
+    "limits": [
+      "Structural concordance does not establish task progress, answer correctness, or causal gain.",
+      "The two runner timeouts are failures in the fixed 56 denominator and lack normalized full traces.",
+      "Three completed strict verdicts remain unknown and are not reclassified as adjudicated failures.",
+      "This is one unpaired run; score differences from earlier generations are descriptive only."
+    ],
+    "other_terminal_failure_count": 0,
+    "query_wall_timeout_sec": 1200,
+    "score_policy": "completed_and_strict_true_over_all_56;timeout_is_failure",
+    "specialized_cohort_coverage": {
+      "known_strict_fail": {
+        "complete": 16,
+        "denominator": 16,
+        "low_coverage": false
+      },
+      "strict_pass": {
+        "complete": 34,
+        "denominator": 35,
+        "low_coverage": false
+      },
+      "strict_verdict_unknown": {
+        "complete": 3,
+        "denominator": 3,
+        "low_coverage": false
+      },
+      "timeout_failure": {
+        "complete": 0,
+        "denominator": 2,
+        "low_coverage": true
+      }
+    },
+    "specialized_complete_task_count": 53,
+    "specialized_signal_kind": "live_proposed_call_repetition_concordance",
+    "specialized_status": "supported",
+    "specialized_unknown_reason_counts": {
+      "live_unknown": 1,
+      "live_unknown_step_record": 1,
+      "malformed_trace_jsonl": 1,
+      "missing_postrun_record": 112,
+      "missing_trace_reference": 2,
+      "postrun_canonicalization_failure": 1,
+      "postrun_unknown": 1,
+      "repeat_count_comparison_withheld_due_unknown": 1
+    },
+    "statement": "G3 live proposed-call structural concordance on the frozen no-hint 56.",
+    "strict_pass_count": 35,
+    "strict_pass_rate_all": 0.625,
+    "strict_verdict_missing_completed_count": 3,
+    "timeout_failure_count": 2
+  },
+  "recorded_at_utc": "2026-10-17T19:41:15.207226+00:00",
+  "schema_version": "dab_research_graph_evidence_v2"
+}

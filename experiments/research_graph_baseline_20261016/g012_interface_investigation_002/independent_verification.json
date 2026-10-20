@@ -1,0 +1,34 @@
+{
+  "claim_boundary": {
+    "benchmark_evidence": false,
+    "formal_candidate": false,
+    "real_model_gap_directed_action_proven": false,
+    "semantic_support_proven": false,
+    "strict_benefit_proven": false
+  },
+  "established": [
+    "The synthetic structured view exposes selected structural action, status, and opaque target at the reviewed call_llm message boundary.",
+    "A same-state generic guidance control does not carry those selected fields.",
+    "A programmed synthetic policy distinguishes absent and unknown states through the structured view; this is conditional interface sensitivity only.",
+    "Freshness and instrumentation categories remain structural and do not promote semantic support or omitted-obligation claims."
+  ],
+  "evidence_class": "interface_research_not_benchmark_evidence",
+  "findings_sha256": "212f1e59be637eee685162c23caa9a5ec87f248badafac285d4c4f5dbf5c7f60",
+  "independent_no_task_tests": "41 passed",
+  "input_binding_sha256": "775d5645ab3f26aaf19a725e9bb4033fd413832bc33134aa42fe3304143f99d9",
+  "manifest_sha256": "24a15c31d909e76bf03f1ed603862d3fefc2927d58ead8307a86d797b3db32ec",
+  "open_gaps": [
+    "A programmed synthetic policy is not evidence that a real model will author records or select a different next action.",
+    "No provider call, live carrier acceptance, response-boundary acceptance, or real-model compliance check was performed.",
+    "Obligations remain model-authored; a structural inventory cannot detect omitted semantic obligations.",
+    "The existing raw-context log surface still needs separate no-leak admission review.",
+    "The prototype's latest_attempt directive source and target-token mapping are not formal runtime contracts."
+  ],
+  "output_hashes_match": true,
+  "prior_hashes_match": true,
+  "reference_hashes_match": true,
+  "schema_version": "g012_interface_002_independent_verification_v1",
+  "scoped_file_set_match": true,
+  "selected_target_id": "research_target:g012:002",
+  "status": "verified_conditional_action_interface_real_model_unknown"
+}

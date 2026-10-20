@@ -1,0 +1,120 @@
+{
+  "generation": 9,
+  "node": {
+    "artifact_refs": {
+      "extractor_sha256": "20c953086342ad79e5199c66ac2d478691b4c0e26d80b27b90e451d20597fc15",
+      "input_manifest_sha256": "2ec98552fb63fb771668ce7456cf59c0c3828fc76e56147298a53619e1aeed53",
+      "launch_manifest_sha256": "b5079128c80b4123510dd04c0b5b92f623197dbcc29b1b3077e4bb03377c6769",
+      "parent_graph_sha256": "c769fd157db33e7fe2432285d4e15718307f5c7b91dde91ebcf83b19fbca83e8",
+      "pre_execution_sha256": "c0a091d0cbf2133e6d7ed4af8cf104c917cde2fbda2455bdc8cdc0fd685bcd0f",
+      "preflight_sha256": "1ed18492b7c2b231e846f77e1eda6cdbfbe76bc639018ff0a514ff840263dde4",
+      "progress_sha256": "af9087f4f495c285f7d898bbaf63c3bc1768855e84a85a4df333133c93a3996f",
+      "specialized_evidence_sha256": "7d10131dcfefdf44ed34e5adae5699794c9f3f52c86ab0372fbd8abb55135259",
+      "summary_sha256": "75ef51e506da3695e1a0209286c83b86957daecd99d7d05e5bed05a98e6e2b76"
+    },
+    "completed_count": 54,
+    "ended_count": 56,
+    "frozen_task_count": 56,
+    "id": "evidence:g009",
+    "kind": "evidence",
+    "limits": [
+      "Later-turn audit exposure is structural; semantic verification quality is not observed.",
+      "Forcing a later model turn can consume deadline or iteration budget.",
+      "Timeouts are failures in fixed 56; unavailable records remain unknown.",
+      "Three completed strict verdicts remain unknown and are not reclassified.",
+      "This is one unpaired run; score differences from earlier generations are descriptive only."
+    ],
+    "other_terminal_failure_count": 0,
+    "query_wall_timeout_sec": 1200,
+    "score_policy": "completed_and_strict_true_over_all_56;timeout_is_failure",
+    "specialized_cohort_coverage": {
+      "known_strict_fail": {
+        "denominator": 16,
+        "guard_passed": true,
+        "negative_task_count": 0,
+        "numerator": 16,
+        "positive_task_count": 16,
+        "rate": 1.0,
+        "status": "supported",
+        "threshold": 0.8,
+        "unknown_task_count": 0
+      },
+      "strict_pass": {
+        "denominator": 35,
+        "guard_passed": true,
+        "negative_task_count": 0,
+        "numerator": 35,
+        "positive_task_count": 35,
+        "rate": 1.0,
+        "status": "supported",
+        "threshold": 0.8,
+        "unknown_task_count": 0
+      },
+      "strict_verdict_unknown": {
+        "denominator": 3,
+        "guard_passed": true,
+        "negative_task_count": 0,
+        "numerator": 3,
+        "positive_task_count": 3,
+        "rate": 1.0,
+        "status": "supported",
+        "threshold": 0.8,
+        "unknown_task_count": 0
+      },
+      "timeout_or_other_terminal_failure": {
+        "denominator": 2,
+        "guard_passed": null,
+        "negative_task_count": 0,
+        "numerator": 0,
+        "positive_task_count": 0,
+        "rate": 0.0,
+        "status": "not_guarded",
+        "threshold": null,
+        "unknown_task_count": 2
+      }
+    },
+    "specialized_components": {
+      "directional_outcome": {
+        "causal_claim_allowed": false,
+        "g7_reference": {
+          "known_strict_fail": 17,
+          "strict_pass": 32,
+          "strict_verdict_unknown": 3,
+          "timeout_or_other_terminal_failure": 4
+        },
+        "g8_reference": {
+          "known_strict_fail": 15,
+          "strict_pass": 35,
+          "strict_verdict_unknown": 3,
+          "timeout_or_other_terminal_failure": 3
+        },
+        "known_strict_fail": 16,
+        "reasons": [
+          "descriptive_association"
+        ],
+        "status": "supported",
+        "strict_pass": 35,
+        "strict_verdict_unknown": 3,
+        "timeout_or_other_terminal_failure": 2
+      },
+      "mechanism": {
+        "any_negative_task": false,
+        "behavior_change_detected": false,
+        "coverage_threshold": 0.8,
+        "non_timeout_cohorts_present": true,
+        "prohibited_content_persisted": false,
+        "scoring_change_detected": false,
+        "status": "supported"
+      }
+    },
+    "specialized_signal_kind": "later_model_turn_verification_gate",
+    "specialized_status": "supported",
+    "statement": "G9 later-model-turn verification gate on the frozen no-hint 56.",
+    "strict_pass_count": 35,
+    "strict_pass_rate_all": 0.625,
+    "strict_verdict_missing_completed_count": 3,
+    "timeout_failure_count": 2
+  },
+  "recorded_at_utc": "2026-10-18T15:53:42.273469+00:00",
+  "schema_version": "dab_research_graph_evidence_v2"
+}

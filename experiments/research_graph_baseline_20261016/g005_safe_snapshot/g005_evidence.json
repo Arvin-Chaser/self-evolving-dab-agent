@@ -1,0 +1,109 @@
+{
+  "generation": 5,
+  "node": {
+    "artifact_refs": {
+      "extractor_sha256": "81f6ccd056ceb883383fb8bd9288a187f67468612b7347073c6db7a13c357284",
+      "input_manifest_sha256": "7f6ac185175226f034004bf60acb6f3414b0aaad2b646063bca474c89137c7d1",
+      "launch_manifest_sha256": "77f3578f8116a6408e3fc0c88d52a544aa795fbf0c8b109b66a62a79ecf0d129",
+      "parent_graph_sha256": "fdb9de4a70e4b18c95845b3c6ac753f4650bdca7b6be370de92071a0ce6c2eda",
+      "pre_execution_sha256": "fc938800cb86d5badf6bc2f467aeaac79f77f414db046aeef77957a50c609598",
+      "preflight_sha256": "a2f78405114c04d18fa2ebb7615f71622d89349832f8821b095e8048d549dc43",
+      "progress_sha256": "bf7f888958d94bc85f7c0c10c244577ff24833d4fa55308d8a1eb7428e61fbf1",
+      "specialized_evidence_sha256": "b5741aff0d056853f032b46d272aebe3840f4cb295ef04026eb39e7ce48624cf",
+      "summary_sha256": "091499286d2504291d569aa1acd30bc04991b1d978b02afdcffa13f7f6f1448a"
+    },
+    "completed_count": 51,
+    "ended_count": 56,
+    "frozen_task_count": 56,
+    "id": "evidence:g005",
+    "kind": "evidence",
+    "limits": [
+      "Structural provenance does not establish task correctness or causal gain.",
+      "Timeouts are failures in the fixed 56 denominator; unavailable records remain unknown.",
+      "Two completed strict verdicts remain unknown and are not reclassified.",
+      "This is one unpaired run; score differences from earlier generations are descriptive only."
+    ],
+    "other_terminal_failure_count": 0,
+    "query_wall_timeout_sec": 1200,
+    "score_policy": "completed_and_strict_true_over_all_56;timeout_is_failure",
+    "specialized_cohort_coverage": {
+      "known_strict_fail": {
+        "denominator": 19,
+        "guard_passed": true,
+        "numerator": 19,
+        "rate": 1.0,
+        "threshold": 0.8
+      },
+      "strict_pass": {
+        "denominator": 30,
+        "guard_passed": true,
+        "numerator": 30,
+        "rate": 1.0,
+        "threshold": 0.8
+      },
+      "strict_verdict_unknown": {
+        "denominator": 2,
+        "guard_passed": true,
+        "numerator": 2,
+        "rate": 1.0,
+        "threshold": 0.8
+      },
+      "timeout_failure": {
+        "denominator": 5,
+        "guard_passed": null,
+        "numerator": 0,
+        "rate": 0.0,
+        "threshold": null
+      }
+    },
+    "specialized_components": {
+      "alignment": {
+        "causal_comparison_allowed": false,
+        "cohort_statuses": {
+          "known_strict_fail": "supported",
+          "strict_pass": "supported",
+          "strict_verdict_unknown": "supported",
+          "timeout_failure": "not_guarded"
+        },
+        "predicted_increase": null,
+        "status": "supported",
+        "strict_pass_partition_descriptive_only": true
+      },
+      "provenance_classification": {
+        "cohort_statuses": {
+          "known_strict_fail": "supported",
+          "strict_pass": "supported",
+          "strict_verdict_unknown": "supported",
+          "timeout_failure": "inconclusive"
+        },
+        "status": "supported"
+      },
+      "reason_code_subclaim": {
+        "cohort_statuses": {
+          "known_strict_fail": "untested",
+          "strict_pass": "untested",
+          "strict_verdict_unknown": "untested",
+          "timeout_failure": "untested"
+        },
+        "status": "untested"
+      },
+      "timeout_elapsed": {
+        "observed_timeout_count": 5,
+        "status": "supported"
+      },
+      "timeout_status": {
+        "observed_timeout_count": 5,
+        "status": "supported"
+      }
+    },
+    "specialized_signal_kind": "provenance_reason_and_timeout_elapsed_diagnostic",
+    "specialized_status": "supported",
+    "statement": "G5 provenance reason-code and timeout elapsed diagnostics on the frozen no-hint 56.",
+    "strict_pass_count": 30,
+    "strict_pass_rate_all": 0.535714,
+    "strict_verdict_missing_completed_count": 2,
+    "timeout_failure_count": 5
+  },
+  "recorded_at_utc": "2026-10-18T05:26:39.078890+00:00",
+  "schema_version": "dab_research_graph_evidence_v2"
+}

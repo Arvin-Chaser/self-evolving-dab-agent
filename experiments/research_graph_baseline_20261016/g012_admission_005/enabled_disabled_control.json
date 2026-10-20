@@ -1,0 +1,18 @@
+{
+  "disabled_elapsed_seconds": 0.10059871152043343,
+  "disabled_mechanism_initiated_tool_call_count": 0,
+  "dispatch_arguments_and_results_equal": true,
+  "dispatch_count_equal": true,
+  "enabled_elapsed_seconds": 0.10914584156125784,
+  "enabled_mechanism_initiated_tool_call_count": 0,
+  "final_result_equal": true,
+  "forced_answer": false,
+  "llm_call_count_equal": true,
+  "passed": true,
+  "schema_version": "g012_attempt002_enabled_disabled_control_v1",
+  "scoring_code_executed": false,
+  "strict_timing_equivalence_claimed": false,
+  "termination_equal": true,
+  "timing_measurements_only": true,
+  "wall_timeout_extension_allowed": false
+}

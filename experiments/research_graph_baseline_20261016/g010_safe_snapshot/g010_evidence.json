@@ -1,0 +1,124 @@
+{
+  "generation": 10,
+  "node": {
+    "artifact_refs": {
+      "extractor_sha256": "32b390bbf949ac8af87c392ff14a465e35709b9b0986a52aebc50030aa2d9752",
+      "incident_sha256": "061a71b552c2b8583b13528ac4d91ad0a72faee7550b7489dfc7186f881516ee",
+      "input_manifest_sha256": "df114710c7605ddb464c5806778aacb6e302589a0c5884a25355fa89a4675554",
+      "original_launch_manifest_sha256": "7c1f6c4d41af7e047aaa10219d84c205b416ebd517d0fad37bc3c9cab9283392",
+      "original_preflight_sha256": "2b32d1b49bbdcfe2ab2ed138925925001365c3d1955903c154fc885ffddacc04",
+      "original_progress_sha256": "cc3022f8c1d4209c48abe603172720b5825a8b95e755439cc242cdb08c2581a9",
+      "original_summary_sha256": "158a46757001991281f4feedf8bc20aba72bd7771e4f2b77bd2658b484b62abe",
+      "parent_graph_sha256": "e49a7c765eef8aea4dd4bc295dfc907f7cf0fa743df41efff94fb4b9e31d0abd",
+      "pre_execution_sha256": "f62c6d2f21894744838473557ea8e4030f1fa63ee9905cce905476fe5d61e46d",
+      "reconciled_report_sha256": "2fc6497001b4c3824a82ac95172e1a93d4e7c06afc057069573c0f063185eb19",
+      "recovery_launch_manifest_sha256": "7468c1601124579f58fdd4617672d5bc3a4ba66ad5552c3b90d962f2a43758ca",
+      "recovery_progress_sha256": "b990ce38d39d2480b3af69f0e549eefa44c7235f9eb9e5c6e7a4b8184202abfc",
+      "recovery_summary_sha256": "584f44e06633153f804df37567b11893b9f368d301fc633ceb6520db52a0d26b",
+      "specialized_evidence_sha256": "dcb6a0152f5f74efee74f7b4336e2ce6cb6be21635f345da64d9d0d802825db3"
+    },
+    "completed_count": 55,
+    "ended_count": 56,
+    "execution_basis": "user_authorized_two_run_reconciliation",
+    "frozen_task_count": 56,
+    "id": "evidence:g010",
+    "kind": "evidence",
+    "limits": [
+      "This is a user-authorized two-run repair view, not one uninterrupted valid 56-task execution.",
+      "The original 56-task run remains marked invalid_infrastructure; its 27/56 score and incident are preserved.",
+      "Five pre-model PostgreSQL load failures were replaced only by their own bound recovery outcomes; all other 51 original outcomes were retained.",
+      "The 32/56 reconciled score is supplementary and not the original official single-run result.",
+      "Checklist exposure is structural; semantic verification quality and causal score effects are not observed.",
+      "Three completed strict verdicts remain unknown; the timeout remains a failure in fixed 56."
+    ],
+    "original_strict_pass_count": 27,
+    "other_terminal_failure_count": 0,
+    "query_wall_timeout_sec": 1200,
+    "reconciled_strict_pass_count": 32,
+    "recovery_task_count": 5,
+    "score_policy": "completed_and_strict_true_over_all_56;timeout_is_failure;five_pre_model_environment_failures_replaced_by_bound_recovery",
+    "specialized_cohort_coverage": {
+      "known_strict_fail": {
+        "denominator": 20,
+        "guard_passed": true,
+        "negative_task_count": 0,
+        "numerator": 20,
+        "positive_task_count": 20,
+        "rate": 1.0,
+        "status": "supported",
+        "threshold": 0.8,
+        "unknown_task_count": 0
+      },
+      "strict_pass": {
+        "denominator": 32,
+        "guard_passed": true,
+        "negative_task_count": 0,
+        "numerator": 32,
+        "positive_task_count": 32,
+        "rate": 1.0,
+        "status": "supported",
+        "threshold": 0.8,
+        "unknown_task_count": 0
+      },
+      "strict_verdict_unknown": {
+        "denominator": 3,
+        "guard_passed": true,
+        "negative_task_count": 0,
+        "numerator": 3,
+        "positive_task_count": 3,
+        "rate": 1.0,
+        "status": "supported",
+        "threshold": 0.8,
+        "unknown_task_count": 0
+      },
+      "timeout_or_other_terminal_failure": {
+        "denominator": 1,
+        "guard_passed": null,
+        "negative_task_count": 0,
+        "numerator": 0,
+        "positive_task_count": 0,
+        "rate": 0.0,
+        "status": "not_guarded",
+        "threshold": null,
+        "unknown_task_count": 1
+      }
+    },
+    "specialized_components": {
+      "directional_outcome": {
+        "causal_claim_allowed": false,
+        "g9_reference": {
+          "known_strict_fail": 16,
+          "strict_pass": 35,
+          "strict_verdict_unknown": 3,
+          "timeout_or_other_terminal_failure": 2
+        },
+        "known_strict_fail": 20,
+        "reasons": [
+          "directional_contradiction"
+        ],
+        "status": "contradicted",
+        "strict_pass": 32,
+        "strict_verdict_unknown": 3,
+        "timeout_or_other_terminal_failure": 1
+      },
+      "mechanism": {
+        "any_negative_task": false,
+        "behavior_change_detected": false,
+        "coverage_threshold": 0.8,
+        "non_timeout_cohorts_present": true,
+        "prohibited_content_persisted": false,
+        "scoring_change_detected": false,
+        "status": "supported"
+      }
+    },
+    "specialized_signal_kind": "fixed_task_agnostic_evidence_reconciliation_checklist",
+    "specialized_status": "contradicted",
+    "statement": "G10 checklist intervention: user-authorized two-run repair view, not a single complete valid run; 32/56 supplementary strict versus 27/56 original infrastructure-affected strict.",
+    "strict_pass_count": 32,
+    "strict_pass_rate_all": 0.571429,
+    "strict_verdict_missing_completed_count": 3,
+    "timeout_failure_count": 1
+  },
+  "recorded_at_utc": "2026-10-19T04:52:03.563249+00:00",
+  "schema_version": "dab_research_graph_evidence_v2"
+}

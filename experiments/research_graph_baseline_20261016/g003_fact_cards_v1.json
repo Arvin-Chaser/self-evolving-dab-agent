@@ -1,0 +1,54 @@
+{
+  "g1_g2_partition": {
+    "kind": "observation",
+    "statement": "G1 had 30 strict passes, zero runner timeouts and two other failures; G2 had 30 strict passes, two runner timeouts and zero other failures. Both used the same fixed 56 denominator in separate single runs."
+  },
+  "g2_fixed_outcomes": {
+    "kind": "observation",
+    "statement": "G2 ended the frozen no-hint 56: 54 completed, two 1200-second runner timeouts, zero other failures, and 30 strict passes over all 56. Three completed strict verdicts are unknown."
+  },
+  "g2_reserve_reach": {
+    "kind": "observation",
+    "statement": "All 54 normally completed G2 tasks have reserve records, each unbound. The two timeout tasks lack reserve records; no reserve trigger is proven for them."
+  },
+  "g2_stage_coverage": {
+    "kind": "observation",
+    "statement": "All 56 G2 tasks have answer-blind lifecycle records: all reached the first LLM-call enter and return markers; 54 reached normalization and two received a wall-timeout marker."
+  },
+  "g2_timeout_position": {
+    "kind": "observation",
+    "statement": "The two G2 timeout records have first_llm_call_returned as their last recorded progress stage. The stage recorder does not mark every later model or tool call, so this is not a location for their final in-flight work."
+  },
+  "hypothesis_unexercised": {
+    "kind": "uncertainty",
+    "statement": "The G1 pre-event abort did not recur in G2, so the lifecycle-localization hypothesis remains untested rather than confirmed or refuted."
+  },
+  "no_pre_event_abort": {
+    "kind": "counterexample",
+    "statement": "G2 had no pre-event terminal failure: every task reached the first LLM-call return marker. Thus the G2 hypothesis about localizing a recurrence of G1's zero-event aborts was not exercised, despite complete instrumentation coverage."
+  },
+  "reserve_missing_timeout": {
+    "kind": "uncertainty",
+    "statement": "The absent reserve records on the two timeout tasks do not establish whether their 120-second reserve was unreachable, not reached at a turn boundary, or simply not persisted before termination."
+  },
+  "stage_not_inertness": {
+    "kind": "counterexample",
+    "statement": "Complete stage-record coverage and unchanged strict-pass totals do not demonstrate that instrumentation was behaviorally inert; the G1 and G2 runs are separate and stochastic."
+  },
+  "strict_not_timeout_proxy": {
+    "kind": "counterexample",
+    "statement": "The change from zero to two timeouts across G1 and G2 did not change the count of strict passes, so timeout totals alone cannot stand in for strict task success."
+  },
+  "timeout_trace_gap": {
+    "kind": "uncertainty",
+    "statement": "Only 54 G2 full traces exist. The two timeout tasks have lifecycle markers but their later within-task behavior and in-flight final call are not established by those markers."
+  },
+  "unknown_verdicts": {
+    "kind": "uncertainty",
+    "statement": "Three normally completed G2 tasks have no strict verdict; they remain unknown within the fixed denominator, without inspecting validators or answers."
+  },
+  "unpaired_runs": {
+    "kind": "uncertainty",
+    "statement": "One unpaired run per generation cannot establish that G2 instrumentation caused the changed timeout and other-failure partition, or that the unchanged strict total reflects a null effect."
+  }
+}

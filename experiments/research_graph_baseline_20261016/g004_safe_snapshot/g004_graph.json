@@ -1,0 +1,309 @@
+{
+  "binding": {
+    "admission_sha256": "45c6f503fecfb438ad44a9273cc3db6883e8389355f3c035a7f99ba938327729",
+    "batch_sha256": "576a7d718bbe54d94ce6b7c32b92530394f55b39865d718a376320a5b11d51f7",
+    "candidate_tree_sha256": "e89a4f905425162682426c4dc8a058f3490e540069908c875b7d108c74ecc8a3",
+    "description_mode": "full_db_description_no_hints",
+    "g3_graph_sha256": "039fc4fbc51410d87f7adc6e0c9017fb963d7979e9b10bce22f1c38949e67f29",
+    "generation": 4,
+    "implementation_manifest_sha256": "8168860ecdc7c4c134ab0deb5700a156b56373621329857110e5f231c60512ba",
+    "parent_tree_sha256": "3a09fd575f32fbd736344bdeb7ec786e987a02102bfe2d96202ae13d8b3b6d99",
+    "policy_sha256": "d6e022a462960e961087e618087dcd1d884bab49389acae64c463583d8643797",
+    "query_count": 56,
+    "query_timeout_sec": 1200,
+    "registry_sha256": "7aba9897753c6a3394f1a6d0b27df35a39ac05ca099b815a1e2b9c6d931218ff",
+    "research_result_sha256": "d7f4fc0d479db2371ed9dcc706b288c7450edb3897eb5eed91fd684dde1ec332",
+    "timeout_scoring": "failure_in_fixed_56_denominator"
+  },
+  "edges": [
+    {
+      "relation": "refines",
+      "source": "problem:g004",
+      "target": "problem:g003"
+    },
+    {
+      "relation": "refines",
+      "source": "hypothesis:g004",
+      "target": "hypothesis:g003"
+    },
+    {
+      "relation": "refines",
+      "source": "experiment:g004",
+      "target": "experiment:g003"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "problem:g004",
+      "target": "evidence:g003"
+    },
+    {
+      "relation": "explains",
+      "source": "hypothesis:g004",
+      "target": "problem:g004"
+    },
+    {
+      "relation": "tests",
+      "source": "experiment:g004",
+      "target": "hypothesis:g004"
+    },
+    {
+      "relation": "observes",
+      "source": "evidence:g004",
+      "target": "experiment:g004"
+    }
+  ],
+  "evidence_sha256": "6d3c05712996d04c36c56a77f48bf270bb8b37fd61e56d205f8011b691ba2d6d",
+  "generation": 4,
+  "nodes": [
+    {
+      "fact_ids": [
+        "g003_cohort_coverage",
+        "g003_extraction_unknowns",
+        "g003_measurement_limitations",
+        "g003_terminal_partition"
+      ],
+      "id": "problem:g004",
+      "kind": "problem",
+      "statement": "G3's live/post-run structural concordance is supported on 53 complete tasks, but the packet leaves the live-to-post-run step mapping unverified, including 112 missing post-run records and related unknowns, and leaves the two timeout failures at 0/2 coverage with their final in-flight operation unknown. The bounded problem is whether an additive, write-only paired pre/post-exec journal can establish one-to-one ordinal/category step alignment and a last-durable-event timeout status (completed, in-flight, or unknown) without reading answers or changing agent behavior.",
+      "unknowns": [
+        {
+          "fact_ids": [
+            "g003_measurement_limitations"
+          ],
+          "statement": "Whether live `parsed_tool_args` exactly equal executable arguments or post-execution `validated_args` remains unknown."
+        },
+        {
+          "fact_ids": [
+            "g003_measurement_limitations",
+            "g003_extraction_unknowns"
+          ],
+          "statement": "Whether each live hook record maps one-to-one to a normalized post-run step, and what the 112 missing post-run records, 2 missing trace references, and 1 malformed trace JSONL represent, remains unresolved."
+        },
+        {
+          "fact_ids": [
+            "g003_cohort_coverage",
+            "g003_terminal_partition"
+          ],
+          "statement": "The final in-flight operation for each of the two timeout failures is unknown because the timeout cohort has 0/2 complete normalized coverage."
+        },
+        {
+          "fact_ids": [
+            "g003_measurement_limitations"
+          ],
+          "statement": "Whether the sparse exact-repeat pattern is stable across runs, and whether it relates to task progress or correctness, is unknown."
+        },
+        {
+          "fact_ids": [
+            "g003_terminal_partition",
+            "g003_measurement_limitations"
+          ],
+          "statement": "Whether the 35 strict-pass count and the supported concordance would reproduce in an unchanged rerun is unknown; one unpaired run provides no run-to-run variance estimate."
+        },
+        {
+          "fact_ids": [
+            "g003_extraction_unknowns"
+          ],
+          "statement": "The causes of the malformed trace JSONL, missing trace references, and post-run canonicalization failure are not identified."
+        },
+        {
+          "fact_ids": [
+            "g003_terminal_partition"
+          ],
+          "statement": "The 3 completed tasks with missing strict verdicts remain unadjudicated; their correctness is unknown."
+        },
+        {
+          "fact_ids": [
+            "g003_extraction_unknowns"
+          ],
+          "statement": "Whether the frozen traces already contain enough structural information to test live-to-post-run alignment without a new run is not established; the packet reports missing and malformed records rather than a complete offline alignment result."
+        }
+      ]
+    },
+    {
+      "counterexample": "Post-run normalization may split or collapse live steps, a timeout may prevent the post-exec record from flushing, or a completed call may still produce no normalized record, so one-to-one alignment can fail for reasons unrelated to agent behavior. A task can show perfect structural alignment and still fail strict evaluation; alignment is not task progress or correctness. If the two timeout tasks do not recur, or if a timeout has no durable pre-exec or post-exec event, timeout localization is untested or unknown. Ordinal and category alignment does not establish tool identity equality.",
+      "fact_ids": [
+        "g003_cohort_coverage",
+        "g003_extraction_unknowns",
+        "g003_measurement_limitations",
+        "g003_terminal_partition"
+      ],
+      "falsification_condition": "Contradicted if any co-covered step on a provably complete normalized trace has a zero-match or one-to-many mapping to normalized post-run steps, or a canonical-category disagreement under the declared rules, or if enabling the paired journal changes agent-visible input, dispatch, results, or scoring, or if the sidecar persists raw arguments, raw tool names, messages, results, task IDs, answers, hints, validator content, or digest strings. Inconclusive, not falsified, if a non-timeout cohort has complete-task coverage below 0.8, if timeout records remain unknown, or if no timeout occurs; the timeout-localization subclaim is untested if no timeout occurs. A descriptive strict-pass difference alone neither supports nor falsifies the hypothesis.",
+      "id": "hypothesis:g004",
+      "kind": "hypothesis",
+      "prediction": "In one formal 56-task no-hint run: (1) known-strict-fail and strict-pass cohorts each reach at least 0.8 complete-task coverage; (2) no co-covered step on a provably complete normalized trace is alignment-negative; (3) if timeout failures occur, each observed timeout receives a last-durable-event classification of completed, in-flight, or unknown, with only completed/in-flight counted as terminal localization; the plan does not predict that both G3 timeouts recur or that every timeout yields a non-unknown status; (4) the strict-pass partition is reported descriptively with no predicted increase; and (5) the sidecar produces no agent-visible or scoring change.",
+      "statement": "In the g003 code parent, a write-only paired pre/post-exec structural journal at the existing `DataAgentWithSelfObservation._handle_tool_call` hook will map each completed eligible live step to exactly one normalized post-run structural step by ordinal and canonical repeat/nonrepeat category, and will classify each observed timeout task's last durable operation as completed, in-flight, or unknown from the last durable event, without changing agent-visible inputs, dispatch, results, or scoring. This tests ordinal/category alignment and terminal localization; it does not test tool identity equality, answer quality, task progress, or causal gain."
+    },
+    {
+      "candidate_source_tree_sha256": "e89a4f905425162682426c4dc8a058f3490e540069908c875b7d108c74ecc8a3",
+      "code_parent_generation": "g003",
+      "code_parent_tree_sha256": "3a09fd575f32fbd736344bdeb7ec786e987a02102bfe2d96202ae13d8b3b6d99",
+      "evaluation_run_id": "baseline_g004_paired_journal_nohint_56_v1",
+      "fixed_protocol": {
+        "answer_validator_or_heldout_access": false,
+        "description_mode": "full_db_description_no_hints",
+        "formal_runs": 1,
+        "frozen_task_count": 56,
+        "hints": false,
+        "per_task_wall_timeout_seconds": 1200,
+        "primary_metric": "completed_and_strict_true_over_all_56",
+        "probe_run": false,
+        "second_arm": false,
+        "sham_run": false,
+        "task_specific_logic": false,
+        "timeouts": "failures_in_fixed_denominator"
+      },
+      "id": "experiment:g004",
+      "implementation_scope": "One additive sidecar in a new child derived from g003; one hook-local completion flag around the existing dispatch plus a durable pre-exec append, a durable post-exec completion append, and an optional best-effort task-end summary. No new tool, task, prompt, policy sentence, timing limit, retry, error taxonomy, result-storage path, second arm, sham run, probe run, or extra formal evaluation. The source-field allowlist and the post-exec completion boundary must be confirmed in the bound parent before implementation. If the completion flag cannot be observed at the hook boundary without reading tool results, messages, or task content, or if the canonical category cannot be computed in memory without persisting raw arguments or raw tool names, do not launch. Tool identity is not persisted or compared across live and post-run boundaries; alignment is ordinal and category-based. The experiment is diagnostic and does not attempt to repair G3 or improve the score.",
+      "intervention": "Add one additive, write-only paired pre/post-exec structural journal in a new child of the verified g003 candidate. At the existing `DataAgentWithSelfObservation._handle_tool_call` hook, before tool dispatch, durably append an anonymous task index, hook-local step ordinal, and the in-memory canonical repeat/nonrepeat/unknown category computed from the declared hook-local fields; immediately after the wrapped call returns, append a hook-local completion boolean and ordinal. At task end, append an optional task summary containing only the same allowed fields and aggregate counts. Do not persist raw arguments, raw tool names, messages, results, task IDs, answers, hints, validator content, or digest strings. For a timeout, do not rely on the task-end summary: derive the last-operation status from the last durable hook event, with an unmatched pre-exec record classified as in-flight, a matched post-exec completion classified as completed, and no pre-exec or post-exec event classified as unknown. Do not block, retry, mutate arguments, inject messages, feed the agent, change tool dispatch or error handling, alter result storage, or alter scoring. The existing G3 sidecar and all frozen artifacts remain unchanged.",
+      "intervention_class": "diagnostic_instrumentation",
+      "kind": "experiment",
+      "measurement_plan": {
+        "canonicalization": "Perform canonicalization in memory only. Compare `tool_name` as an exact string only to compute the live repeat category; never persist or emit the raw name. Canonicalize `parsed_tool_args` as JSON with object keys sorted recursively, compact separators, array order preserved, and JSON number, string, boolean, and null semantics preserved. Assign repeat when the canonical `(tool_name, parsed_tool_args)` pair equals any earlier canonical pair in the same anonymous task and nonrepeat otherwise; persist only the enum category, never its inputs. A parse or canonicalization failure is unknown; raw forms are never logged or persisted. The post-run category is the frozen normalizer's existing `signal_category`; tool identity is not compared across the live/post-run boundary.",
+        "cohort_aggregation": "Report task counts and step counts separately for known strict fail, strict pass, strict-verdict unknown, and timeout failure. Report positive, negative, and unknown tasks, complete coverage numerator and denominator, and timeout terminal-status counts separately as completed, in-flight, and unknown. Never pool cohorts to mask missing coverage and never infer correctness or a causal contrast from a cohort rate.",
+        "contradicted_conditions": "Contradicted if any co-covered step on a provably complete normalized trace is negative under the declared per-step rules, or if enabling the journal changes agent-visible input, dispatch, results, or scoring, or if any raw argument, raw tool name, message, result, task ID, answer, hint, validator content, or digest string is persisted by the sidecar, or if a timeout terminal status is assigned completed or in-flight without a durable last-event basis. Absence of a task-end summary alone is not a contradiction; with no durable hook event the status is unknown.",
+        "coverage_denominator": "The overall denominator is the frozen 56 tasks. After the run, the fixed evaluator assigns each task to known strict fail, strict pass, strict-verdict unknown, or timeout failure; the G4 cohort denominator is the number of tasks in that observed cohort. G3 reference denominators are 16, 35, 3, and 2. Complete-task coverage for a cohort is the number of tasks with at least one eligible step and every eligible step positive or negative (so the task is positive or negative with no unknown eligible step) divided by that cohort's G4 denominator. A task can be reported as negative by precedence while still not entering the coverage numerator if another eligible step is unknown.",
+        "coverage_guard": "For each non-timeout cohort, complete-task coverage below 0.8 withholds complete-cohort concordance comparisons and makes the alignment claim inconclusive for that cohort; it is an Evidence result, not a launch veto. The timeout cohort is reported separately with counts of completed, in-flight, and unknown last-event classifications; there is no rate threshold and no guarantee of a non-unknown status.",
+        "coverage_threshold": 0.8,
+        "inconclusive_conditions": "The alignment component is inconclusive if a non-timeout cohort has complete-task coverage below 0.8, if no eligible co-covered steps exist in a cohort, or if ordinal alignment remains ambiguous. The timeout component is inconclusive if no timeout occurs, if any observed timeout has no durable pre-exec or post-exec event, or if the last durable event cannot be unambiguously paired. A stochastic difference in the strict-pass count alone does not support or contradict the hypothesis.",
+        "inertness_check": "Before launch, static data-flow review and hook-local tests must show that enabling versus disabling the journal produces identical control flow, return values, messages, dispatch, results, and scoring. In the formal run the sidecar is write-only and no sidecar output is read by the agent; any agent-visible read or behavioral change invalidates the experiment.",
+        "limitations": [
+          "The journal cannot establish that live parsed arguments equal executed arguments; that remains outside this experiment's claim.",
+          "Post-run normalization may not be one-to-one with live hook steps, so alignment can be unknown even with a correct journal.",
+          "Ordinal and category alignment does not establish tool identity equality, and raw tool names are not persisted or compared across boundaries.",
+          "The two timeout tasks may not recur; the runner may kill the process before a task-end summary, so last-durable-event classification can be unknown even with a correct journal.",
+          "A single unpaired diagnostic run cannot establish causality, a treatment effect, a strict-pass gain, task progress, or answer correctness.",
+          "Coverage below 0.8 is an Evidence result, not a launch veto or evidence of signal absence."
+        ],
+        "run_before": "This plan is fixed before any child implementation or formal run; no post-run strict verdict, task ID, answer, hint, or validator is used to define the rules.",
+        "runtime_hook": "DataAgentWithSelfObservation._handle_tool_call in the g003 code parent: pre-exec observation before tool dispatch, post-exec completion observation immediately after the wrapped call returns, and an optional best-effort task-end summary. Timeout classification uses the last durable hook event and does not require the summary; absence of both pre-exec and post-exec events is unknown. The observation is write-only and is never read by the agent.",
+        "source_fields": [
+          "live_tool_dispatch.tool_name",
+          "live_tool_dispatch.parsed_tool_args",
+          "hook_local_step_ordinal",
+          "hook_local_post_exec_completed",
+          "postrun_normalized_step.ordinal",
+          "postrun_normalized_step.signal_category",
+          "postrun_trace.completeness_metadata",
+          "anonymous_task_index",
+          "terminal_status"
+        ],
+        "supported_conditions": "The alignment component is supported if known-strict-fail and strict-pass cohorts each have complete-task coverage at least 0.8 and no co-covered step on a provably complete normalized trace is negative. The timeout component is supported only for observed timeout failures when every observed timeout has a non-unknown last-durable-event classification (completed or in-flight) and the classification is unambiguous; if no timeout occurs or any observed timeout remains unknown, the timeout component is separately inconclusive. The strict-pass partition is descriptive and is not part of either supported condition.",
+        "unit": "per_task_step for alignment; per_task for coverage and terminal status"
+      },
+      "no_answer_no_hint_boundary": "The sidecar must not persist, log, expose, or otherwise use benchmark answers, hints, validators, expected outputs, task IDs, raw traces, messages, tool results, raw argument payloads, credentials, or network content. It may read only the declared hook-local `tool_name` and `parsed_tool_args` in memory to compute the canonical repeat/nonrepeat/unknown category and must immediately discard them; it never persists raw names, raw arguments, or digest strings. Task-specific obligations are not allowed; all rules are uniform algorithms over normal task-visible inputs. Cohort labels and strict verdicts are joined only after the run from the frozen evaluator and are never read by the agent or sidecar during execution.",
+      "per_step_negative_rule": "A normalized post-run trace is provably complete for a task only when the frozen post-run normalizer's task-level terminal/completeness metadata marks the trace complete and reports no parse, truncation, missing-reference, or canonicalization-failure flag for that task; this check uses metadata only, never raw trace content. A co-covered step is negative when the task's trace is provably complete and the deterministic ordinal alignment yields zero matches or more than one match for exactly one completed pre-exec record, or the unique match disagrees on canonical signal category. Multiple admissible matches under a complete trace are negative; ambiguity about trace ordering or completeness is unknown.",
+      "per_step_positive_rule": "A co-covered step is positive when the task's normalized trace is provably complete and exactly one pre-exec record, one completed post-exec record, and one normalized post-run structural step align by declared ordinal and agree on canonical signal category.",
+      "per_step_unknown_rule": "A step is unknown when the task's normalized trace is not provably complete, a required live pre-exec or post-exec record is missing, the call is in flight at timeout, parsing or canonicalization fails, or ordinal alignment is ambiguous. A zero-match under a provably complete trace is negative, not unknown. Unknown steps are excluded from concordance numerators and reported separately.",
+      "per_task_negative_rule": "A task is negative if at least one eligible step is negative under the complete-trace rules. Negative takes precedence over unknown; a task with any negative step is not reported as unknown or positive.",
+      "per_task_positive_rule": "A task is positive only if it is not negative, has at least one eligible reviewed-hook step, every eligible step is positive, and no step is alignment-negative. A task with zero eligible steps is unknown, not positive.",
+      "per_task_unknown_rule": "A task is unknown if it is not negative and either has no eligible steps or any eligible step is unknown. A missing post-run structural record is unknown only when the task's normalized trace is not provably complete; under a provably complete trace, a zero-match step is negative under the per-step rule. Unknown is never imputed as repeat, nonrepeat, positive, or negative.",
+      "run_before": "This plan is fixed before any child implementation or formal run; no post-run strict verdict, task ID, answer, hint, or validator is used to define the rules.",
+      "runtime_hook": "DataAgentWithSelfObservation._handle_tool_call in the g003 code parent: pre-exec observation before tool dispatch, post-exec completion observation immediately after the wrapped call returns, and an optional best-effort task-end summary. Timeout classification uses the last durable hook event and does not require the summary; absence of both pre-exec and post-exec events is unknown. The observation is write-only and is never read by the agent.",
+      "source_fields": [
+        "live_tool_dispatch.tool_name",
+        "live_tool_dispatch.parsed_tool_args",
+        "hook_local_step_ordinal",
+        "hook_local_post_exec_completed",
+        "postrun_normalized_step.ordinal",
+        "postrun_normalized_step.signal_category",
+        "postrun_trace.completeness_metadata",
+        "anonymous_task_index",
+        "terminal_status"
+      ],
+      "supported_conditions": "The alignment component is supported if known-strict-fail and strict-pass cohorts each have complete-task coverage at least 0.8 and no co-covered step on a provably complete normalized trace is negative. The timeout component is supported only for observed timeout failures when every observed timeout has a non-unknown last-durable-event classification (completed or in-flight) and the classification is unambiguous; if no timeout occurs or any observed timeout remains unknown, the timeout component is separately inconclusive. The strict-pass partition is descriptive and is not part of either supported condition.",
+      "unit": "per_task_step for alignment; per_task for coverage and terminal status"
+    },
+    {
+      "artifact_refs": {
+        "extractor_sha256": "0cde1e258abe2c4f6d3656ff025a7da3e6669582249b3520be0d2226fb7b7bbd",
+        "input_manifest_sha256": "feef27067d51ee4ac981401c3aa794a789fcd9b4aa1683b0e7cf4118ddac0583",
+        "launch_manifest_sha256": "16f1cc78338159146382f9e97fbe489d3f69723d36140fbe19f913dc7393acc1",
+        "pre_execution_sha256": "f80e6f542991d478da4764288c7e4985b7dac46532b20a7389c46c5b501e31a3",
+        "progress_sha256": "722bf5621af01d056fdb3fef58c02fa9dbb9746426b64cc14b3ef8eb938a3b48",
+        "specialized_evidence_sha256": "f5cb3040d87b05d3fe6728bad9cb11331f24bb0192fa3e5b67e9e8961c3c1c01",
+        "summary_sha256": "ae2a433dbb2f29ed7ff1a311c1a523c2e6bb2f4f72682faf0832f969d754bf8f"
+      },
+      "completed_count": 53,
+      "ended_count": 56,
+      "frozen_task_count": 56,
+      "id": "evidence:g004",
+      "kind": "evidence",
+      "limits": [
+        "A structural alignment result does not establish task progress, correctness, or causal gain.",
+        "Timeouts are failures in the fixed 56 denominator; missing post-run sidecars remain unknown.",
+        "Three completed strict verdicts remain unknown and are not reclassified.",
+        "This is one unpaired run; score differences from earlier generations are descriptive only."
+      ],
+      "other_terminal_failure_count": 0,
+      "query_wall_timeout_sec": 1200,
+      "score_policy": "completed_and_strict_true_over_all_56;timeout_is_failure",
+      "specialized_cohort_coverage": {
+        "known_strict_fail": {
+          "denominator": 16,
+          "guard_passed": true,
+          "numerator": 15,
+          "rate": 0.9375,
+          "threshold": 0.8
+        },
+        "strict_pass": {
+          "denominator": 34,
+          "guard_passed": true,
+          "numerator": 33,
+          "rate": 0.970588,
+          "threshold": 0.8
+        },
+        "strict_verdict_unknown": {
+          "denominator": 3,
+          "guard_passed": true,
+          "numerator": 3,
+          "rate": 1.0,
+          "threshold": 0.8
+        },
+        "timeout_failure": {
+          "denominator": 3,
+          "guard_passed": null,
+          "numerator": 0,
+          "rate": 0.0,
+          "threshold": null
+        }
+      },
+      "specialized_components": {
+        "alignment": {
+          "negative_step_count": 1,
+          "primary_cohorts_status": "contradicted",
+          "reason_codes": [
+            "negative_co_covered_step"
+          ],
+          "status": "contradicted",
+          "strict_verdict_unknown_is_descriptive": true
+        },
+        "timeout_terminal_localization": {
+          "counts_as_localized": [
+            "completed",
+            "in_flight"
+          ],
+          "observed_timeout_count": 3,
+          "reason_codes": [
+            "all_observed_timeouts_localized"
+          ],
+          "status": "supported",
+          "terminal_status_counts": {
+            "completed": 0,
+            "in_flight": 3,
+            "unknown": 0
+          }
+        }
+      },
+      "specialized_signal_kind": "paired_live_postrun_structural_alignment",
+      "specialized_status": "contradicted",
+      "statement": "G4 paired live/post-run structural alignment and timeout terminal localization on the frozen no-hint 56.",
+      "strict_pass_count": 34,
+      "strict_pass_rate_all": 0.607143,
+      "strict_verdict_missing_completed_count": 3,
+      "timeout_failure_count": 3
+    }
+  ],
+  "pre_execution_sha256": "f80e6f542991d478da4764288c7e4985b7dac46532b20a7389c46c5b501e31a3",
+  "schema_version": "dab_research_graph_generation_v1",
+  "status": "four_nodes_complete"
+}

@@ -1,0 +1,35 @@
+{
+  "schema_version": "g012_admission_attempt005_test_verification_v1",
+  "probe_driver_ast_parse": {
+    "file_count": 2,
+    "passed": true
+  },
+  "focused_g011_g012": {
+    "failed_count": 0,
+    "passed_count": 149
+  },
+  "candidate_full": {
+    "failed_count": 5,
+    "failures": [
+      "tests/test_tool_failure_recovery.py::test_active_dispatch_normal_success_avoids_recovery",
+      "tests/test_tool_failure_recovery.py::test_zero_iterations_resolves_unbounded",
+      "tests/test_tool_failure_recovery.py::test_active_dispatch_recovery_contract",
+      "tests/test_tool_failure_recovery.py::test_active_dispatch_keeps_one_root_and_bounds_two_repairs",
+      "tests/test_tool_failure_recovery.py::test_active_dispatch_handles_malformed_json_and_unknown_tools"
+    ],
+    "passed_count": 302
+  },
+  "parent_full": {
+    "failed_count": 5,
+    "failures": [
+      "tests/test_tool_failure_recovery.py::test_active_dispatch_normal_success_avoids_recovery",
+      "tests/test_tool_failure_recovery.py::test_zero_iterations_resolves_unbounded",
+      "tests/test_tool_failure_recovery.py::test_active_dispatch_recovery_contract",
+      "tests/test_tool_failure_recovery.py::test_active_dispatch_keeps_one_root_and_bounds_two_repairs",
+      "tests/test_tool_failure_recovery.py::test_active_dispatch_handles_malformed_json_and_unknown_tools"
+    ],
+    "passed_count": 269
+  },
+  "candidate_failures_match_parent_exactly": true,
+  "new_test_failure_count": 0
+}

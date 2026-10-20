@@ -13,12 +13,14 @@ import argparse
 import importlib
 import json
 import logging
+import math
 import os
 import re
 import shutil
 import subprocess
 import sys
 import time
+import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -28,6 +30,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 from experiments.dab_answer_utils import semantic_final_answer_text
+from experiments.dab_api_routing import dab_default, active_route, read_explicit_key
 
 DEFAULT_DAB_DATA_ROOT = Path("/home/m0st1ma/research/DataAgentBench")
 DEFAULT_DAB_UPSTREAM_ROOT = Path("/home/m0st1ma/research/DataAgentBench_upstream")
@@ -280,6 +283,24 @@ def qwen_bailian_config(args: argparse.Namespace) -> dict[str, Any]:
         "api_key_present": bool(api_key),
         "base_url_env": base_env,
         "base_url": base_url,
+    }
+
+
+def openai_compatible_config(args: argparse.Namespace) -> dict[str, Any]:
+    """Resolve an explicitly configured OpenAI-compatible endpoint without logging its key."""
+    key_env = (getattr(args, "openai_compatible_api_key_env", None) or "DAB_TOOL_AGENT_API_KEY").strip()
+    api_key = os.getenv(key_env)
+    route = active_route()
+    if (not api_key and route and key_env == route['api_key_env']
+            and (getattr(args, 'openai_compatible_base_url', '') or '').rstrip('/') == route['base_url']
+            and args.deployment_name == route['model']):
+        api_key = read_explicit_key(route)
+    return {
+        "provider": "openai_compatible",
+        "api_key_env": key_env,
+        "api_key": api_key,
+        "api_key_present": bool(api_key),
+        "base_url": (getattr(args, "openai_compatible_base_url", None) or "").strip().rstrip("/"),
     }
 
 
@@ -731,12 +752,13 @@ def install_self_observation_tool(data_agent_module: Any, args: argparse.Namespa
 
                 class _ToolCallProxy:
                     def __init__(self, original: Any, arguments: str):
+                        self._original = original
                         self.id = getattr(original, "id", None)
                         self.function = _FunctionProxy(getattr(getattr(original, "function", None), "name", None), arguments)
 
                     def model_dump(self):
-                        if hasattr(tool_call, "model_dump"):
-                            dumped = tool_call.model_dump()
+                        if hasattr(self._original, "model_dump"):
+                            dumped = self._original.model_dump()
                             if isinstance(dumped, dict):
                                 dumped = dict(dumped)
                                 function = dict(dumped.get("function") or {})
@@ -937,7 +959,63 @@ def import_upstream_data_agent(upstream_root: Path, args: argparse.Namespace | N
 
         data_agent_module.ExecTool = DisabledExecTool
 
-    if args is not None and is_qwen_like_model(args.deployment_name):
+    if args is not None and getattr(args, "openai_compatible_base_url", None):
+        config = openai_compatible_config(args)
+        if not config["api_key_present"]:
+            raise RuntimeError(
+                f"OpenAI-compatible API key is not visible. Set {config['api_key_env']} "
+                "in the shell that launches this script."
+            )
+
+        original_openai = data_agent_module.OpenAI
+
+        def compatible_openai_factory(*factory_args: Any, **factory_kwargs: Any):
+            if factory_kwargs.get("base_url") == "https://api.together.xyz/v1":
+                factory_kwargs["api_key"] = config["api_key"]
+                factory_kwargs["base_url"] = config["base_url"]
+                factory_kwargs.setdefault("timeout", float(args.llm_timeout))
+                factory_kwargs.setdefault("max_retries", int(args.client_max_retries))
+            client = original_openai(*factory_args, **factory_kwargs)
+            if config['base_url'] == 'https://api.deepseek.com/v1':
+                from adapters.deepseek_client_v1 import install_client
+                client = install_client(client)
+            return client
+
+        data_agent_module.OpenAI = compatible_openai_factory
+
+        prompt_builder = data_agent_module.prompt_builder
+        original_init_messages = prompt_builder.init_messages
+        policy_overlay = Path(args.tool_agent_policy).read_text(encoding="utf-8", errors="replace").strip() if args.tool_agent_policy and Path(args.tool_agent_policy).exists() else ""
+
+        def compatible_init_messages(user_query: str, db_description: str, deployment_name: str, system_prompt=prompt_builder.SYSTEM_PROMPT):
+            if deployment_name != "kimi-openai-compatible":
+                return original_init_messages(user_query, db_description, deployment_name, system_prompt)
+            observation_overlay = (
+                "The runner automatically records a compact observation after every tool action for future meta-agent repair. "
+                "Every task tool may also accept an optional `self_observation` object when you have a useful causal explanation. "
+                "Attach it to the same list_db/query_db/execute_python/run_evolved_helper/return_answer action instead of spending a separate turn. "
+                "Use it to record open-ended process observations: current goal, what is known, uncertainties, why this action matters, intended next step, "
+                "and what would fail if stopping now. This is not a fixed stage/error taxonomy."
+            )
+            system_prompt = system_prompt.rstrip() + "\n\n# OPEN SELF-OBSERVATION TRACE\n" + observation_overlay + "\n"
+            if policy_overlay:
+                system_prompt = system_prompt.rstrip() + "\n\n# LOCAL ZERO-START POLICY OVERLAY\n" + policy_overlay + "\n"
+            return original_init_messages(user_query, db_description, "gpt-openai-compatible", system_prompt)
+
+        prompt_builder.init_messages = compatible_init_messages
+
+        original_data_agent = data_agent_module.DataAgent
+
+        class OpenAICompatibleDataAgent(original_data_agent):
+            def __init__(self, *da_args: Any, deployment_name: str, **da_kwargs: Any):
+                # Upstream routes only a fixed set of provider names. Use its OpenAI
+                # client branch during setup, then restore the actual API model ID.
+                super().__init__(*da_args, deployment_name="kimi-openai-compatible", **da_kwargs)
+                self.deployment_name = deployment_name
+
+        data_agent_module.DataAgent = OpenAICompatibleDataAgent
+
+    elif args is not None and is_qwen_like_model(args.deployment_name):
         config = qwen_bailian_config(args)
         if not config["api_key_present"]:
             raise RuntimeError(
@@ -1390,6 +1468,9 @@ def normalize_run_artifacts(*, args: argparse.Namespace, upstream_run_dir: Path,
     qwen_config = qwen_bailian_config(args) if is_qwen_like_model(args.deployment_name) else None
     if qwen_config is not None:
         qwen_config = {key: value for key, value in qwen_config.items() if key != "api_key"}
+    compatible_config = openai_compatible_config(args) if args.openai_compatible_base_url else None
+    if compatible_config is not None:
+        compatible_config = {key: value for key, value in compatible_config.items() if key != "api_key"}
     llm_retry_config = {
         "request_timeout_sec": args.llm_timeout,
         "retry_count": args.llm_retries,
@@ -1404,6 +1485,7 @@ def normalize_run_artifacts(*, args: argparse.Namespace, upstream_run_dir: Path,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "deployment_name": args.deployment_name,
         "qwen_client_config": qwen_config,
+        "openai_compatible_client_config": compatible_config,
         "llm_retry_config": llm_retry_config,
         "docker_status": getattr(args, "docker_status", None),
         "postgres_status": getattr(args, "postgres_status", None),
@@ -1459,6 +1541,7 @@ def write_startup_failure_artifact(
     summary_path = normalized / "summary.json"
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     summary["startup_failure"] = True
+    summary["startup_traceback"] = traceback.format_exc()
     if "Docker is not available" in run_error or "docker" in run_error.lower():
         summary["docker_diagnostics"] = docker_environment_diagnostics()
     write_json(summary_path, summary)
@@ -1467,6 +1550,8 @@ def write_startup_failure_artifact(
 
 def run_agent(args: argparse.Namespace) -> int:
     args = resolve_defaults(args)
+    if args.max_iterations < 0:
+        raise ValueError("--max-iterations must be zero (unbounded) or a positive integer")
     validate_paths(args)
 
     upstream_logs_dir = args.query_dir / "logs" / "data_agent" / args.run_id
@@ -1492,6 +1577,9 @@ def run_agent(args: argparse.Namespace) -> int:
             if is_qwen_like_model(args.deployment_name):
                 config = qwen_bailian_config(args)
                 summary["qwen_client_config"] = {key: value for key, value in config.items() if key != "api_key"}
+            if args.openai_compatible_base_url:
+                config = openai_compatible_config(args)
+                summary["openai_compatible_client_config"] = {key: value for key, value in config.items() if key != "api_key"}
             summary.update({"status": "ok", "data_agent": f"{DataAgent.__module__}.{DataAgent.__name__}"})
             exit_code = 0
         except Exception as exc:
@@ -1539,15 +1627,31 @@ def run_agent(args: argparse.Namespace) -> int:
     final_result: str | None = None
     run_error: str | None = None
     try:
+        iteration_limit = math.inf if args.max_iterations == 0 else args.max_iterations
         agent = DataAgent(
             query_dir=args.query_dir,
             db_description=args.db_description.read_text(encoding="utf-8", errors="replace"),
             db_config_path=str(args.db_config),
             deployment_name=args.deployment_name,
             exec_python_timeout=args.exec_python_timeout,
-            max_iterations=args.max_iterations,
+            max_iterations=iteration_limit,
             root_name=args.run_id,
         )
+        if args.max_iterations == 0:
+            # Upstream DataAgent compares llm_call_count against max_iterations
+            # after every response and asserts the same bound at termination.
+            # Positive infinity disables both checks without copying or editing
+            # the upstream benchmark implementation. Keep persisted provenance
+            # JSON standards-compliant by recording the configured limit as null.
+            original_to_dict = agent.to_dict
+
+            def unbounded_to_dict() -> dict[str, Any]:
+                value = original_to_dict()
+                value["max_iterations"] = None
+                value["iteration_limit_mode"] = "unbounded"
+                return value
+
+            agent.to_dict = unbounded_to_dict
         final_result = agent.run()
     except Exception as exc:  # Keep a normalized failure artifact for analyzers.
         run_error = f"{type(exc).__name__}: {exc}"
@@ -1572,10 +1676,17 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--query-workspace", default=os.environ.get("DAB_QUERY_WORKSPACE"), help="Query-local overlay containing workspace.json, agent policy, and helper registry.")
     parser.add_argument("--db-description")
     parser.add_argument("--db-config")
-    parser.add_argument("--deployment-name", default=os.environ.get("DAB_TOOL_AGENT_MODEL", "qwen-plus"))
+    parser.add_argument("--deployment-name", default=os.environ.get("DAB_TOOL_AGENT_MODEL", dab_default('model', 'glm-5.3-flash')))
     parser.add_argument("--bailian-api-key-env", default=os.environ.get("DAB_TOOL_AGENT_API_KEY_ENV"))
     parser.add_argument("--bailian-base-url", default=os.environ.get("DAB_TOOL_AGENT_BASE_URL"))
-    parser.add_argument("--max-iterations", type=int, default=int(os.environ.get("DAB_TOOL_AGENT_MAX_ITERATIONS", "20")))
+    parser.add_argument("--openai-compatible-base-url", default=os.environ.get("DAB_TOOL_AGENT_OPENAI_BASE_URL", dab_default('base_url')), help="Full /v1 URL of an explicitly configured OpenAI-compatible API.")
+    parser.add_argument("--openai-compatible-api-key-env", default=os.environ.get("DAB_TOOL_AGENT_OPENAI_API_KEY_ENV", dab_default('api_key_env', 'DAB_TOOL_AGENT_API_KEY')), help="Environment variable containing that API's key.")
+    parser.add_argument(
+        "--max-iterations",
+        type=int,
+        default=int(os.environ.get("DAB_TOOL_AGENT_MAX_ITERATIONS", "20")),
+        help="Maximum model turns; use 0 for an unbounded run.",
+    )
     parser.add_argument("--exec-python-timeout", type=int, default=int(os.environ.get("DAB_TOOL_AGENT_EXEC_TIMEOUT", "300")))
     parser.add_argument("--llm-timeout", type=float, default=float(os.environ.get("DAB_TOOL_AGENT_LLM_TIMEOUT", "600")), help="Per LLM request timeout passed to the upstream DataAgent chat completion call.")
     parser.add_argument("--llm-retries", type=int, default=int(os.environ.get("DAB_TOOL_AGENT_LLM_RETRIES", "4")), help="Number of DataAgent LLM retry attempts per turn.")

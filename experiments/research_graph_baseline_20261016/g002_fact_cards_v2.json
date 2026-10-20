@@ -1,0 +1,54 @@
+{
+  "event_span_limit": {
+    "kind": "uncertainty",
+    "statement": "Recorded event spans exclude unlogged work and any in-flight final call, so timing structure alone does not identify a timeout cause or an optimal reserve policy."
+  },
+  "fatal_cause_unknown": {
+    "kind": "uncertainty",
+    "statement": "Zero recorded events locate the two G1 failures before the first logged LLM/tool event, but do not identify their root cause. FatalError has no safe allowlisted message-pattern subtype in the frozen records."
+  },
+  "fatal_not_reserve": {
+    "kind": "counterexample",
+    "statement": "The two G1 FatalError failures show no recorded agent events and no reserve trigger, so the trigger path itself was not recorded as binding on those failures. This does not rule out an indirect code or run effect."
+  },
+  "fixed_outcomes": {
+    "kind": "observation",
+    "statement": "G0 had 33 strict passes and six 1200-second timeout failures; G1 had 30 strict passes, zero runner timeouts, and two other failures over the same frozen 56. Both are single runs; all 56 remain in each denominator."
+  },
+  "g0_timeout_transition": {
+    "kind": "observation",
+    "statement": "Of the six tasks that timed out in G0, five completed in G1 (one strict-true, four strict-false) and one failed before normal completion. Three of the six bound the G1 reserve; those three completed strict-false. This matched-task transition is descriptive, not a treatment effect."
+  },
+  "missing_terminal_meaning": {
+    "kind": "uncertainty",
+    "statement": "The one completed strict-false task without a recorded return_answer end may reflect a different termination path or trace normalization; these structural fields alone cannot distinguish them."
+  },
+  "pre_event_failures": {
+    "kind": "observation",
+    "statement": "Both G1 non-timeout failures have zero recorded LLM requests, LLM responses, and tool calls in their hash-verified full traces, with no completed-event span and no reserve trigger. Their outer error class is FatalError; the allowlisted message-pattern classifier finds no subtype."
+  },
+  "terminal_coverage": {
+    "kind": "observation",
+    "statement": "Fifty-three of 54 G1 completed traces have one recorded return_answer end. The remaining completed task has none and a strict-false verdict; all five reserve-triggered tasks are in the first group."
+  },
+  "timeout_not_success": {
+    "kind": "counterexample",
+    "statement": "The six G0 timeout tasks did not all become strict passes in G1: only one was strict-true, four were strict-false, and one failed. A zero-timeout total is not task-success gain."
+  },
+  "trigger_not_correctness": {
+    "kind": "counterexample",
+    "statement": "Reserve triggering and a completed return_answer did not suffice for strict success: four of the five triggered tasks were strict-false."
+  },
+  "triggered_terminal": {
+    "kind": "observation",
+    "statement": "All five G1 reserve-triggered tasks completed with one recorded return_answer end each; one was strict-true and four strict-false. Each has a recorded completed-event span of at least 1080 seconds."
+  },
+  "unknown_verdicts": {
+    "kind": "uncertainty",
+    "statement": "Three G1 completed tasks lack a strict verdict. They remain unknown in the fixed denominator; no answer or validator inspection is authorized."
+  },
+  "unpaired_variation": {
+    "kind": "uncertainty",
+    "statement": "Matching frozen task positions across two stochastic single runs does not provide an exchangeable control or establish that the reserve caused any outcome transition."
+  }
+}

@@ -26,6 +26,7 @@ import experiments.run_codex_qwen_repair_launcher as base
 
 
 CODEX_NATIVE_REPAIR_PROTOCOL_VERSION = "codex_native_long_context_usable_patch_v002"
+DEFAULT_META_BRIDGE_CONFIG = ROOT / "configs" / "codex_new_api_meta_bridge.json"
 
 
 def utc_now() -> str:
@@ -42,6 +43,45 @@ def read_text(path: Path, max_chars: int | None = None) -> str:
     if max_chars is not None and len(text) > max_chars:
         return text[:max_chars] + "\n\n[TRUNCATED]\n"
     return text
+
+
+def load_meta_bridge_config() -> dict[str, Any]:
+    """Load routing used only by this MetaAgent subprocess launcher."""
+
+    configured_path = os.environ.get("CODEX_NATIVE_META_BRIDGE_CONFIG")
+    if not configured_path:
+        from experiments.dab_api_routing import active_route
+        route = active_route()
+        if route:
+            configured_path = str(ROOT / route['meta_bridge_config'])
+    path = Path(configured_path) if configured_path else DEFAULT_META_BRIDGE_CONFIG
+    if not path.is_absolute():
+        path = ROOT / path
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("route_scope") != "meta_agent_bridge_only":
+        raise ValueError(f"Refusing non-bridge Codex routing config: {path}")
+    payload["_config_path"] = str(path.resolve())
+    return payload
+
+
+def resolve_catalog_path(value: str | None) -> str | None:
+    if not value:
+        return None
+    path = Path(value)
+    if not path.is_absolute():
+        path = ROOT / path
+    return str(path.resolve())
+
+
+def toml_string(value: str) -> str:
+    return json.dumps(value, ensure_ascii=True)
+
+
+def env_bool(name: str, default: bool = False) -> bool:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def profile_scope_text(profile: base.RepairProfile) -> str:
@@ -380,22 +420,44 @@ def run_codex_exec(*, workspace: Path, prompt_path: Path, candidate_dir: Path) -
     stderr_path = candidate_dir / "codex_native.stderr"
     run_info_path = candidate_dir / "codex_native_run.json"
 
-    command = ["codex"]
-    profile = os.environ.get("CODEX_NATIVE_PROFILE")
-    model = os.environ.get("CODEX_NATIVE_MODEL")
+    bridge = load_meta_bridge_config()
+    from experiments.dab_meta_runtime import resolve_codex, meta_environment
+    command = [resolve_codex("codex")]
+    profile = os.environ.get("CODEX_NATIVE_PROFILE", bridge.get("profile"))
+    model = os.environ.get("CODEX_NATIVE_MODEL", bridge.get("model"))
+    model_reasoning_effort = os.environ.get(
+        "CODEX_NATIVE_MODEL_REASONING_EFFORT",
+        bridge.get("model_reasoning_effort"),
+    )
+    model_catalog_json = resolve_catalog_path(
+        os.environ.get("CODEX_NATIVE_MODEL_CATALOG_JSON", bridge.get("model_catalog_json"))
+    )
+    ignore_user_config = env_bool(
+        "CODEX_NATIVE_IGNORE_USER_CONFIG",
+        bool(bridge.get("ignore_user_config", False)),
+    )
     sandbox = os.environ.get("CODEX_NATIVE_SANDBOX", "workspace-write")
     approval = os.environ.get("CODEX_NATIVE_APPROVAL", "never")
-    timeout = int(os.environ.get("CODEX_NATIVE_TIMEOUT_SEC", "1800"))
+    timeout = (None if bridge.get('wall_clock_timeout_seconds', 'unspecified') is None
+               else int(os.environ.get("CODEX_NATIVE_TIMEOUT_SEC", "1800")))
     if profile:
         command.extend(["--profile", profile])
     if model:
         command.extend(["--model", model])
+    if model_reasoning_effort:
+        command.extend(["--config", f"model_reasoning_effort={toml_string(model_reasoning_effort)}"])
+    if model_catalog_json:
+        command.extend(["--config", f"model_catalog_json={toml_string(model_catalog_json)}"])
     command.extend([
         "--sandbox",
         sandbox,
         "-a",
         approval,
         "exec",
+    ])
+    if ignore_user_config:
+        command.append("--ignore-user-config")
+    command.extend([
         "--skip-git-repo-check",
         "--output-last-message",
         str(final_message),
@@ -410,6 +472,7 @@ def run_codex_exec(*, workspace: Path, prompt_path: Path, candidate_dir: Path) -
             input=prompt,
             text=True,
             capture_output=True,
+            env=meta_environment(profile) if bridge.get('config_version') == 'codex_deepseek_meta_bridge_v1' else None,
             timeout=timeout,
             check=False,
         )

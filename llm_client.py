@@ -9,21 +9,42 @@ from openai import OpenAI
 
 load_dotenv()
 
-DATA_AGENT_MODEL = os.getenv("DATA_AGENT_MODEL") or os.getenv("OPENAI_MODEL", "gpt-5-mini")
-DATA_AGENT_BASE_URL = os.getenv("DATA_AGENT_BASE_URL") or os.getenv(
-    "COPILOT_BASE_URL",
-    "http://localhost:4141/v1",
-)
-DATA_AGENT_API_KEY = os.getenv("DATA_AGENT_API_KEY") or os.getenv("COPILOT_API_KEY", "dummy")
+DEFAULT_RESEARCH_MODEL = "glm-5.3-flash"
+DEFAULT_RESEARCH_BASE_URL = "http://10.29.1.10:3001/v1"
 
-META_AGENT_MODEL = os.getenv("META_AGENT_MODEL") or os.getenv("QWEN_MODEL", "qwen-plus")
+DATA_AGENT_MODEL = (
+    os.getenv("DATA_AGENT_MODEL")
+    or os.getenv("DAB_TOOL_AGENT_MODEL")
+    or os.getenv("OPENAI_MODEL")
+    or DEFAULT_RESEARCH_MODEL
+)
+DATA_AGENT_BASE_URL = (
+    os.getenv("DATA_AGENT_BASE_URL")
+    or os.getenv("DAB_TOOL_AGENT_OPENAI_BASE_URL")
+    or os.getenv("COPILOT_BASE_URL")
+    or DEFAULT_RESEARCH_BASE_URL
+)
+DATA_AGENT_API_KEY = (
+    os.getenv("DATA_AGENT_API_KEY")
+    or os.getenv("DAB_TOOL_AGENT_API_KEY")
+    or os.getenv("COPILOT_API_KEY")
+    or "dummy"
+)
+
+META_AGENT_MODEL = (
+    os.getenv("META_AGENT_MODEL")
+    or os.getenv("DAB_TOOL_AGENT_MODEL")
+    or DEFAULT_RESEARCH_MODEL
+)
 META_AGENT_BASE_URL = (
     os.getenv("META_AGENT_BASE_URL")
+    or os.getenv("DAB_TOOL_AGENT_OPENAI_BASE_URL")
     or os.getenv("DASHSCOPE_BASE_URL")
-    or "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    or DEFAULT_RESEARCH_BASE_URL
 )
 META_AGENT_API_KEY = (
     os.getenv("META_AGENT_API_KEY")
+    or os.getenv("DAB_TOOL_AGENT_API_KEY")
     or os.getenv("DASHSCOPE_API_KEY")
     or DATA_AGENT_API_KEY
 )

@@ -1,0 +1,48 @@
+{
+  "answer_blind": true,
+  "cohorts": [
+    {
+      "count": 4,
+      "status": "completed",
+      "strict_verdict": "false",
+      "trigger": "bound"
+    },
+    {
+      "count": 1,
+      "status": "completed",
+      "strict_verdict": "true",
+      "trigger": "bound"
+    },
+    {
+      "count": 17,
+      "status": "completed",
+      "strict_verdict": "false",
+      "trigger": "unbound"
+    },
+    {
+      "count": 29,
+      "status": "completed",
+      "strict_verdict": "true",
+      "trigger": "unbound"
+    },
+    {
+      "count": 3,
+      "status": "completed",
+      "strict_verdict": "unknown",
+      "trigger": "unbound"
+    },
+    {
+      "count": 2,
+      "status": "failed",
+      "strict_verdict": "false",
+      "trigger": "unbound"
+    }
+  ],
+  "failed_error_classes": {
+    "FatalError": 2
+  },
+  "schema_version": "g001_anonymous_mechanism_counts_v1",
+  "source_graph_sha256": "c8d35afeb677d018c76711737df8c30b468e1574c18d7450702188a857196b9b",
+  "source_progress_sha256": "480916c488c6c73d9ce34a926de4657eae71232b71bc4af9d47ac5fda929fe9d",
+  "total": 56
+}

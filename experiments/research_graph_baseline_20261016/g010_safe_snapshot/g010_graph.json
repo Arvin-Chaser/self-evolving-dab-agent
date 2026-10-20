@@ -1,0 +1,256 @@
+{
+  "binding": {
+    "admission_sha256": "1291cdeb85abeecd5c66bd6ce2a06d28413d2ea9e552a8cdd63eb621ca5c63c3",
+    "batch_sha256": "576a7d718bbe54d94ce6b7c32b92530394f55b39865d718a376320a5b11d51f7",
+    "candidate_tree_sha256": "80f002ac7a2d90b3cfed0fda7fec03c64c0a442c69a0ae27c7506852b32d36b9",
+    "description_mode": "full_db_description_no_hints",
+    "generation": 10,
+    "implementation_manifest_sha256": "2e9d8c44b56fbe10383127eb5deaf9d96d65065c38b49cef9c6af6d3953c51d6",
+    "parent_graph_sha256": "e49a7c765eef8aea4dd4bc295dfc907f7cf0fa743df41efff94fb4b9e31d0abd",
+    "parent_tree_sha256": "206c4f5186a66d72b851aa888eb75d975d5ce2085970a322881997b119f16d0d",
+    "policy_sha256": "d6e022a462960e961087e618087dcd1d884bab49389acae64c463583d8643797",
+    "query_count": 56,
+    "query_timeout_sec": 1200,
+    "registry_sha256": "7aba9897753c6a3394f1a6d0b27df35a39ac05ca099b815a1e2b9c6d931218ff",
+    "research_result_sha256": "0cb3441497459a042c98b0f403dddb4515146912f8852c003c2f50dd0a70c49e",
+    "timeout_scoring": "failure_in_fixed_56_denominator"
+  },
+  "edges": [
+    {
+      "relation": "refines",
+      "source": "hypothesis:g010",
+      "target": "hypothesis:g009"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "problem:g010",
+      "target": "evidence:g009"
+    },
+    {
+      "relation": "explains",
+      "source": "hypothesis:g010",
+      "target": "problem:g010"
+    },
+    {
+      "relation": "tests",
+      "source": "experiment:g010",
+      "target": "hypothesis:g010"
+    },
+    {
+      "relation": "observes",
+      "source": "evidence:g010",
+      "target": "experiment:g010"
+    }
+  ],
+  "evidence_sha256": "40e0b8aa30fa74d0ab6b9c8e3f4b06084d8943a8bf85f1e9fc0e0d9878f346f6",
+  "execution_basis": "user_authorized_two_run_reconciliation",
+  "generation": 10,
+  "incident_sha256": "061a71b552c2b8583b13528ac4d91ad0a72faee7550b7489dfc7186f881516ee",
+  "nodes": [
+    {
+      "fact_ids": [
+        "g007_outcome_partition",
+        "g007_evidence_scope",
+        "g008_outcome_partition",
+        "g008_evidence_scope",
+        "g009_outcome_partition",
+        "g009_evidence_scope"
+      ],
+      "id": "problem:g010",
+      "kind": "problem",
+      "scope": "Exact frozen 56-task base-description no-hint evaluation, 1200 seconds per task, strict pass over all 56, completed strict-verdict unknowns preserved as unknown, and timeouts plus other terminal failures counted as failures.",
+      "statement": "Across the fixed 56 in G0-G9, strict passes range 30-37, known strict fails 13-21, completed strict-verdict unknowns 2-3, and timeout/other terminal failures 2-6. G8/G9 support structural audit exposure, but semantic audit quality is unobserved and G9 still leaves 16 known strict fails with 2 timeout/other failures. The bounded problem is whether a task-agnostic evidence-reconciliation checklist delivered before a later-turn terminal answer can reduce the known strict-fail queue without increasing timeout or other terminal failures."
+    },
+    {
+      "fact_ids": [
+        "g008_outcome_partition",
+        "g008_evidence_scope",
+        "g009_outcome_partition",
+        "g009_evidence_scope"
+      ],
+      "falsification_condition": "Mechanism is contradicted if any non-timeout task is audit-negative, any return_answer is dispatched or evaluated before audit_requested, any return_answer sharing the first proposal's model_response_boundary_id is dispatched or evaluated, prohibited content is persisted, or behavior changes outside the return_answer path. With mechanism supported, the directional association is contradicted if strict pass is at most 34 or timeout plus other terminal failure is at least 4. A strict pass of 35 with terminal failures at 2, or a terminal count of 3, is inconclusive rather than confirmatory.",
+      "id": "hypothesis:g010",
+      "kind": "hypothesis",
+      "possible_counterexample": "The model may ignore a generic checklist; audit exposure may remain structurally positive without semantic verification; the checklist may consume enough budget to create a timeout; and G9's 35-pass result may reflect unpaired variance rather than a stable baseline.",
+      "prediction": "Mechanism is expected to be supported if every observed non-timeout cohort has audit-positive coverage at least 0.8 and no audit-negative task occurs. With mechanism supported, the descriptive directional association is expected if strict pass is at least 36, timeout plus other terminal failure is at most 2, and completed strict-verdict unknowns remain unknown rather than being reclassified.",
+      "statement": "In a new child of the verified G9 code parent, replacing the generic audit sentence with one fixed task-agnostic evidence-reconciliation checklist while preserving first-return_answer interception, same-response suppression, and the later-model-turn terminal gate will make the audit structurally positive across non-timeout cohorts and may reduce strict failures without increasing terminal failures. The mechanism claim is exposure and ordering only; any score association is descriptive and not causal."
+    },
+    {
+      "candidate_source_tree_sha256": "80f002ac7a2d90b3cfed0fda7fec03c64c0a442c69a0ae27c7506852b32d36b9",
+      "code_parent": "g009_later_model_turn_verification_gate",
+      "code_parent_tree_sha256": "206c4f5186a66d72b851aa888eb75d975d5ce2085970a322881997b119f16d0d",
+      "evaluation_run_id": "g010_verification_reconciliation_nohint_56_v1",
+      "fixed_protocol": {
+        "description_mode": "full_db_description_no_hints",
+        "formal_runs": 1,
+        "frozen_task_count": 56,
+        "hints": false,
+        "other_terminal_failures": "failures_in_fixed_denominator",
+        "per_task_wall_timeout_seconds": 1200,
+        "primary_metric": "completed_and_strict_true_over_all_56",
+        "probe_run": false,
+        "second_arm": false,
+        "sham_run": false,
+        "strict_scoring": "strict_pass_over_all_56",
+        "strict_verdict_unknown": "preserved_as_unknown_not_reclassified",
+        "task_specific_logic": false,
+        "timeouts": "failures_in_fixed_denominator"
+      },
+      "id": "experiment:g010",
+      "interface_status": "verified parent tree and verified G9 first-return_answer interception, same-response suppression, generic injection, and later-model-turn terminal gate; the experiment changes only the task-agnostic checklist text. No semantic audit-quality or answer-content interface is used.",
+      "intervention": "On the first pre-exec return_answer proposal for a task, set audit_requested and do not dispatch it. Inject exactly one fixed, task-agnostic evidence-reconciliation checklist asking the model to compare its proposed answer with tool observations already in its context, check empty or null results and numeric consistency, and repair or retain the answer. Suppress every later return_answer sharing the first proposal's model_response_boundary_id. Dispatch and allow evaluation only of the first return_answer from a later model response. Read only tool_name, hook-local ordinal, anonymous task index, and model-response boundary identifier. Do not read return_answer arguments, messages, tool results, answers, hints, validators, raw traces, task content, credentials, or network content.",
+      "intervention_class": "behavioral_pre_terminal_audit",
+      "kind": "experiment",
+      "measurement_plan": {
+        "cohort_aggregation": "Report task counts and fixed-56 outcome rates separately for strict pass, known strict fail, completed strict-verdict unknown, and timeout plus other terminal failure. For each cohort report audit-positive, audit-negative, and audit-unknown counts with coverage numerator, denominator, and rate. Never pool cohorts to hide missing coverage. Completed strict-verdict unknowns remain a separate unknown queue, and timeouts plus other terminal failures remain failures.",
+        "contradicted_conditions": "Mechanism is contradicted if any audit-negative task exists, any return_answer is dispatched or evaluated before audit_requested, any return_answer sharing the first proposal's model_response_boundary_id is dispatched or evaluated, prohibited content is persisted, or behavior changes outside the intended return_answer path. With mechanism supported, the directional association is contradicted if strict pass is at most 34 or timeout plus other terminal failure is at least 4.",
+        "coverage_denominator": "The overall outcome denominator is the fixed 56. After the frozen evaluator runs, each cohort denominator is the observed number of tasks in strict pass, known strict fail, completed strict-verdict unknown, or timeout plus other terminal failure. Non-timeout coverage is audit-positive tasks divided by that observed non-timeout cohort denominator. Report numerator, denominator, and rate separately.",
+        "coverage_threshold": 0.8,
+        "hooks": [
+          "DataAgentWithSelfObservation._handle_tool_call pre-exec: intercept the first return_answer, set audit_requested, inject one generic evidence-reconciliation checklist, and suppress return_answer proposals sharing the first proposal's model_response_boundary_id",
+          "DataAgentWithSelfObservation._handle_tool_call pre-exec: dispatch the first return_answer from a later model_response_boundary_id and allow it to terminate the task"
+        ],
+        "inconclusive_conditions": "The result is inconclusive if any non-timeout cohort has audit-positive coverage below 0.8, no audit request is observed, the model-response boundary interface is unavailable, strict pass is exactly 35 with terminal failures at 2, terminal failures are exactly 3 with strict pass at least 36, or too many timeout or unknown tasks prevent cohort assessment. Completed strict-verdict unknowns are reported separately and are not reclassified.",
+        "no_answer_no_hint_boundary": "During execution the hook may read only tool_name, hook-local ordinal, anonymous task index, and model-response boundary identifier. It may persist only anonymous_task_index, hook_local_step_ordinal, model_response_boundary_id, audit_requested, injection_delivered, later_terminal_return_answer_seen, coverage_status, and sidecar_terminal_status. It must not persist, log, expose, or use benchmark answers, hints, validators, expected outputs, task IDs, raw traces, messages, tool results, raw argument payloads, raw tool names, credentials, network content, digest strings, old research lines, or task content. The injected checklist is generic and task-agnostic. Cohort labels and strict verdicts are joined only after the run from the frozen evaluator and are never read by the agent or hook during execution.",
+        "per_task_negative_rule": "A task is audit-negative if any return_answer is dispatched or evaluated before audit_requested, any return_answer sharing the first proposal's model_response_boundary_id is dispatched or evaluated, the audit request occurs after terminal, injection is attempted but fails while a terminal answer is still dispatched, prohibited content is persisted, or behavior changes outside the return_answer audit path. Audit-negative takes precedence over audit-positive and audit-unknown.",
+        "per_task_positive_rule": "A task is audit-positive when a first pre-exec return_answer proposal is observed, audit_requested is set exactly once, the generic checklist is delivered into model-visible context, a terminal return_answer is dispatched or evaluated at a strictly greater hook ordinal and a later model_response_boundary_id than the first proposal, no prohibited content is persisted, and no behavior outside the return_answer path changes. Audit-positive is mechanism exposure, not correctness.",
+        "per_task_unknown_rule": "A task is audit-unknown if no terminal return_answer is observed, including timeout or other terminal failure before a terminal answer; the sidecar record is missing; the model-response boundary is ambiguous; the hook injection state cannot be observed; or trace completeness metadata is insufficient. Unknown is never imputed as audit-positive, audit-negative, strict pass, or strict fail.",
+        "run_before": "All rules, cohort labels, denominators, thresholds, supported/contradicted/inconclusive conditions, and unknown fallbacks are fixed before child implementation or formal execution. No post-run strict verdict, task ID, answer, hint, or validator defines a rule. This selection call performs no evaluation.",
+        "sources": [
+          "live_tool_dispatch.tool_name",
+          "hook_local_step_ordinal",
+          "anonymous_task_index",
+          "model_response_boundary_id",
+          "audit_requested",
+          "injection_delivered",
+          "postrun_trace.completeness_metadata",
+          "frozen_evaluator.cohort_label"
+        ],
+        "supported_conditions": "Mechanism is supported if every observed non-timeout cohort has audit-positive coverage at least 0.8 and no audit-negative task exists. With mechanism supported, the descriptive directional association is supported if strict pass is at least 36, timeout plus other terminal failure is at most 2, and no prohibited content or protocol violation is observed. This is not a causal claim."
+      }
+    },
+    {
+      "artifact_refs": {
+        "extractor_sha256": "32b390bbf949ac8af87c392ff14a465e35709b9b0986a52aebc50030aa2d9752",
+        "incident_sha256": "061a71b552c2b8583b13528ac4d91ad0a72faee7550b7489dfc7186f881516ee",
+        "input_manifest_sha256": "df114710c7605ddb464c5806778aacb6e302589a0c5884a25355fa89a4675554",
+        "original_launch_manifest_sha256": "7c1f6c4d41af7e047aaa10219d84c205b416ebd517d0fad37bc3c9cab9283392",
+        "original_preflight_sha256": "2b32d1b49bbdcfe2ab2ed138925925001365c3d1955903c154fc885ffddacc04",
+        "original_progress_sha256": "cc3022f8c1d4209c48abe603172720b5825a8b95e755439cc242cdb08c2581a9",
+        "original_summary_sha256": "158a46757001991281f4feedf8bc20aba72bd7771e4f2b77bd2658b484b62abe",
+        "parent_graph_sha256": "e49a7c765eef8aea4dd4bc295dfc907f7cf0fa743df41efff94fb4b9e31d0abd",
+        "pre_execution_sha256": "f62c6d2f21894744838473557ea8e4030f1fa63ee9905cce905476fe5d61e46d",
+        "reconciled_report_sha256": "2fc6497001b4c3824a82ac95172e1a93d4e7c06afc057069573c0f063185eb19",
+        "recovery_launch_manifest_sha256": "7468c1601124579f58fdd4617672d5bc3a4ba66ad5552c3b90d962f2a43758ca",
+        "recovery_progress_sha256": "b990ce38d39d2480b3af69f0e549eefa44c7235f9eb9e5c6e7a4b8184202abfc",
+        "recovery_summary_sha256": "584f44e06633153f804df37567b11893b9f368d301fc633ceb6520db52a0d26b",
+        "specialized_evidence_sha256": "dcb6a0152f5f74efee74f7b4336e2ce6cb6be21635f345da64d9d0d802825db3"
+      },
+      "completed_count": 55,
+      "ended_count": 56,
+      "execution_basis": "user_authorized_two_run_reconciliation",
+      "frozen_task_count": 56,
+      "id": "evidence:g010",
+      "kind": "evidence",
+      "limits": [
+        "This is a user-authorized two-run repair view, not one uninterrupted valid 56-task execution.",
+        "The original 56-task run remains marked invalid_infrastructure; its 27/56 score and incident are preserved.",
+        "Five pre-model PostgreSQL load failures were replaced only by their own bound recovery outcomes; all other 51 original outcomes were retained.",
+        "The 32/56 reconciled score is supplementary and not the original official single-run result.",
+        "Checklist exposure is structural; semantic verification quality and causal score effects are not observed.",
+        "Three completed strict verdicts remain unknown; the timeout remains a failure in fixed 56."
+      ],
+      "original_strict_pass_count": 27,
+      "other_terminal_failure_count": 0,
+      "query_wall_timeout_sec": 1200,
+      "reconciled_strict_pass_count": 32,
+      "recovery_task_count": 5,
+      "score_policy": "completed_and_strict_true_over_all_56;timeout_is_failure;five_pre_model_environment_failures_replaced_by_bound_recovery",
+      "specialized_cohort_coverage": {
+        "known_strict_fail": {
+          "denominator": 20,
+          "guard_passed": true,
+          "negative_task_count": 0,
+          "numerator": 20,
+          "positive_task_count": 20,
+          "rate": 1.0,
+          "status": "supported",
+          "threshold": 0.8,
+          "unknown_task_count": 0
+        },
+        "strict_pass": {
+          "denominator": 32,
+          "guard_passed": true,
+          "negative_task_count": 0,
+          "numerator": 32,
+          "positive_task_count": 32,
+          "rate": 1.0,
+          "status": "supported",
+          "threshold": 0.8,
+          "unknown_task_count": 0
+        },
+        "strict_verdict_unknown": {
+          "denominator": 3,
+          "guard_passed": true,
+          "negative_task_count": 0,
+          "numerator": 3,
+          "positive_task_count": 3,
+          "rate": 1.0,
+          "status": "supported",
+          "threshold": 0.8,
+          "unknown_task_count": 0
+        },
+        "timeout_or_other_terminal_failure": {
+          "denominator": 1,
+          "guard_passed": null,
+          "negative_task_count": 0,
+          "numerator": 0,
+          "positive_task_count": 0,
+          "rate": 0.0,
+          "status": "not_guarded",
+          "threshold": null,
+          "unknown_task_count": 1
+        }
+      },
+      "specialized_components": {
+        "directional_outcome": {
+          "causal_claim_allowed": false,
+          "g9_reference": {
+            "known_strict_fail": 16,
+            "strict_pass": 35,
+            "strict_verdict_unknown": 3,
+            "timeout_or_other_terminal_failure": 2
+          },
+          "known_strict_fail": 20,
+          "reasons": [
+            "directional_contradiction"
+          ],
+          "status": "contradicted",
+          "strict_pass": 32,
+          "strict_verdict_unknown": 3,
+          "timeout_or_other_terminal_failure": 1
+        },
+        "mechanism": {
+          "any_negative_task": false,
+          "behavior_change_detected": false,
+          "coverage_threshold": 0.8,
+          "non_timeout_cohorts_present": true,
+          "prohibited_content_persisted": false,
+          "scoring_change_detected": false,
+          "status": "supported"
+        }
+      },
+      "specialized_signal_kind": "fixed_task_agnostic_evidence_reconciliation_checklist",
+      "specialized_status": "contradicted",
+      "statement": "G10 checklist intervention: user-authorized two-run repair view, not a single complete valid run; 32/56 supplementary strict versus 27/56 original infrastructure-affected strict.",
+      "strict_pass_count": 32,
+      "strict_pass_rate_all": 0.571429,
+      "strict_verdict_missing_completed_count": 3,
+      "timeout_failure_count": 1
+    }
+  ],
+  "pre_execution_sha256": "f62c6d2f21894744838473557ea8e4030f1fa63ee9905cce905476fe5d61e46d",
+  "reconciled_report_sha256": "2fc6497001b4c3824a82ac95172e1a93d4e7c06afc057069573c0f063185eb19",
+  "schema_version": "dab_research_graph_generation_v1",
+  "status": "four_nodes_complete"
+}

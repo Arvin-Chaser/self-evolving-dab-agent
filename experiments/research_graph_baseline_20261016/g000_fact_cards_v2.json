@@ -1,0 +1,121 @@
+{
+  "all_known_failures_tool_failure": {
+    "kind": "observation",
+    "metric_keys": [
+      "strict_fail_tasks_with_tool_failure",
+      "tasks_strict_fail"
+    ],
+    "statement": "Tool failures occur in all 14 known strict-fail tasks; this association does not establish causation."
+  },
+  "answer_return_calls": {
+    "kind": "observation",
+    "metric_keys": [
+      "tool_calls_return_answer",
+      "verified_traces"
+    ],
+    "statement": "The 50 verified completed traces contain 50 return_answer calls in total; this does not establish semantic correctness."
+  },
+  "outcome_partition": {
+    "kind": "observation",
+    "metric_keys": [
+      "frozen_tasks",
+      "tasks_strict_pass",
+      "tasks_strict_fail",
+      "tasks_strict_unknown",
+      "tasks_timeout_failure"
+    ],
+    "statement": "The frozen set has 33 strict passes, 14 known strict failures, 3 unknown strict verdicts, and 6 timeout failures among 56 tasks."
+  },
+  "raw_totals_not_rates": {
+    "kind": "counterexample",
+    "metric_keys": [
+      "strict_pass_tool_calls",
+      "strict_fail_tool_calls",
+      "tasks_strict_pass",
+      "tasks_strict_fail"
+    ],
+    "statement": "Raw call totals across strict-pass and strict-fail groups have unequal group sizes and are not per-task rates."
+  },
+  "timeout_counterfactual": {
+    "kind": "uncertainty",
+    "metric_keys": [
+      "tasks_timeout_failure"
+    ],
+    "statement": "The partial logs cannot establish whether earlier stopping would yield a strict pass; timeout remains a failure in the fixed denominator."
+  },
+  "timeout_early_log_end": {
+    "kind": "observation",
+    "metric_keys": [
+      "tasks_timeout_failure"
+    ],
+    "statement": "Four anonymous timeout tasks have only 153-238 seconds of completed events in their partial logs despite a 1200-second wall limit; the remaining time is not explained by completed event records."
+  },
+  "timeout_heterogeneity": {
+    "kind": "counterexample",
+    "metric_keys": [
+      "tasks_timeout_failure"
+    ],
+    "statement": "The two late-active and four early-log-end timeouts do not support one uniform observed timeout trajectory."
+  },
+  "timeout_late_activity": {
+    "kind": "observation",
+    "metric_keys": [
+      "tasks_timeout_failure"
+    ],
+    "statement": "Two anonymous timeout tasks have completed event spans of 1136 and 1178 seconds within a 1200-second limit, with 50 and 69 completed LLM calls, respectively. This describes activity near the deadline, not whether calls were redundant."
+  },
+  "timeout_partial_logs_exist": {
+    "kind": "observation",
+    "metric_keys": [
+      "tasks_timeout_failure"
+    ],
+    "statement": "Each timeout has hash-bound partial LLM and tool event logs, although none has a normalized full trace."
+  },
+  "timeout_unfinished_call": {
+    "kind": "uncertainty",
+    "metric_keys": [
+      "tasks_timeout_failure"
+    ],
+    "statement": "Partial logs record completed calls only; an unfinished final call or other process time may explain the unobserved interval, but its type and cause are unknown."
+  },
+  "tool_failure_not_sufficient": {
+    "kind": "counterexample",
+    "metric_keys": [
+      "strict_pass_tasks_with_tool_failure",
+      "tasks_strict_pass"
+    ],
+    "statement": "Tool failures occur in 31 of 33 strict-pass tasks, so their occurrence alone is not sufficient for a strict failure."
+  },
+  "tool_failure_types": {
+    "kind": "observation",
+    "metric_keys": [
+      "tool_failures_query_db",
+      "tool_failures_execute_python"
+    ],
+    "statement": "Trace success flags mark 87 query_db and 100 execute_python calls as unsuccessful; no error content was inspected."
+  },
+  "tool_flag_semantics": {
+    "kind": "uncertainty",
+    "metric_keys": [
+      "tool_failures_query_db",
+      "tool_failures_execute_python"
+    ],
+    "statement": "A tool success flag cannot distinguish expected exploratory errors from errors that obstruct the task."
+  },
+  "tool_usage": {
+    "kind": "observation",
+    "metric_keys": [
+      "tool_calls_query_db",
+      "tool_calls_execute_python",
+      "tool_calls_list_db"
+    ],
+    "statement": "Traces contain 1077 query_db, 631 execute_python, and 94 list_db calls."
+  },
+  "unknown_verdict_gap": {
+    "kind": "uncertainty",
+    "metric_keys": [
+      "tasks_strict_unknown"
+    ],
+    "statement": "The 3 completed tasks with missing strict verdict remain unknown, not known strict failures."
+  }
+}

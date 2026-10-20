@@ -1,0 +1,19 @@
+{
+  "schema_version": "dab_research_graph_meta_handoff_v1",
+  "source_generation": 0,
+  "proposed_generation": 1,
+  "g000_graph_sha256": "256570b3813f79bced5332994c5e3506765cd88ebdbaf6371115e9e3290bc86e",
+  "observer_result": "g001_observer_001/result.json",
+  "observer_result_sha256": "be19db9842bfb65b8b087478531dbde40e911b201dcc9aa48d7c268f3cc2db38",
+  "research_meta_result": "g001_research_meta_001/result.json",
+  "research_meta_result_sha256": "6019fbca349f841d76b28bf4a2aff6941fb75307184b1471e267643085f83674",
+  "research_meta_implementation_ready": false,
+  "status": "halted_before_candidate_implementation_and_evaluation",
+  "reason": "Aggregate G0 Evidence does not localize a safe, falsifiable G1 intervention. No G1 Problem, Hypothesis, or Experiment was frozen.",
+  "next_allowed_step": "Answer-blind characterization of the existing G0 task-level execution metadata and traces, then a fresh independent Research Meta decision.",
+  "next_forbidden_steps": [
+    "Read official answers, hints, or validator content",
+    "Create a speculative G1 candidate from aggregate counts",
+    "Launch a G1 evaluation before its three pre-execution nodes and candidate source are frozen"
+  ]
+}

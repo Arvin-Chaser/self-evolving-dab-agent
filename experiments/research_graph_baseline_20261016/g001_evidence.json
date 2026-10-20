@@ -1,0 +1,43 @@
+{
+  "generation": 1,
+  "node": {
+    "artifact_refs": {
+      "launch_manifest_path": "/srv/text2sql/evolution_runtime/research_graph_baseline_20261016/graph/g001_launch_manifest.json",
+      "launch_manifest_sha256": "15f406e3a4e53645414af6feaef8442fecaed8e159b72994e50ba54954dad15b",
+      "pre_execution_path": "/srv/text2sql/evolution_runtime/research_graph_baseline_20261016/graph/g001_pre_execution.json",
+      "pre_execution_sha256": "4d6f3392d910588b43f12fcf512a623b43b597010c15f59e5f7babd804ef2088",
+      "progress_path": "/srv/text2sql/evolution_runtime/research_graph_baseline_20261016/g001_revision001/evaluation/baseline_g001_deadline_reserve_nohint_56_v1/multi_query_progress.json",
+      "progress_sha256": "480916c488c6c73d9ce34a926de4657eae71232b71bc4af9d47ac5fda929fe9d",
+      "summary_path": "/srv/text2sql/evolution_runtime/research_graph_baseline_20261016/g001_revision001/evaluation/baseline_g001_deadline_reserve_nohint_56_v1/multi_query_summary.json",
+      "summary_sha256": "8209eb122b2c6faad2431e4fd4f5427198994e22421f9c0290e3242645912aba",
+      "trace_manifest_path": "/srv/text2sql/evolution_runtime/research_graph_baseline_20261016/graph/g001_trace_manifest.json",
+      "trace_manifest_sha256": "f38265bb69a290af149892cab4bd5fd85c5bbb963fe0f3cc4ab2f9fdd6ac0f56"
+    },
+    "completed_count": 54,
+    "ended_count": 56,
+    "final_answer_nonempty_count": 53,
+    "frozen_task_count": 56,
+    "id": "evidence:g001",
+    "kind": "evidence",
+    "limits": [
+      "A single unpaired run cannot establish a causal benefit over G0.",
+      "A reserve trigger is a mechanism observation, not evidence of a correct answer.",
+      "Missing strict verdicts remain unknown without shrinking the fixed denominator."
+    ],
+    "other_terminal_failure_count": 2,
+    "query_wall_timeout_sec": 1200,
+    "reserve_trigger_counts": {
+      "bound": 5,
+      "unbound": 51
+    },
+    "score_policy": "completed_and_strict_true_over_all_56;timeout_is_failure",
+    "statement": "G1 deadline-reserve result on the unchanged no-hint frozen 56; 1200-second timeouts count as failures.",
+    "strict_pass_count": 30,
+    "strict_pass_rate_all": 0.535714,
+    "strict_verdict_known_count": 53,
+    "strict_verdict_missing_completed_count": 3,
+    "timeout_failure_count": 0
+  },
+  "recorded_at_utc": "2026-10-16T13:11:58.905278+00:00",
+  "schema_version": "dab_research_graph_evidence_v1"
+}

@@ -1,0 +1,61 @@
+{
+  "answer_blind": true,
+  "cohorts": {
+    "strict_fail": {
+      "llm_requests": 745,
+      "llm_responses": 745,
+      "return_answer_calls": 20,
+      "tasks": 21,
+      "tasks_with_no_tool_call": 0,
+      "tasks_with_return_answer": 20,
+      "tasks_with_tool_failure": 20,
+      "tool_calls": 990,
+      "tool_failures": 111,
+      "traces": 21
+    },
+    "strict_pass": {
+      "llm_requests": 719,
+      "llm_responses": 719,
+      "return_answer_calls": 30,
+      "tasks": 30,
+      "tasks_with_no_tool_call": 0,
+      "tasks_with_return_answer": 30,
+      "tasks_with_tool_failure": 30,
+      "tool_calls": 1018,
+      "tool_failures": 133,
+      "traces": 30
+    },
+    "strict_unknown": {
+      "llm_requests": 51,
+      "llm_responses": 51,
+      "return_answer_calls": 3,
+      "tasks": 3,
+      "tasks_with_no_tool_call": 0,
+      "tasks_with_return_answer": 3,
+      "tasks_with_tool_failure": 3,
+      "tool_calls": 72,
+      "tool_failures": 11,
+      "traces": 3
+    },
+    "timeout_failure": {
+      "tasks": 2
+    }
+  },
+  "frozen_task_count": 56,
+  "limitations": [
+    "Tool success flags do not identify causal obstruction or answer correctness.",
+    "Two timeout tasks lack full normalized traces; this sidecar does not infer their final in-flight work.",
+    "Three completed strict verdicts remain unknown within the fixed denominator.",
+    "Between-generation outcome changes are from unpaired runs and are not causal effects."
+  ],
+  "schema_version": "g002_balanced_behavior_answer_blind_v1",
+  "source_hashes": {
+    "g2_graph_sha256": "38852be6a2cef504cbc936a7b919db7f879c709f9e5a6a594ce432f716cb5b54",
+    "g2_summary_sha256": "d18d1650670d5ed362c3a0920053e60f9243adbb3cafb4e3375ad11cf50ddd02",
+    "g2_trace_manifest_sha256": "bd8083f263254fff2e4e8cfa68bc577220928fecd0809ed88c1a781df02003f1"
+  },
+  "tool_failures_by_name": {
+    "execute_python": 159,
+    "query_db": 96
+  }
+}

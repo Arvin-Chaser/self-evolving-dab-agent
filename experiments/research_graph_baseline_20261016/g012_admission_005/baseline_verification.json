@@ -1,0 +1,21 @@
+{
+  "assembly_sha256": "0935519543136e3663ad957c4d0868274adf6813e3cb3889e7d55c64eba65f56",
+  "benchmark_accessed": false,
+  "child_tree_sha256": "47dbf42636bbaa234c5f58256a37821a2ac891d29b34fcce13fe350207e7e344",
+  "created_at_utc": "2026-10-20T13:50:13.986282+00:00",
+  "database_accessed": false,
+  "driver_sha256": "fe7a3ff7fbab54c1471b194ad3273647f3db98b4f4c97ca1a4e67a4890389add",
+  "formal_evaluation_started": false,
+  "parent_tree_sha256": "7a08559bad85ac3de94bc897759cc0f41aeb3260816a3e0ff21989687fae24ac",
+  "prior_provider_receipt_sha256": "0772278329e54aaf99360629e6a58ba9b09f648a7358a059e1f6d72d67b2b2fc",
+  "probe_sha256": "0477ff45af64fd4915003954b57d1859a8065e648a590c0980b0e986203c67f3",
+  "remote_source_verification": {
+    "file_count": 124,
+    "mismatch_count": 0,
+    "probe_sha256": "0477ff45af64fd4915003954b57d1859a8065e648a590c0980b0e986203c67f3",
+    "status": "verified_hash_bound_synthetic_scratch"
+  },
+  "research_contract_sha256": "67086825a82f1bd3bcc34297c85410ced236c965085c2ec94723bfc567c0b190",
+  "schema_version": "g012_admission_attempt002_baseline_v1",
+  "source_admission_sha256": "f557bd2b739152ea8c8440666b7548c750d78de47f46cc71e6f39c88900b9bf4"
+}

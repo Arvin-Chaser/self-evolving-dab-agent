@@ -1,0 +1,65 @@
+{
+  "generation": 11,
+  "node": {
+    "artifact_refs": {
+      "extractor_sha256": "6d4f1f9ab16004296c6eac31707acf8860c8b37b91c1db71ded1d997afc40cea",
+      "input_manifest_sha256": "ce3f8c4f92f06416224b87744c52eb2c28efc61c5dfafb059c7828471e5d0b9f",
+      "launch_claim_sha256": "e70f6ce7b76554a1092aefa89e2a4a9c769733995dccbd1d100098fccf635174",
+      "launch_manifest_sha256": "58bf43915b723adadcdabb89c9e5d31b1a35e9b54f9cbcfcc0696a748644bd0f",
+      "parent_graph_sha256": "2426502a697c988c77edc134bba0a4dd9612543733d19ce9d7bb3107083f3b3a",
+      "pre_execution_sha256": "c6244346c29e85317f2409c05a9665d58801584266a5730f07df8c049a6912b4",
+      "preflight_incident_sha256": "50cc1455d3f12ba9278326dfefaadfc6d3631c16258e602aca3f7300b3db23c0",
+      "preflight_sha256": "5b3ce05e07cee508ee6b5b85640a6d677977186fb84f0a155062c429eb7a07ed",
+      "progress_sha256": "62c2a9d64a323bb23514cfc8ce33b8ccd88e55625a7c5242256748d8f0e81bb3",
+      "specialized_evidence_sha256": "58ad93d6e25dd4e9e5ab0a0364a75b0a28142a927d6fcc744238b932ffd5d129",
+      "summary_sha256": "5949b6ed83eefbc9eabc897b02f3e522c56c2738ab84a215972c6193ea8f6588"
+    },
+    "completed_count": 53,
+    "ended_count": 56,
+    "frozen_task_count": 56,
+    "id": "evidence:g011",
+    "kind": "evidence",
+    "known_strict_fail_count": 15,
+    "limits": [
+      "No model-authored G11 record and no guidance binding were observed; the behavioral mechanism is untested in this run.",
+      "All 53 completed tasks have a valid zero-record G11 summary; timeout tasks remain failures in the fixed 56.",
+      "Structural validation cannot establish semantic support, task relevance, plan quality, answer correctness, coverage, or truth.",
+      "Three completed strict verdicts remain unknown and are not reclassified.",
+      "This is one unpaired run; score differences from other generations are descriptive, not causal."
+    ],
+    "other_terminal_failure_count": 0,
+    "query_wall_timeout_sec": 1200,
+    "score_policy": "completed_and_strict_true_over_all_56;timeout_is_failure",
+    "specialized_cohort_coverage": {
+      "known_strict_fail": {
+        "denominator": 15,
+        "guidance_task_count": 0,
+        "record_task_count": 0
+      },
+      "strict_pass": {
+        "denominator": 35,
+        "guidance_task_count": 0,
+        "record_task_count": 0
+      },
+      "strict_verdict_unknown": {
+        "denominator": 3,
+        "guidance_task_count": 0,
+        "record_task_count": 0
+      },
+      "timeout_failure": {
+        "denominator": 3,
+        "guidance_task_count": 0,
+        "record_task_count": 0
+      }
+    },
+    "specialized_signal_kind": "model_authored_structural_plan_evidence_ledger",
+    "specialized_status": "untested",
+    "statement": "G11 structural plan/evidence ledger on one valid frozen no-hint 56-task run; no model-authored plan record or guidance binding was observed.",
+    "strict_pass_count": 35,
+    "strict_pass_rate_all": 0.625,
+    "strict_verdict_missing_completed_count": 3,
+    "timeout_failure_count": 3
+  },
+  "recorded_at_utc": "2026-10-20T06:34:09.706011+00:00",
+  "schema_version": "dab_research_graph_evidence_v2"
+}

@@ -1,0 +1,501 @@
+{
+  "schema_version": "g012_exploratory_implementation_manifest_v2",
+  "status": "feasible_bounded",
+  "status_rationale": {
+    "bounded_action_interface": "feasible",
+    "source_grounded_opaque_target_carrier": "feasible",
+    "same_state_generic_control": "feasible_synthetic_only",
+    "active_state_freshness": "feasible_bounded_with_record_carrying_call_caveat",
+    "model_authored_vs_independently_derived": "partial_structural_inventory_only",
+    "instrumentation_loss_vs_evidence_gap": "feasible_structural_taxonomy",
+    "response_boundary": "feasible_bounded_no_mid_response_interjection",
+    "real_model_compliance": "unknown",
+    "provider_acceptance": "unknown",
+    "semantic_support_or_benefit": "not_claimed"
+  },
+  "selected_target_id": "research_target:g012:002",
+  "mechanism_id": "mech_uncertainty_typed_evidence_state_and_gap_action",
+  "not_formal_candidate": true,
+  "formal_experiment_created": false,
+  "benchmark_run": false,
+  "evidence_extractor_created": false,
+  "launch_claim": false,
+  "score_claim": false,
+  "provider_call": false,
+  "network_request": false,
+  "input_binding": {
+    "schema_version": "g012_interface_investigation_002_input_v1",
+    "selected_target_id": "research_target:g012:002",
+    "status": "exploratory_not_formal_candidate",
+    "scoped_reference_sha256": {
+      "experiments/g011_evidence_extractor.py": "6d4f1f9ab16004296c6eac31707acf8860c8b37b91c1db71ded1d997afc40cea",
+      "experiments/g011_interface_contract.py": "fb656c9a220c51de471455e43370fae0eff220e27f9449b35b0d9931d6446e64",
+      "experiments/g011_plan_evidence_record.py": "8f6ecf5aa8693ac41b1b19caebd0f6ba9d8f4558904192d90781ac3fd874a452",
+      "experiments/g011_runtime_plan_evidence.py": "9d61a2c677787b8f7012a169e3afdc812a19e2dc2288934435100cc0c8a4b223",
+      "experiments/run_dab_tool_agent.py": "3a01c4ad16cd49ec0acb7b81d7aa35a745ee009f4c60e1c4b3759122ff9b1ad0",
+      "experiments/run_multi_query_baseline.py": "399d0da715d1118ed857f85e2f8f890275c8e023565a63c402b27e42ffb2d086",
+      "external/DataAgentBench_official/common_scaffold/DataAgent.py": "ea64b4e2b54ca32545c006d9d2aa77ad3d788ecf337b50c898b268631b24f80a",
+      "external/DataAgentBench_official/common_scaffold/prompts/prompt_builder.py": "f06a44319ea1cbd74723c152c3278b00b3ed658895f1463b943fba0e5801da4c",
+      "prompts/dab/g011_plan_evidence_authoring_policy.txt": "111eb0726c7a9c795ace1ef96267d085294b6d2e8257d984117763427e50b277",
+      "tests/test_g011_plan_evidence_record.py": "796eea883e0a9ec2f5a079201934f176c852db964299e91d3db7b9c61f792e71",
+      "tests/test_g011_runtime_plan_evidence.py": "e8bc5b3ce073106d7c0e442912903329d0021c4736c5d8f3722def8de0c8f689"
+    },
+    "declared_input_sha256": {
+      "g012_interface_investigation_001/independent_verification.json": "d9668e7516c6b94b584497a0eeda7bf840f29c80711106650013892eb8d20507",
+      "g012_interface_investigation_001/scoped_source/BOUNDED_FINDINGS.md": "4be36232917fea5b46d777054f8905cefb70e14d2ecd92a326a5dad59a14466a",
+      "g012_interface_investigation_001/scoped_source/exploratory_implementation_manifest.json": "6e9c91bc97a806a0b88ccdb2054e91ec2308ae4fa00606b4b61f1c7b4aa7333c",
+      "g012_interface_investigation_001/scoped_source/prototype/source_bundle.py": "69c71532a989050a36205a8aed096d4a8c06625cd53b52634dfd12f7f41dedbc",
+      "g012_interface_investigation_001/scoped_source/tests/test_g012_uncertainty_interface.py": "8f0ce47b0758a1174c5419472c3a771b80c29bec49588fe38dcda656d79345ec",
+      "g012_research_meta_post_interface_001/final_raw.txt": "3124fcb7d12ab5a48436654451043fdcd1be27fe1897b53ed53eaa26d3467c72",
+      "research_graph_memory_v9.json": "a518cbd3f23531e690712df2de1747f4c173fc9de1aa3fa0c128064460dec74c"
+    },
+    "prior_artifacts_present_and_verified": {
+      "prior/BOUNDED_FINDINGS.md": "4be36232917fea5b46d777054f8905cefb70e14d2ecd92a326a5dad59a14466a",
+      "prior/exploratory_implementation_manifest.json": "6e9c91bc97a806a0b88ccdb2054e91ec2308ae4fa00606b4b61f1c7b4aa7333c",
+      "prior/prototype/source_bundle.py": "69c71532a989050a36205a8aed096d4a8c06625cd53b52634dfd12f7f41dedbc",
+      "prior/tests/test_g012_uncertainty_interface.py": "8f0ce47b0758a1174c5419472c3a771b80c29bec49588fe38dcda656d79345ec"
+    },
+    "declared_inputs_not_present_in_scope": [
+      "g012_interface_investigation_001/independent_verification.json",
+      "g012_research_meta_post_interface_001/final_raw.txt",
+      "research_graph_memory_v9.json"
+    ],
+    "scoped_reference_hashes_verified": true,
+    "prior_hashes_verified": true
+  },
+  "implemented_scope": {
+    "mode": "exploratory_interface_investigation",
+    "reference_files_modified": false,
+    "prior_files_modified": false,
+    "new_files_only": true,
+    "prototype_scope": [
+      "hash-binds and loads the reviewed reference modules",
+      "constructs the reviewed DataAgent-shaped message and tool-spec surface",
+      "derives a model-facing structural directive view from the reviewed ledger",
+      "exposes action, reason, record status, opaque target token, target scope, target status, structural category, freshness, and compact inventory counts",
+      "compares the structured directive with the exact reviewed generic guidance and a synthetic length-matched generic control from the same state",
+      "uses a programmed synthetic policy only as a conditional interface demonstration",
+      "tracks active-state freshness after later observations without imputing resolved status",
+      "separates model-authored refs from a runtime structural observation inventory",
+      "classifies instrumentation loss, evidence gaps, response-boundary gaps, and authoring/lifecycle gaps without semantic promotion",
+      "tests response-boundary late/pre-entry/unique and terminal-same-response behavior",
+      "tests cap, deadline, dispatch, redaction, sidecar, and deterministic-replay behavior",
+      "writes a deterministic no-task fixture output"
+    ],
+    "directive_source_modes": [
+      "active (reviewed runtime semantics)",
+      "latest_attempt (prototype-only extension for rejected malformed/stale attempts)"
+    ],
+    "interface_modes": [
+      "structured",
+      "generic (exact reviewed template)",
+      "generic_length_matched",
+      "none"
+    ],
+    "not_implemented": [
+      "no benchmark task execution",
+      "no provider call or network request",
+      "no formal candidate or frozen Experiment",
+      "no Evidence extractor",
+      "no semantic support, relevance, coverage, or correctness verifier",
+      "no real-model compliance probe",
+      "no independent semantic obligation derivation",
+      "no score, launch, or task-completion claim"
+    ]
+  },
+  "source_grounded_findings": [
+    {
+      "id": "g012_002_f01",
+      "statement": "The reviewed model-facing transcript is the DataAgent messages list, initialized from the query and database description, extended with assistant tool-call messages and tool-role results carrying matching tool_call_id values. The only reviewed G11 behavioural injection point is a user-role message appended before call_llm.",
+      "sources": [
+        "reference/external/DataAgentBench_official/common_scaffold/DataAgent.py:120-133",
+        "reference/external/DataAgentBench_official/common_scaffold/DataAgent.py:237-340",
+        "reference/external/DataAgentBench_official/common_scaffold/prompts/prompt_builder.py:77-101",
+        "reference/experiments/g011_runtime_plan_evidence.py:548-683",
+        "reference/experiments/g011_runtime_plan_evidence.py:740-787"
+      ],
+      "not_established": "Real provider acceptance and response-boundary behavior."
+    },
+    {
+      "id": "g012_002_f02",
+      "statement": "The reviewed ledger exposes a frozen action/reason/target-status state through RecordAssessment and NextAction, but the reviewed runtime renders only the fixed generic GUIDANCE_TEMPLATE. It does not expose the selected action, target, or status.",
+      "sources": [
+        "reference/experiments/g011_plan_evidence_record.py:382-406",
+        "reference/experiments/g011_plan_evidence_record.py:850-904",
+        "reference/experiments/g011_interface_contract.py:342-350",
+        "reference/experiments/g011_runtime_plan_evidence.py:740-787"
+      ],
+      "not_established": "A real model's next-action choice."
+    },
+    {
+      "id": "g012_002_f03",
+      "statement": "A task-agnostic structured directive can be passed at the same call_llm boundary with action, reason, record status, opaque target token, target scope, target status, category, freshness, and compact inventory counts using an allow-list of structural fields and no task/db/plan/step/ref/tool/answer content.",
+      "sources": [
+        "prototype/action_interface.py",
+        "prototype/action_interface_fixture_output.json"
+      ],
+      "not_established": "Real-model reading or compliance; provider acceptance."
+    },
+    {
+      "id": "g012_002_f04",
+      "statement": "The same-state generic control preserves the reviewed ledger state, dispatch sequence, argument-key sets, active view, guidance count, and cap/deadline behavior. The exact reviewed generic template does not carry the selected action, target, or target status; a length-matched generic variant also does not.",
+      "sources": [
+        "prototype/action_interface.py",
+        "tests/test_g012_action_interface.py",
+        "prototype/action_interface_fixture_output.json"
+      ],
+      "not_established": "A real-model comparison or benefit."
+    },
+    {
+      "id": "g012_002_f05",
+      "statement": "A programmed synthetic policy reads the structured action and chooses different synthetic next steps for absent (query_db) and unknown (return_answer_preserve_unknown), while a generic-keyword policy chooses query_db in both cases. This demonstrates only that the interface is information-bearing to a programmed policy.",
+      "sources": [
+        "prototype/action_interface.py",
+        "prototype/action_interface_fixture_output.json"
+      ],
+      "not_established": "Real-model compliance, provider acceptance, task relevance, correctness, or benefit."
+    },
+    {
+      "id": "g012_002_f06",
+      "statement": "The reviewed ledger re-evaluates the active plan only on submit_record; new observations do not automatically update the active assessment. The prototype marks the active state stale after later observations and preserves the old directive and target status until an accepted revision updates it.",
+      "sources": [
+        "reference/experiments/g011_plan_evidence_record.py:912-1119",
+        "prototype/action_interface.py",
+        "prototype/action_interface_fixture_output.json"
+      ],
+      "not_established": "Automatic freshness update or semantic resolution."
+    },
+    {
+      "id": "g012_002_f07",
+      "statement": "Because the reviewed adapter captures the record before dispatching the record-carrying call and records the observation after dispatch, the record-carrying call's own observation is counted as the first post-assessment observation. stale_new_observations therefore does not by itself prove an independent new observation.",
+      "sources": [
+        "reference/experiments/g011_runtime_plan_evidence.py:584-663",
+        "reference/experiments/g011_runtime_plan_evidence.py:801-864",
+        "prototype/action_interface.py"
+      ],
+      "not_established": "A separate independent-new-observation count."
+    },
+    {
+      "id": "g012_002_f08",
+      "statement": "Model-authored refs can be separated from a runtime structural inventory of provenance-valid, evidence-bearing, successful, non-truncated action observations. Unreferenced eligible observations are structural counts, not semantic obligations; omission is not determined without task content.",
+      "sources": [
+        "reference/experiments/g011_plan_evidence_record.py:492-684",
+        "prototype/action_interface.py",
+        "tests/test_g012_action_interface.py"
+      ],
+      "not_established": "Independent semantic obligation derivation or omitted-obligation detection."
+    },
+    {
+      "id": "g012_002_f09",
+      "statement": "Frozen status/reason pairs can be separated into evidence-gap, instrumentation-loss, response-boundary-gap, and authoring/lifecycle-gap categories without semantic promotion. The same failed status splits by reason: provenance is instrumentation loss, while tool failure and non-evidence source are evidence gaps.",
+      "sources": [
+        "reference/experiments/g011_plan_evidence_record.py:634-684",
+        "reference/experiments/g011_plan_evidence_record.py:821-904",
+        "prototype/action_interface.py"
+      ],
+      "not_established": "Semantic meaning, relevance, or correctness of any category."
+    },
+    {
+      "id": "g012_002_f10",
+      "statement": "The frozen invalid-ref status exists in _resolve_ref, but the formal parser rejects an invalid ref token as a malformed record before resolution, so invalid is not reachable through a valid authored record in this path.",
+      "sources": [
+        "reference/experiments/g011_plan_evidence_record.py:492-603",
+        "reference/experiments/g011_plan_evidence_record.py:634-684",
+        "tests/test_g012_action_interface.py"
+      ],
+      "not_established": "Any semantic interpretation of invalid refs."
+    },
+    {
+      "id": "g012_002_f11",
+      "statement": "A same-response record referencing an earlier call in that response resolves as late; a record referencing its own call resolves as pre_entry; a next-response record referencing the prior call resolves as unique/proceed. A terminal return_answer in the same response leaves an active non-proceed assessment but produces zero guidance because the loop ends before another call_llm boundary.",
+      "sources": [
+        "reference/external/DataAgentBench_official/common_scaffold/DataAgent.py:319-345",
+        "reference/experiments/g011_runtime_plan_evidence.py:584-616",
+        "reference/experiments/g011_runtime_plan_evidence.py:850-863",
+        "prototype/action_interface_fixture_output.json"
+      ],
+      "not_established": "Mid-response intervention or later-turn guidance when no later turn occurs."
+    },
+    {
+      "id": "g012_002_f12",
+      "statement": "The reviewed active source uses active_assessment and therefore does not surface a rejected malformed or stale attempt when no active accepted record exists; it can instead re-emit guidance for an older active state. The prototype latest_attempt source surfaces the latest rejected attempt as revise_plan with its record status.",
+      "sources": [
+        "reference/experiments/g011_plan_evidence_record.py:912-1119",
+        "reference/experiments/g011_runtime_plan_evidence.py:740-787",
+        "prototype/action_interface.py",
+        "tests/test_g012_action_interface.py"
+      ],
+      "not_established": "Which source mode a real model or formal experiment should use."
+    },
+    {
+      "id": "g012_002_f13",
+      "statement": "The prototype message and G11 sidecar/summary pass synthetic privacy checks: no task, database, plan, step, ref, or answer secrets appear; the plan record is removed before base dispatch; the standalone record tool persists only a redaction marker. The base DataAgent raw-context logs remain a separate unerased surface.",
+      "sources": [
+        "reference/experiments/run_dab_tool_agent.py:500-580",
+        "reference/experiments/g011_runtime_plan_evidence.py:248-293",
+        "reference/external/DataAgentBench_official/common_scaffold/DataAgent.py:218-229",
+        "reference/external/DataAgentBench_official/common_scaffold/DataAgent.py:386-396",
+        "tests/test_g012_action_interface.py"
+      ],
+      "not_established": "A no-leak audit of existing raw-context logs."
+    },
+    {
+      "id": "g012_002_f14",
+      "statement": "The prototype preserves the reviewed caps: three guidance messages, one per turn, three extra model turns, three extra dispatches, zero mechanism-initiated tool calls, a fail-closed 180-second guard, and no wall-time extension. Structured, generic, and disabled interface modes have identical dispatch sequences for the same scripted calls.",
+      "sources": [
+        "reference/experiments/g011_interface_contract.py:318-326",
+        "reference/experiments/g011_runtime_plan_evidence.py:687-788",
+        "reference/experiments/g011_runtime_plan_evidence.py:866-874",
+        "prototype/action_interface_fixture_output.json"
+      ],
+      "not_established": "Real-run budget behavior, timeout effects, or forced-answer behavior."
+    }
+  ],
+  "no_task_tests": {
+    "commands": [
+      {
+        "command": "python -m pytest -q tests/test_g012_action_interface.py --disable-warnings",
+        "exit_code": 0,
+        "result": "41 passed"
+      },
+      {
+        "command": "python -B -m pytest -q -p no:cacheprovider tests/test_g012_action_interface.py --disable-warnings",
+        "exit_code": 0,
+        "result": "41 passed; no bytecode or pytest cache written"
+      },
+      {
+        "command": "python -m prototype.run_action_interface_fixture --output prototype/action_interface_fixture_output.json",
+        "exit_code": 0,
+        "result": "deterministic no-task fixture written"
+      }
+    ],
+    "covered_cases": [
+      "hash verification for all 11 reviewed reference files and four present prior artifacts",
+      "source-boundary checks for message construction, tool-role messages, storage keys, dispatch, call_llm, carrier declaration, and installer composition",
+      "unique, absent, failed, truncated, unknown, pre-entry, late, duplicate-ref, ambiguous-ref, reordered-ref, malformed-record, unsupported-schema, stale-record, reordered-record, duplicate-record, ambiguous-record, empty-plan, and empty-step states",
+      "failed status split by provenance, tool failure, and non-evidence reason",
+      "invalid-ref parser rejection and unreachable invalid status through a valid record",
+      "structured message action/target/status/category/freshness fields and allow-list",
+      "same-state structured versus exact generic versus length-matched generic control",
+      "programmed synthetic policy distinction and non-distinction",
+      "active-state freshness after a record, after an additional observation, and after an accepted revision",
+      "model-authored refs versus runtime structural inventory",
+      "same-response late, self-reference pre-entry, next-response unique, and terminal-same-response zero-guidance behavior",
+      "missing and malformed carrier inertness",
+      "malformed and stale attempts under active versus latest-attempt sources",
+      "no-op record non-reemission",
+      "guidance cap, extra-turn/dispatch caps, zero mechanism-initiated calls, deadline guard, and no wall-time extension",
+      "privacy, redaction, sidecar allow-list, and standalone record-tool redaction",
+      "opaque target-token mapping and deterministic replay",
+      "fixture and manifest non-claiming metadata and output hash consistency"
+    ],
+    "sensitivity_case": {
+      "absent": {
+        "active_action": "acquire_evidence",
+        "target_status": "absent",
+        "structured_synthetic_next_step": "query_db",
+        "generic_synthetic_next_step": "query_db",
+        "generic_distinguished_action": false
+      },
+      "unknown": {
+        "active_action": "preserve_unknown",
+        "target_status": "unknown",
+        "structured_synthetic_next_step": "return_answer_preserve_unknown",
+        "generic_synthetic_next_step": "query_db",
+        "generic_distinguished_action": false
+      },
+      "structured_steps_differ_across_states": true,
+      "generic_steps_equal_across_states": true,
+      "classification": "conditional_interface_demonstration_only_not_real_model_compliance"
+    }
+  },
+  "same_state_control": {
+    "state_equal_structured_vs_generic": true,
+    "state_equal_structured_vs_length_matched_generic": true,
+    "dispatch_sequence_equal": true,
+    "argument_key_sets_equal": true,
+    "guidance_count_equal": true,
+    "message_length_matched": true,
+    "structured_message_carries": [
+      "action",
+      "reason",
+      "target",
+      "target_scope",
+      "target_status",
+      "category",
+      "freshness"
+    ],
+    "generic_message_carries_selected_action_target_or_status": false,
+    "comparison_class": "synthetic_same_state_interface_control"
+  },
+  "freshness": {
+    "after_record_submission": {
+      "status": "stale_new_observations",
+      "new_observation_count": 1,
+      "active_directive": "acquire_evidence",
+      "active_target_status": "absent"
+    },
+    "after_additional_observation": {
+      "status": "stale_new_observations",
+      "new_observation_count": 2,
+      "active_directive": "acquire_evidence",
+      "active_target_status": "absent"
+    },
+    "after_accepted_revision": {
+      "status": "stale_new_observations",
+      "new_observation_count": 1,
+      "active_record_ordinal": 2,
+      "active_directive": "proceed",
+      "active_target_status": null
+    },
+    "record_carrying_call_caveat": "The first post-assessment observation is the record-carrying call's own observation; stale_new_observations does not by itself prove an independent new observation."
+  },
+  "inventory": {
+    "partial_model_reference": {
+      "eligible_observation_count": 2,
+      "model_authored_ref_count": 1,
+      "relation_both": 1,
+      "relation_independent_only": 1,
+      "unreferenced_eligible_observation_count": 1,
+      "omission_interpretation": "not_determined_without_task_content"
+    },
+    "complete_model_reference": {
+      "eligible_observation_count": 2,
+      "model_authored_ref_count": 2,
+      "relation_both": 2,
+      "relation_independent_only": 0,
+      "unreferenced_eligible_observation_count": 0
+    },
+    "no_parseable_model_record": {
+      "eligible_observation_count": 2,
+      "model_authored_ref_count": 0,
+      "relation_independent_only": 2,
+      "omission_status": "no_parseable_model_record"
+    },
+    "independent_semantic_obligations": "unknown"
+  },
+  "instrumentation_categories": {
+    "resolved": [
+      "unique"
+    ],
+    "evidence_gap": [
+      "absent",
+      "tool_failure_not_data",
+      "evidence_truncated",
+      "non_evidence_source",
+      "empty_plan",
+      "empty_step"
+    ],
+    "instrumentation_loss": [
+      "provenance_unverified",
+      "success_unknown",
+      "ambiguous_provenance"
+    ],
+    "response_boundary_gap": [
+      "reference_not_available_at_authoring",
+      "evidence_available_after_authoring"
+    ],
+    "authoring_or_lifecycle_gap": [
+      "malformed_record",
+      "unsupported_record_schema",
+      "invalid_ref",
+      "duplicate_ref",
+      "reordered_ref",
+      "stale_record",
+      "stale_revision",
+      "reordered_record",
+      "duplicate_record_revision",
+      "ambiguous_record"
+    ],
+    "note": "Structural labels only; no semantic support, relevance, correctness, or completion claim."
+  },
+  "response_boundary": {
+    "same_response_earlier_call": "late",
+    "same_response_self_reference": "pre_entry",
+    "next_response_prior_call": "unique/proceed",
+    "terminal_same_response": {
+      "active_action": "revise_plan",
+      "active_ref_status": "late",
+      "guidance_count": 0,
+      "reason": "the run loop ends before another call_llm boundary"
+    }
+  },
+  "bounds": {
+    "guidance_cap": 3,
+    "guidance_messages_per_turn": 1,
+    "max_extra_model_turns": 3,
+    "max_extra_tool_dispatches": 3,
+    "mechanism_initiated_tool_call_count": 0,
+    "deadline_guard_seconds": 180.0,
+    "deadline_at_guard_guidance_count": 0,
+    "deadline_above_guard_guidance_count": 1,
+    "unknown_deadline_guidance_count": 0,
+    "wall_timeout_extension_allowed": false,
+    "interface_initiated_dispatch": false
+  },
+  "privacy": {
+    "synthetic_secret_token_count": 6,
+    "directive_message_forbidden_hits": [],
+    "sidecar_export_forbidden_hits": [],
+    "record_carrier_removed_before_base_dispatch": true,
+    "standalone_record_tool_redaction": true,
+    "task_context_is_model_visible": true,
+    "existing_raw_context_log_surface_audited": false
+  },
+  "output_hashes": {
+    "BOUNDED_FINDINGS.md": "212f1e59be637eee685162c23caa9a5ec87f248badafac285d4c4f5dbf5c7f60",
+    "prototype/__init__.py": "f24d560d63eb781b8fec0a12dbf5e1e28a1d3827f9db485d5d579efd682687c2",
+    "prototype/source_bundle.py": "79374853f6b49a2e9b2eae4c79d2d2bbba5693035805ade0b82d09356378883b",
+    "prototype/action_interface.py": "0d8e8468d6681c9a42a85191dfb6b5b01ae13eaf9cdd2531d2a8688e7fc065b8",
+    "prototype/run_action_interface_fixture.py": "a0c1aa137c0985425252f7e5198d60314f3be8f01b235c5bf8472a5de92c28cb",
+    "prototype/action_interface_fixture_output.json": "c0b7f9b82ec03b3186ccd28fd6bc97d8ec4ae161ab66ce2886bd366a380f9a77",
+    "tests/test_g012_action_interface.py": "94e8fdbeb610488b890eb3dd58bc1868c430539f44c20f3c63f4256f4e95bec1"
+  },
+  "reference_hashes": {
+    "experiments/g011_evidence_extractor.py": "6d4f1f9ab16004296c6eac31707acf8860c8b37b91c1db71ded1d997afc40cea",
+    "experiments/g011_interface_contract.py": "fb656c9a220c51de471455e43370fae0eff220e27f9449b35b0d9931d6446e64",
+    "experiments/g011_plan_evidence_record.py": "8f6ecf5aa8693ac41b1b19caebd0f6ba9d8f4558904192d90781ac3fd874a452",
+    "experiments/g011_runtime_plan_evidence.py": "9d61a2c677787b8f7012a169e3afdc812a19e2dc2288934435100cc0c8a4b223",
+    "experiments/run_dab_tool_agent.py": "3a01c4ad16cd49ec0acb7b81d7aa35a745ee009f4c60e1c4b3759122ff9b1ad0",
+    "experiments/run_multi_query_baseline.py": "399d0da715d1118ed857f85e2f8f890275c8e023565a63c402b27e42ffb2d086",
+    "external/DataAgentBench_official/common_scaffold/DataAgent.py": "ea64b4e2b54ca32545c006d9d2aa77ad3d788ecf337b50c898b268631b24f80a",
+    "external/DataAgentBench_official/common_scaffold/prompts/prompt_builder.py": "f06a44319ea1cbd74723c152c3278b00b3ed658895f1463b943fba0e5801da4c",
+    "prompts/dab/g011_plan_evidence_authoring_policy.txt": "111eb0726c7a9c795ace1ef96267d085294b6d2e8257d984117763427e50b277",
+    "tests/test_g011_plan_evidence_record.py": "796eea883e0a9ec2f5a079201934f176c852db964299e91d3db7b9c61f792e71",
+    "tests/test_g011_runtime_plan_evidence.py": "e8bc5b3ce073106d7c0e442912903329d0021c4736c5d8f3722def8de0c8f689"
+  },
+  "remaining_unknowns": [
+    "Real provider acceptance of self_observation.freeform, the actual configured tool name, and the real response boundary remain unverified; a later separately admitted no-task preflight is required.",
+    "Real-model record adoption, schema-valid authorship, opaque-identifier copying, structured-directive reading, and guidance compliance remain untested.",
+    "No real-model next-action choice or benefit is established; the synthetic policy is a conditional interface demonstration only.",
+    "Independent semantic obligation derivation is unavailable without task content; only a structural observation inventory is implemented.",
+    "Unreferenced eligible observations are not omitted semantic obligations; omission status remains not determined.",
+    "Freshness includes the record-carrying call's own observation; an independent-new-observation count would require additional call-level provenance tracking.",
+    "The target-token mapping rule is stated but its real-model usability is unknown.",
+    "The structured message is longer and more formatted than the exact generic template; a synthetic length-matched control was exercised, but real-model sensitivity remains unknown.",
+    "The latest_attempt directive source is a prototype extension that surfaces rejected attempts; it has not been reviewed as a formal runtime behavior.",
+    "The existing base DataAgent llm_calls.jsonl and final_agent.json raw-context logs remain a separate no-leak surface and were not audited or erased.",
+    "The invalid-ref status is not reachable through the formal parser; invalid tokens are classified as malformed records.",
+    "No formal candidate, frozen Experiment, Evidence extractor, launch, or score was created."
+  ],
+  "claim_boundary": {
+    "evidence_class": "interface_research_not_benchmark_evidence",
+    "semantic_status": "unknown",
+    "correctness_status": "unknown",
+    "coverage_status": "unknown",
+    "semantic_support_claimed": false,
+    "task_relevance_claimed": false,
+    "task_completion_claimed": false,
+    "correctness_claimed": false,
+    "coverage_claimed": false,
+    "benefit_claimed": false,
+    "causal_claim_allowed": false,
+    "benchmark_benefit_claimed": false,
+    "real_model_compliance_claimed": false,
+    "provider_acceptance_claimed": false,
+    "conditional_interface_demonstration_only": true,
+    "structural_category_only": true,
+    "deterministic_structure_proves_semantic_support": false,
+    "unique_or_resolved_is_semantic_support": false
+  }
+}

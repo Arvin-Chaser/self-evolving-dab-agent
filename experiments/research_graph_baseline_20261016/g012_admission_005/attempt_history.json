@@ -1,0 +1,31 @@
+{
+  "schema_version": "g012_admission_runtime_attempt_history_v1",
+  "attempts": [
+    {
+      "artifact_directory": "g012_admission_002",
+      "provider_call_count": 3,
+      "status": "invalid_probe_attempt",
+      "reason": "The control detector included inherited G11 generic guidance and the live model returned before authoring a valid record. The preserved receipt is not a G12 mechanism result."
+    },
+    {
+      "artifact_directory": null,
+      "provider_call_count": 0,
+      "remote_probe_name": "probe_research_graph_g012_admission_attempt003.py",
+      "status": "preflight_failed",
+      "reason": "The verification code checked the prior remote probe filename."
+    },
+    {
+      "artifact_directory": null,
+      "provider_call_count": 0,
+      "remote_probe_name": "probe_research_graph_g012_admission_attempt004.py",
+      "status": "preflight_failed",
+      "reason": "The generated remote verification code contained an indentation error."
+    },
+    {
+      "artifact_directory": "g012_admission_005",
+      "provider_call_count": 3,
+      "status": "passed"
+    }
+  ],
+  "failed_attempts_preserved": true
+}

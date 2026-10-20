@@ -1,0 +1,586 @@
+{
+  "schema_version": "g011_exploratory_implementation_manifest_v1",
+  "status": "feasible_bounded",
+  "status_interpretation": "feasible_bounded for a model-authored structural plan/evidence record, deterministic structural validation, and synthetic bounded behavior use. General free-text claim extraction, semantic support, contradiction, and answer correctness remain unknown. No real run, benchmark, score, or causal benefit was established.",
+  "critical_limitation": "A 'unique' or 'resolved' reference means only that exactly one prior observation is structurally available, provenance-checked, non-failed, non-truncated, and available at the record boundary. It does not mean the observation supports any answer claim. The record is model-authored. Semantic status, correctness status, and coverage status are always unknown.",
+  "not_formal_candidate": true,
+  "mode": "interface_investigation",
+  "authorization": {
+    "formal_candidate_created": false,
+    "frozen_experiment_created": false,
+    "evidence_extractor_created": false,
+    "benchmark_runner_created": false,
+    "launch_claim_created": false,
+    "deployment_created": false
+  },
+  "input_binding": {
+    "schema_version": "g011_solution_loop_interface_investigation_input_v1",
+    "capability_sha256": "bab58645e5b255eb31a3a94fc2002705afefdd028b9fe0c108689a9251544919",
+    "prior_blocked_sha256": "ae8a6c0daa88ad669c08edfe0228ed36748fb2a03b80f4b4773d326d0e90090d",
+    "prior_manifest_sha256": "5522e8a07987b5b1279b37abbdd39c1fa3f346e4d3e428a94c139093a99818ce",
+    "research_sha256": "8ac5183d11f4ff1eb948abb0eec95990ebd644be4addddb0a18209f973f8b934",
+    "parent_tree_sha256": "206c4f5186a66d72b851aa888eb75d975d5ce2085970a322881997b119f16d0d",
+    "excluded": [
+      "benchmark tasks",
+      "corpus",
+      "answers",
+      "hints",
+      "validators",
+      "raw traces",
+      "results",
+      "credentials",
+      "old research lines"
+    ],
+    "scoped_prior_investigation_sha256": {
+      "BLOCKED.md": "ae8a6c0daa88ad669c08edfe0228ed36748fb2a03b80f4b4773d326d0e90090d",
+      "exploratory_implementation_manifest.json": "5522e8a07987b5b1279b37abbdd39c1fa3f346e4d3e428a94c139093a99818ce",
+      "prototype/__init__.py": "9fba5ba0353c907b9d0c97946afc4d5c4c0f8ff1deb58e396d8f673818f89f5e",
+      "prototype/claim_evidence_ledger.py": "99903a262e7778a52a09b27671c89c631c2ca81a80639c3e865f99bb57de88e9",
+      "prototype/runtime_observation_adapter.py": "23d1fe1a2f7f5bc0577dae7f51353a9b07ad390ff223beea550b74f6a794e110",
+      "tests/__init__.py": "ca3166806e9b2fb861b19d7a85a3dced5463ce4bac741e20663f29527683f62c",
+      "tests/test_claim_evidence_ledger.py": "285949b7c0311b58d48fe23ebf2e380bf3a7128247335f3903a00abf695e684a",
+      "tests/test_runtime_adapter_inertness.py": "729c75774c4a6c98d51f5ac5ee9dfb89260e26e3e2ccc4b1ed8c390965fa93d5"
+    },
+    "scoped_reference_sha256": {
+      "experiments/g004_paired_structural_journal.py": "7ed8dd31e951b8a8a76bc73d75fe31be5ed69b0db15931bd7854dd92b7a3f724",
+      "experiments/g008_verification_audit_sidecar.py": "327958739bf0d1ccee7043c7413cfd396de9e34c312f425ca37b51489814f43f",
+      "experiments/g009_verification_turn_gate_sidecar.py": "9137fa3800b1b7e8a38890c46e3765ae37fac4c825f14d65f3b8b9d955be0e89",
+      "experiments/run_dab_tool_agent.py": "9322c6091225cc4a4123c04d048bc8494a2606e3a15cc44117593cdc170eb3e4",
+      "external/DataAgentBench_official/common_scaffold/DataAgent.py": "ea64b4e2b54ca32545c006d9d2aa77ad3d788ecf337b50c898b268631b24f80a"
+    },
+    "verification": {
+      "prior_investigation_files_verified": 8,
+      "scoped_reference_files_verified": 5,
+      "capability_source_available_in_scoped_source": false,
+      "research_source_available_in_scoped_source": false,
+      "parent_tree_source_available_in_scoped_source": false,
+      "note": "The eight scoped prior-investigation files and five scoped reference files were hashed directly. The capability, research, and parent-tree SHA256 values are carried from the frozen input binding and were not re-derived because their sources are outside scoped_source.",
+      "prior_manifest_research_sha256_discrepancy": "The prior manifest's embedded input_binding.research_sha256 is 14543ada04bceb75f2e5fad030a1d7fcf7f67f9014eb2fe911dd4b19bdb0aff3, which differs from the current frozen research_sha256 8ac5183d11f4ff1eb948abb0eec95990ebd644be4addddb0a18209f973f8b934. The current frozen JSON is authoritative; the prior manifest is same-line interface memory, not benchmark evidence.",
+      "prior_manifest_absent_file": "The prior manifest lists an output hash for tests/test_input_binding.py, but that file is absent from the scoped prior_investigation directory and is absent from the frozen scoped_prior_investigation_sha256 map. It was not used."
+    }
+  },
+  "source_grounded_interface_findings": [
+    {
+      "id": "F1",
+      "source": "reference/external/DataAgentBench_official/common_scaffold/DataAgent.py",
+      "lines": "129-134",
+      "finding": "DataAgent.__init__ builds self.messages from the task request and database description. No structured plan, obligation, claim, or record object is exposed.",
+      "interface_consequence": "The plan record must be authored by the model through an existing model-authored channel; it cannot be derived from a source-verified task decomposition."
+    },
+    {
+      "id": "F2",
+      "source": "reference/external/DataAgentBench_official/common_scaffold/DataAgent.py",
+      "lines": "237-308",
+      "finding": "_handle_tool_call parses tool arguments, dispatches the registered tool, appends one role=tool message with the matching tool_call_id, and stores small successful results at result_storage['var_<tool_call_id>'].",
+      "interface_consequence": "A tool-call ID plus a response boundary is a usable provenance key. It is not semantic support."
+    },
+    {
+      "id": "F3",
+      "source": "reference/external/DataAgentBench_official/common_scaffold/DataAgent.py",
+      "lines": "280-300",
+      "finding": "Large successful results are written to a file; result_storage holds only a relative path and the message holds a preview. Failed calls are not stored as result data.",
+      "interface_consequence": "The prototype treats large results as truncated and failed calls as failed. Neither is support."
+    },
+    {
+      "id": "F4",
+      "source": "reference/external/DataAgentBench_official/common_scaffold/DataAgent.py",
+      "lines": "319-340, 358-376",
+      "finding": "handle_reponse appends the assistant tool_calls message before dispatching any call. A result dispatched in response N is visible to the model at response N+1. run catches exceptions into final_result='' and a terminate_reason.",
+      "interface_consequence": "A record authored in boundary N cannot cite a result dispatched in boundary N. Observation instrumentation must not raise into the run."
+    },
+    {
+      "id": "F5",
+      "source": "reference/experiments/g009_verification_turn_gate_sidecar.py",
+      "lines": "519-630, 639-760",
+      "finding": "The G9 turn gate wraps handle_reponse with a monotonic per-agent _g009_response_boundary_id and can suppress the first return_answer proposal by appending a generic audit tool message.",
+      "interface_consequence": "The boundary id is a stable structural key. The audit message is not evidence and is not bound to the plan record."
+    },
+    {
+      "id": "F6",
+      "source": "reference/experiments/run_dab_tool_agent.py",
+      "lines": "502-689, 750-874, especially 820-828",
+      "finding": "install_self_observation_tool adds an optional self_observation object to every action-tool schema and adds a standalone record_self_observation tool. DataAgentWithSelfObservation pops the sidecar before base dispatch and writes it to the existing observation sidecar. The assistant tool_calls message, appended earlier, retains the full model-authored object.",
+      "interface_consequence": "An existing model-authored channel can carry a task-agnostic plan record. It is a record, not evidence, and adds no new tool or protocol primitive for the freeform form."
+    },
+    {
+      "id": "F7",
+      "source": "reference/experiments/run_dab_tool_agent.py",
+      "lines": "519-540",
+      "finding": "normalize_self_observation_payload preserves freeform, goal/next-step fields, and the lists what_i_know, uncertainties, evidence_refs, and claims. It drops unknown nested fields from the existing observation log.",
+      "interface_consequence": "A freeform record with a G011_PLAN_RECORD_V1 prefix is preserved by the existing normalizer. A nested self_observation.plan_record object is readable from the raw assistant tool call but would be dropped from the existing observation log."
+    },
+    {
+      "id": "F8",
+      "source": "reference/experiments/run_dab_tool_agent.py",
+      "lines": "1130-1173",
+      "finding": "install_deadline_reserve_signal appends a timing-only {'role': 'user', 'content': ...} notice to self.messages inside call_llm before the next model call.",
+      "interface_consequence": "call_llm is a source-grounded boundary for one bounded internal runtime guidance message. The prototype mirrors this shape for structural guidance; it is not a tool result and does not answer."
+    },
+    {
+      "id": "F9",
+      "source": "reference/experiments/run_dab_tool_agent.py and reference/external/DataAgentBench_official/common_scaffold/DataAgent.py",
+      "lines": "run_dab_tool_agent.py 750-874; DataAgent.py 237-308, 358-376",
+      "finding": "An outer wrapper on the final DataAgent class can read the raw tool-call arguments before DataAgentWithSelfObservation pops the sidecar, call the original dispatch, and then read the appended tool message and result_storage. DataAgent.run catches exceptions.",
+      "interface_consequence": "Record capture and observation recording can be written as observational instrumentation that never changes dispatch, termination, or the original return value."
+    },
+    {
+      "id": "F10",
+      "source": "reference/external/DataAgentBench_official/common_scaffold/DataAgent.py and reference/experiments/g009_verification_turn_gate_sidecar.py",
+      "lines": "DataAgent.py 273-278; g009 639-760",
+      "finding": "return_answer is terminal and its arguments contain the free-text answer. G8/G9 can suppress the first proposal. The standalone self-observation tool is also model-authored.",
+      "interface_consequence": "Terminal and self-observation observations are non-evidence. A record that cites either is failed/non_evidence_source."
+    },
+    {
+      "id": "F11",
+      "source": "reference/experiments/run_dab_tool_agent.py",
+      "lines": "1374-1385",
+      "finding": "The runner installs self-observation first, G8/G9 on the base dispatch class, then deadline/G2 wrappers on the outer class.",
+      "interface_consequence": "A G11 wrapper must be installed on the final outer class after the self-observation tool exists so it sees the raw sidecar before it is popped. The prototype does not modify the runner; this is a source-grounded installation requirement."
+    },
+    {
+      "id": "F12",
+      "source": "reference/experiments/run_dab_tool_agent.py",
+      "lines": "2132-2133",
+      "finding": "The runner can disable the self-observation tool and can rename it with --self-observation-tool-name.",
+      "interface_consequence": "If the carrier is disabled, no record can be authored. If the tool is renamed, the adapter must be configured with the actual name to mark it non-evidence and extract standalone records."
+    },
+    {
+      "id": "F13",
+      "source": "reference/external/DataAgentBench_official/common_scaffold/DataAgent.py",
+      "lines": "310-316",
+      "finding": "_handle_content terminates on a no-tool-call response and stores the content as final_result. No structured claim or plan object is exposed.",
+      "interface_consequence": "A content-only termination is outside the record lifecycle. The prototype does not parse or export the answer content."
+    },
+    {
+      "id": "F14",
+      "source": "reference/experiments/g008_verification_audit_sidecar.py and absence in the scoped implementation files",
+      "lines": "g008 412-560; no semantic verifier found",
+      "finding": "The G8 audit can append a generic tool message before dispatching a first return_answer. No source-verified semantic support, contradiction, task-relevance, or general tool-success signal exists.",
+      "interface_consequence": "The prototype checks only structural availability, ordering, failure, truncation, ambiguity, and unknown. Semantic status must remain unknown."
+    },
+    {
+      "id": "F15",
+      "source": "reference/experiments/g004_paired_structural_journal.py",
+      "lines": "132-252",
+      "finding": "JournalRecorder is append-only, write-only structural instrumentation. It records pre/post canonical repeat/nonrepeat/unknown categories and does not feed the next action.",
+      "interface_consequence": "The prior structural journal is not a behavioral consumer. G11 adds a deterministic action recommendation and a bounded guidance channel."
+    },
+    {
+      "id": "F16",
+      "source": "prior_investigation/BLOCKED.md and prior_investigation/exploratory_implementation_manifest.json",
+      "lines": "whole documents",
+      "finding": "The prior investigation blocked general free-text claim extraction and semantic support/contradiction. It confirmed provenance-only and synthetic inertness results, not benchmark evidence.",
+      "interface_consequence": "The prior conclusion is preserved. G11 does not revive general claim extraction, semantic support, or correctness."
+    }
+  ],
+  "implemented_scope": [
+    "prototype/plan_evidence_record.py: strict task-agnostic plan record schema with plan_id, revision, supersedes, steps, step_id, and evidence refs; no free-text claim, answer, task, result, or argument fields.",
+    "prototype/plan_evidence_record.py: in-memory observation registry storing only structural metadata (tool_call_id, tool_name, response boundary, available boundary, success, truncated, provenance_ok, is_evidence, source_kind); no result payload.",
+    "prototype/plan_evidence_record.py: deterministic reference statuses unique, absent, duplicate, pre_entry, late, stale, truncated, failed, reordered, ambiguous, invalid, and unknown.",
+    "prototype/plan_evidence_record.py: revision lifecycle with monotonic revision, supersedes-token validation, stale replacement rejection, reordered gap/mismatch/boundary rejection, duplicate-revision rejection, and exact no-op detection.",
+    "prototype/plan_evidence_record.py: deterministic PlanEvidenceConsumer with fixed action precedence and targeted step/ref indices.",
+    "prototype/plan_evidence_record.py: bounded task-agnostic guidance rendering; no plan ID, step ID, ref token, tool name, argument, result, task, answer, hint, validator, credential, or trace content.",
+    "prototype/plan_evidence_record.py: fixed structural export allow-list and an independent no-leak checker.",
+    "prototype/runtime_plan_evidence_channel.py: exploratory outer-class adapter that extracts a record from self_observation.freeform or self_observation.plan_record before the self-observation subclass pops the sidecar, records structural observations after dispatch, and never changes dispatch or termination.",
+    "prototype/runtime_plan_evidence_channel.py: bounded guidance injection at the next call_llm boundary, using a user-role message; deduplicated by structural fingerprint and capped at 8 by default.",
+    "prototype/runtime_plan_evidence_channel.py: disabled installation is a strict no-op; ledger failures are swallowed; the adapter never sets final_result or scoring.",
+    "tests/support.py: source-shaped synthetic FakeDataAgent with query_db, record_self_observation, return_answer, small/large/failed/unknown results, and a G9-like suppression subclass.",
+    "tests/test_plan_evidence_record.py: record lifecycle, status matrix, targeted actions, plan revision, unknown preservation, malformed input, no-leak export, checker negative controls, and deterministic replay.",
+    "tests/test_runtime_plan_channel.py: resolved/no-op inertness, unresolved next-action change, no-record and carrier-disabled inertness, guidance dedup/cap, malformed and broken-ledger safety, standalone and sidecar record capture, terminal suppression, truncation/failure/unknown runtime paths, pre-entry revision, no-forged-result checks, and deterministic replay.",
+    "tests/test_input_binding.py: SHA256 verification of the eight scoped prior-investigation files and five scoped reference files, source-marker checks, and preservation of the prior blocked conclusion.",
+    "BOUNDED_FINDINGS.md: source-grounded narrative, lifecycle, status rules, channel budget audit, and remaining unknowns."
+  ],
+  "bounded_contract": {
+    "record_schema": {
+      "schema": "g011_plan_record_v1",
+      "fields": [
+        "schema",
+        "plan_id",
+        "revision",
+        "supersedes",
+        "steps"
+      ],
+      "step_fields": [
+        "step_id",
+        "refs"
+      ],
+      "supersedes_fields": [
+        "plan_id",
+        "revision"
+      ],
+      "ref_forms": [
+        "<tool_call_id>",
+        "var_<tool_call_id>",
+        "obs:<positive observation ordinal>"
+      ],
+      "strictness": "Unknown fields, free-text fields, model assertions such as supported, wrong types, duplicate step IDs, invalid refs, and malformed JSON are rejected.",
+      "model_authoring": "The record is model-authored through the existing self_observation sidecar or the existing record_self_observation tool. It is a record, not evidence."
+    },
+    "ref_statuses": [
+      "unique",
+      "absent",
+      "duplicate",
+      "pre_entry",
+      "late",
+      "stale",
+      "truncated",
+      "failed",
+      "reordered",
+      "ambiguous",
+      "invalid",
+      "unknown"
+    ],
+    "record_statuses": [
+      "accepted",
+      "no_op",
+      "malformed",
+      "stale",
+      "reordered",
+      "duplicate",
+      "ambiguous",
+      "unknown"
+    ],
+    "action_codes": [
+      "proceed",
+      "acquire_evidence",
+      "revise_plan",
+      "preserve_unknown"
+    ],
+    "action_precedence": [
+      "ambiguous -> revise_plan",
+      "duplicate -> revise_plan",
+      "invalid -> revise_plan",
+      "failed -> acquire_evidence",
+      "absent -> acquire_evidence",
+      "truncated -> acquire_evidence",
+      "pre_entry -> revise_plan",
+      "late -> revise_plan",
+      "reordered -> revise_plan",
+      "unknown -> preserve_unknown",
+      "all unique and no empty step -> proceed"
+    ],
+    "lifecycle_rules": [
+      "The first record must have revision 1 and supersedes=null.",
+      "A later accepted record must have revision current+1 and supersedes the current plan_id/revision token.",
+      "A lower revision is stale; a revision gap, supersedes mismatch, or earlier authored boundary is reordered; an equal revision with different content is duplicate; an exact equal record is no_op.",
+      "A no-op or rejected attempt is logged but does not displace the current accepted record or emit new guidance.",
+      "A reference to a call pending in the same response is pre_entry; a reference whose observation is available only after the record boundary is late.",
+      "A reference with duplicate observation provenance or a duplicate step ID is ambiguous.",
+      "A successful large-result observation is truncated; a failed or non-evidence observation is failed; an undeterminable success is unknown.",
+      "Unknown is preserved and is never converted to support, contradiction, correctness, or evidence sufficiency."
+    ],
+    "export_allow_list": [
+      "schema_version",
+      "anonymous_task_index",
+      "record_ordinal",
+      "plan_revision",
+      "authored_at_boundary",
+      "record_status",
+      "accepted",
+      "state_changed",
+      "is_current_record",
+      "step_count",
+      "ref_count",
+      "resolved_ref_count",
+      "unresolved_ref_count",
+      "has_unique",
+      "has_absent",
+      "has_duplicate",
+      "has_pre_entry",
+      "has_late",
+      "has_stale",
+      "has_truncated",
+      "has_failed",
+      "has_reordered",
+      "has_ambiguous",
+      "has_unknown",
+      "has_invalid",
+      "has_empty_step",
+      "action_code",
+      "action_reason",
+      "target_step_index",
+      "target_ref_index",
+      "target_status",
+      "semantic_status",
+      "correctness_status",
+      "coverage_status",
+      "model_authored"
+    ],
+    "export_exclusions": [
+      "task content",
+      "answer content",
+      "hints",
+      "validators",
+      "messages",
+      "tool arguments",
+      "tool results",
+      "tool names",
+      "tool-call IDs",
+      "plan IDs",
+      "step IDs",
+      "evidence ref tokens",
+      "pointers",
+      "result digests",
+      "credentials",
+      "raw traces",
+      "paths"
+    ]
+  },
+  "intent_coverage": {
+    "record_lifecycle": {
+      "status": "implemented_bounded",
+      "what_is_implemented": [
+        "A model-authored record can be carried in self_observation.freeform with a G011_PLAN_RECORD_V1 prefix, preserved by the existing normalizer.",
+        "A model-authored record can also be carried as a nested self_observation.plan_record object read from the raw assistant tool call; the existing observation log would drop it.",
+        "The standalone record_self_observation tool can carry a record using the existing freeform field; it consumes one tool call in the same model response.",
+        "Revision ordering, supersedes tokens, stale replacement, duplicate revision, reordered boundary/gap/mismatch, and exact no-op are validated structurally.",
+        "The record can cite only observations the model could legitimately see: prior tool-call IDs, var_<tool_call_id> keys, or exposed observation ordinals."
+      ],
+      "source_grounded_channel": "reference/experiments/run_dab_tool_agent.py 502-689 and 750-874; reference/external/DataAgentBench_official/common_scaffold/DataAgent.py 319-340.",
+      "not_proven": [
+        "Whether a real model authors usable records at a useful rate.",
+        "Whether a prompt overlay or tool-description change is required or permitted.",
+        "Whether a provider accepts an undeclared nested plan_record property.",
+        "Whether the existing observation-log carrier needs a separate no-leak review for the freeform form."
+      ]
+    },
+    "structural_validation": {
+      "status": "implemented_bounded",
+      "what_is_implemented": [
+        "One deterministic status per evidence reference for unique, absent, duplicate, pre-entry, late, stale, truncated, failed, reordered, ambiguous, invalid, and unknown.",
+        "Record-level statuses for accepted, no-op, malformed, stale, reordered, duplicate, ambiguous, and unknown.",
+        "Conservative precedence and no-imputation: one valid reference does not override another unresolved, failed, truncated, ambiguous, or unknown reference.",
+        "Targeted step/ref indices and fixed action selection for acquire_evidence, revise_plan, and preserve_unknown.",
+        "Fixed structural export with semantic_status, correctness_status, and coverage_status always unknown."
+      ],
+      "not_proven": [
+        "Semantic support, contradiction, task relevance, or answer correctness.",
+        "Whether a structurally unique reference is the right evidence for the plan step.",
+        "Whether the model-authored plan itself is a good plan."
+      ]
+    },
+    "behavior_use": {
+      "status": "implemented_bounded_synthetic",
+      "what_is_implemented": [
+        "A deterministic consumer returns proceed, acquire_evidence, revise_plan, or preserve_unknown with a target step/ref index.",
+        "A bounded user-role guidance message is appended at the next call_llm boundary, mirroring the source-grounded deadline-reserve notice pattern.",
+        "Guidance is deduplicated by structural fingerprint and capped at 8 messages by default.",
+        "Paired synthetic tests show resolved and no-op states are inert, while unresolved states add exactly one guidance message and change only the scripted next-action path.",
+        "The adapter never forges a tool result, sets final_result, changes scoring, or exports task content."
+      ],
+      "source_grounded_channel": "reference/experiments/run_dab_tool_agent.py 1130-1173.",
+      "not_proven": [
+        "Whether a real model follows the guidance.",
+        "Whether the next action is the correct evidence acquisition.",
+        "Whether guidance reduces strict failures or improves any score.",
+        "Whether the added prompt/tool-call budget causes or worsens timeouts."
+      ]
+    },
+    "semantic_status": "unknown",
+    "correctness_status": "unknown",
+    "coverage_status": "unknown"
+  },
+  "channel_audit": {
+    "record_carrier_sidecar": {
+      "exists": true,
+      "source": "reference/experiments/run_dab_tool_agent.py 502-689, 750-874",
+      "extra_tool_call": false,
+      "extra_model_turn": false,
+      "deadline_budget": "No direct deadline extension. Adds tool-argument and prompt tokens to the existing action call. Latency and timeout effects were not measured.",
+      "no_leak_note": "The freeform form is preserved by the existing observation log, so that carrier log would need a separate no-leak review. The nested plan_record form is dropped by the normalizer but relies on an undeclared extra property. The prototype's own export and guidance are content-blind.",
+      "runtime_verified": false
+    },
+    "record_carrier_standalone_tool": {
+      "exists": true,
+      "source": "reference/experiments/run_dab_tool_agent.py 688-748",
+      "extra_tool_call": true,
+      "extra_model_turn": false,
+      "deadline_budget": "One extra tool dispatch and tool-result message inside the same model response. No extra model turn. Latency and timeout effects were not measured.",
+      "runtime_verified": false
+    },
+    "guidance_channel": {
+      "exists": true,
+      "source": "reference/experiments/run_dab_tool_agent.py 1130-1173",
+      "extra_tool_call": false,
+      "extra_model_turn": false,
+      "deadline_budget": "One user-role message before an already-scheduled model call. Adds prompt tokens; capped at 8 by default. If the model follows it with an additional action, that action consumes a tool call and a subsequent model turn. No direct deadline extension; timeout effects were not measured.",
+      "not_forged_tool_result": true,
+      "not_answer": true,
+      "scoring_unchanged": true,
+      "runtime_verified": false
+    },
+    "source_grounded_channel_decision": "A record carrier and a guidance boundary exist in the scoped interfaces. No new tool or protocol primitive is required for the freeform sidecar form. The model-authoring prompt/instruction is not implemented, and real-run acceptance is unknown. The behavior is therefore feasible_bounded structurally and synthetically, not proven in a real DAB run.",
+    "blocked_or_partial_reason": "No BLOCKED.md or PARTIAL.md was required because the behavior was connected to an existing source-grounded call_llm user-message boundary without semantic invention or task-content export. The remaining gaps are semantic support/correctness and real-run authoring/compliance, not a missing structural channel."
+  },
+  "tests": {
+    "command": "python -B -m unittest discover -s tests -t . -v",
+    "bytecode_note": "-B suppresses __pycache__ generation.",
+    "python_version": "3.12.14",
+    "tests_run": 66,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "status": "passed",
+    "scope": "synthetic fixtures and scoped source reads only; no DAB task, model call, network call, benchmark, corpus, answer, hint, validator, raw trace, result, or credential access",
+    "real_run_status": "not_run_by_design",
+    "covered_cases": [
+      "record creation and acceptance",
+      "monotonic revision ordering",
+      "stale replacement rejection and current-record preservation",
+      "reordered revision gap",
+      "reordered supersedes mismatch",
+      "reordered authored boundary",
+      "duplicate revision with different content",
+      "exact no-op inertness",
+      "no-op of an unresolved record does not change active state",
+      "unique provenance resolves",
+      "absent reference acquires evidence",
+      "duplicate references revise the plan",
+      "duplicate observation provenance is ambiguous",
+      "pre-entry reference then revision resolves",
+      "late reference revises the plan",
+      "truncated evidence acquires evidence",
+      "failed tool evidence acquires evidence",
+      "non-evidence terminal/self-observation reference fails",
+      "unknown success preserves unknown",
+      "reordered refs revise the plan",
+      "empty step and empty plan acquire evidence",
+      "targeted step/ref action selection",
+      "ambiguous precedes absent in deterministic precedence",
+      "var_<tool_call_id> ref normalization",
+      "malformed record and invalid JSON handling",
+      "unknown record schema handling",
+      "model-asserted supported field rejection",
+      "duplicate step ID ambiguity",
+      "semantic status always unknown",
+      "no-leak structural export across statuses",
+      "no-leak checker forbidden-key/type/token negative controls",
+      "deterministic replay",
+      "guidance fingerprint is structural",
+      "input binding SHA256 and source markers",
+      "prior blocked conclusion preservation",
+      "prior manifest same-line-memory status",
+      "enabled-versus-disabled resolved inertness",
+      "enabled-versus-disabled unresolved next-action change",
+      "no-record inertness",
+      "carrier-disabled inertness",
+      "guidance deduplication and cap",
+      "malformed record runtime safety",
+      "broken-ledger dispatch and termination safety",
+      "standalone self-observation record capture",
+      "sidecar record capture before G9-like terminal suppression",
+      "no-leak guidance content",
+      "runtime deterministic replay",
+      "no forged tool result, final answer, or scoring",
+      "large-result truncation runtime path",
+      "failed-tool runtime path",
+      "unknown-success runtime path",
+      "pre-entry runtime then revision resolves",
+      "observations do not retain result payload"
+    ]
+  },
+  "no_leak_check": {
+    "method": "Fixed structural export allow-list plus an independent checker that rejects forbidden keys, non-primitive values, non-enum strings, inconsistent counts, and synthetic sentinel tokens. Guidance rendering is checked separately for sentinel absence.",
+    "raw_content_exported": false,
+    "task_content_exported": false,
+    "answer_content_exported": false,
+    "message_exported": false,
+    "tool_argument_exported": false,
+    "tool_result_exported": false,
+    "tool_name_exported": false,
+    "tool_call_id_exported": false,
+    "plan_id_exported": false,
+    "step_id_exported": false,
+    "ref_token_exported": false,
+    "digest_exported": false,
+    "credential_exported": false,
+    "semantic_status_exported_as": "unknown",
+    "synthetic_sentinel_check": "passed",
+    "checker_negative_controls": "passed",
+    "carrier_note": "The prototype's own export and guidance are content-blind. The existing agent_self_observations.jsonl carrier is outside this prototype and would require a separate no-leak review if the freeform record form were promoted.",
+    "status": "passed_synthetic"
+  },
+  "inertness_check": {
+    "method": "Paired synthetic FakeDataAgent runs with identical scripted policies, one class with the adapter disabled and one class with it enabled.",
+    "compared": [
+      "messages",
+      "dispatch_log",
+      "result_storage",
+      "final_result",
+      "terminate_reason",
+      "llm_call_count"
+    ],
+    "resolved_record_result": "identical to disabled in every compared field; no guidance appended",
+    "noop_result": "the exact no-op is logged as no_op with state_changed=false and does not change the active directive or emit new guidance",
+    "unresolved_record_result": "exactly one bounded guidance message; one additional synthetic query on the next-action path; final answer and terminate_reason identical to disabled",
+    "no_record_or_carrier_disabled_result": "identical to disabled; no guidance; no ledger records",
+    "broken_ledger_result": "identical dispatch and termination; instrumentation failures swallowed",
+    "terminal_suppression_result": "a record attached to a first return_answer is captured before G9-like suppression; the suppressed terminal is non-evidence; the later answer is unchanged",
+    "scoring_changed": false,
+    "tool_result_forged": false,
+    "answer_forged": false,
+    "real_run_status": "not_run_by_design",
+    "conclusion": "Structural record handling is synthetically inert for resolved/no-op/no-record states and changes only the predeclared next-action path for unresolved states. This is not a benchmark or causal-effect result."
+  },
+  "blocked_general_scope": [
+    "General free-text claim extraction and claim-to-evidence binding.",
+    "General semantic support or contradiction verification.",
+    "Treating model self-assertion, IDs, digests, counts, audit presence, or structural uniqueness as support, truth, task relevance, or correctness.",
+    "Exporting raw task, answer, message, argument, result, credential, or trace content to Research Meta or a sidecar."
+  ],
+  "what_remains_unknown": [
+    "Whether a real model will author a usable record and copy opaque IDs accurately.",
+    "Whether a prompt overlay or tool-description change is required, and whether that change is protocol-permitted.",
+    "Whether the provider accepts an undeclared self_observation.plan_record property.",
+    "Whether the existing observation-log carrier would pass a separate no-leak review in the freeform form.",
+    "Whether the model follows the bounded guidance rather than ignoring it or treating it as evidence.",
+    "Whether the guidance changes timeout or iteration behavior.",
+    "Whether structural guidance improves strict-task outcomes at all.",
+    "Whether large-result file content can be safely made available as complete evidence; the prototype treats it as truncated.",
+    "Whether the configured self-observation tool name differs from the default; the adapter must be configured with the actual name.",
+    "Whether the outer wrapper is inert in a real DAB run; only synthetic enabled-versus-disabled checks were run.",
+    "Whether the caller-supplied response boundary matches the real provider turn boundary in every edge case.",
+    "Whether a real model treats the user-role structural note as an instruction or as conversational content.",
+    "Whether any repair decision would be attributable to structural guidance rather than another audit turn.",
+    "Whether the mechanism would reduce strict failures or have any causal benefit."
+  ],
+  "output_files_sha256": {
+    "prototype/__init__.py": "4ec42d25ccaf2b742dc66dbd709470c4a29d632b8e54bd4e82042816ba7e25fb",
+    "prototype/plan_evidence_record.py": "b9b6d521e68b16bb788f795132946a09fc3ba535477eb84f439bd979f31cfef8",
+    "prototype/runtime_plan_evidence_channel.py": "fcab12b556a0fc876368b87fc567e774729deabae47f324f1f199cad8130eb1c",
+    "tests/__init__.py": "9f6c2ca1982cce7060f31cdbbb98c2639a413570fdcae18b2ef9ef49febc9363",
+    "tests/support.py": "e1f1a5be57743c044340ed86a3de2121add73de0c32355b4a93f423b80cd7a43",
+    "tests/test_input_binding.py": "7030b4168a284b42593e666f8e97bc20d97dbfb0fcf0f4ba83794c3c28968116",
+    "tests/test_plan_evidence_record.py": "556006a3682c3508bf7bf27913cf6f6ec5466a40f045a04a0e88c03b65d1ca1e",
+    "tests/test_runtime_plan_channel.py": "c37ab7679e84b5224d03a9d9103a509c85e595ffe32201bfc4339591dc027579",
+    "BOUNDED_FINDINGS.md": "445f578014d1677117665287491a871cf2cd4202541bcfab81ab98d710ae1ff8"
+  },
+  "manifest_hash_policy": "The manifest does not contain its own SHA256 because any embedded self-hash would change the hash. Source, test, and BOUNDED_FINDINGS.md hashes are listed. Transient __pycache__ files are excluded.",
+  "constraints_observed": [
+    "Worked only inside the current scoped_source directory.",
+    "Did not edit reference/; all five frozen scoped reference SHA256 values were verified.",
+    "Did not edit prior_investigation/; all eight frozen scoped prior-investigation SHA256 values were verified.",
+    "Did not create a formal candidate, frozen Experiment, evidence extractor, benchmark runner, launch claim, or deployment.",
+    "Did not run a DAB task, model call, benchmark, or network request.",
+    "Did not access the parent repository, remote server, benchmark, corpus, tasks, answers, hints, validators, raw traces, results, old research lines, or credentials.",
+    "Synthetic fixture text exists only inside synthetic tests.",
+    "Did not claim score improvement or causal benefit.",
+    "not_formal_candidate=true"
+  ],
+  "not_claimed": [
+    "No general semantic support or contradiction verifier.",
+    "No binding from the free-text answer to the plan record.",
+    "No claim that structural uniqueness is task relevance or correctness.",
+    "No claim that a model-authored plan is a good plan.",
+    "No benchmark or strict-task outcome.",
+    "No score improvement or causal benefit.",
+    "No formal-candidate readiness.",
+    "No real-run integration into run_dab_tool_agent.py.",
+    "No claim that the model can reliably author or revise the record.",
+    "No claim that the model will follow the guidance.",
+    "No claim that guidance is inert in a real DAB run; only synthetic checks were run.",
+    "No claim that large-result file content is safely available as evidence.",
+    "No claim that the existing observation-log carrier is no-leak safe.",
+    "No claim that the caller-supplied boundary is independently trusted."
+  ]
+}

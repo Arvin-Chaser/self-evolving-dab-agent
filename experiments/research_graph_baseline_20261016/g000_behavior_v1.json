@@ -1,0 +1,59 @@
+{
+  "frozen_task_count": 56,
+  "limitations": [
+    "Timeout tasks lack full traces; their in-task behavior is unknown.",
+    "Tool success flags do not establish answer correctness.",
+    "Strict verdict missing is unknown, not a known failure verdict.",
+    "No task identifiers, prompts, tool arguments/results, final answers, hints, or validators were read into this output."
+  ],
+  "schema_version": "dab_g0_answer_blind_behavior_v1",
+  "source_graph_sha256": "256570b3813f79bced5332994c5e3506765cd88ebdbaf6371115e9e3290bc86e",
+  "source_summary_sha256": "17697240bc73641e18d691459a109f86f3d77c45279e6c8aa12c6682ae050542",
+  "source_trace_manifest_sha256": "3878803abcc953aaac3ab513630ff27b562f71dea8b10e06e7961ebfe0720206",
+  "task_cohorts": {
+    "strict_fail": 14,
+    "strict_pass": 33,
+    "strict_unknown": 3,
+    "timeout_failure": 6
+  },
+  "tool_calls_by_name": {
+    "execute_python": 631,
+    "list_db": 94,
+    "other_tool": 3,
+    "query_db": 1077,
+    "return_answer": 50
+  },
+  "tool_failures_by_name": {
+    "execute_python": 100,
+    "query_db": 87
+  },
+  "trace_behavior_by_cohort": {
+    "strict_fail": {
+      "llm_requests": 351,
+      "tasks_with_no_tool_call": 0,
+      "tasks_with_tool_failure": 14,
+      "tool_calls": 577,
+      "tool_failures": 54
+    },
+    "strict_pass": {
+      "llm_requests": 768,
+      "tasks_with_no_tool_call": 0,
+      "tasks_with_tool_failure": 31,
+      "tool_calls": 1121,
+      "tool_failures": 124
+    },
+    "strict_unknown": {
+      "llm_requests": 51,
+      "tasks_with_no_tool_call": 0,
+      "tasks_with_tool_failure": 3,
+      "tool_calls": 157,
+      "tool_failures": 9
+    }
+  },
+  "trace_count_by_cohort": {
+    "strict_fail": 14,
+    "strict_pass": 33,
+    "strict_unknown": 3
+  },
+  "trace_hashes_verified": 50
+}

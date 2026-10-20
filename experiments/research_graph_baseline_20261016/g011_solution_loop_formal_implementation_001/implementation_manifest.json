@@ -1,0 +1,475 @@
+{
+  "schema_version": "g011_solution_loop_formal_implementation_manifest_v1",
+  "status": "implementation_complete_no_formal_run",
+  "mechanism_id": "mech_g011_structural_plan_evidence_ledger",
+  "formal_candidate": true,
+  "formal_candidate_scope": "implementation_and_admission_checks_complete_no_formal_run",
+  "evaluation_run": false,
+  "formal_run_performed": false,
+  "benchmark_evidence_claimed": false,
+  "semantic_support_claimed": false,
+  "causal_claim_claimed": false,
+  "candidate_root": "candidate",
+  "parent_tree": {
+    "generation": 7,
+    "expected_sha256": "572b8c92f4aaa3834e36a7899d667123eb548d0a6f1675a243cc07a9974244ac",
+    "verified_before_edit": true,
+    "verification_method": "python -B -c \"import sys; sys.path.insert(0,'candidate'); from pathlib import Path; from experiments.intent_candidate_workspace import source_tree_hash; print(source_tree_hash(Path('candidate').resolve()))\"",
+    "verification_result": "572b8c92f4aaa3834e36a7899d667123eb548d0a6f1675a243cc07a9974244ac",
+    "candidate_tree_sha256_after_implementation": "54b00d2ef02acc937921c3276239876d4ed195b8988fb17d10d12680ac464e1a"
+  },
+  "context_bindings_verified": {
+    "context/BOUNDED_FINDINGS.md": "445f578014d1677117665287491a871cf2cd4202541bcfab81ab98d710ae1ff8",
+    "context/exploratory_implementation_manifest.json": "3fac0dbe10a18c16ef3fc226bbdc1235903397ccffda8be5043d041be3912b44",
+    "context/independent_verification.json": "2d102dc3c100896029a2d78ac925f70ef3c2866ee03dfc604644c1588da390ff",
+    "context/prototype/__init__.py": "4ec42d25ccaf2b742dc66dbd709470c4a29d632b8e54bd4e82042816ba7e25fb",
+    "context/prototype/plan_evidence_record.py": "b9b6d521e68b16bb788f795132946a09fc3ba535477eb84f439bd979f31cfef8",
+    "context/prototype/runtime_plan_evidence_channel.py": "fcab12b556a0fc876368b87fc567e774729deabae47f324f1f199cad8130eb1c",
+    "context/prototype_tests/__init__.py": "9f6c2ca1982cce7060f31cdbbb98c2639a413570fdcae18b2ef9ef49febc9363",
+    "context/prototype_tests/support.py": "e1f1a5be57743c044340ed86a3de2121add73de0c32355b4a93f423b80cd7a43",
+    "context/prototype_tests/test_input_binding.py": "7030b4168a284b42593e666f8e97bc20d97dbfb0fcf0f4ba83794c3c28968116",
+    "context/prototype_tests/test_plan_evidence_record.py": "556006a3682c3508bf7bf27913cf6f6ec5466a40f045a04a0e88c03b65d1ca1e",
+    "context/prototype_tests/test_runtime_plan_channel.py": "c37ab7679e84b5224d03a9d9103a509c85e595ffe32201bfc4339591dc027579",
+    "context/research_contract.json": "913ca8820208b6ee40ec91f268436c95e626412994e0c4cd88e78acddee9a28a",
+    "context/upstream_DataAgent.py": "ea64b4e2b54ca32545c006d9d2aa77ad3d788ecf337b50c898b268631b24f80a"
+  },
+  "changed_files": [
+    {
+      "path": "candidate/experiments/g011_plan_evidence_record.py",
+      "change": "added; exact prototype-derived record validator",
+      "sha256": "86439e0145b97abb26d8ab4d6d8797553d162e3d3a5c40b5f18d14b84db3dce3"
+    },
+    {
+      "path": "candidate/experiments/g011_interface_contract.py",
+      "change": "added; formal source, carrier, authoring-policy, guidance, sidecar, and no-leak contract",
+      "sha256": "8e3fab515a741f5729f112bc3e15ad02a4896ac77abf7cbbd236c39fe84a49ae"
+    },
+    {
+      "path": "candidate/experiments/g011_runtime_plan_evidence.py",
+      "change": "added; bounded runtime channel, exact freeform carrier, guidance caps, deadline guard, and structural sidecar",
+      "sha256": "9d61a2c677787b8f7012a169e3afdc812a19e2dc2288934435100cc0c8a4b223"
+    },
+    {
+      "path": "candidate/experiments/g011_evidence_extractor.py",
+      "change": "added; pre-registered answer-blind structural Evidence extractor",
+      "sha256": "6d4f1f9ab16004296c6eac31707acf8860c8b37b91c1db71ded1d997afc40cea"
+    },
+    {
+      "path": "candidate/experiments/g011_admission_checks.py",
+      "change": "added; explicit mapping of every frozen admission check to no-task tests",
+      "sha256": "95e8cec8e5fb4459176ee5789ee3adff3236e3cbe56388ec06e615e47ef50972"
+    },
+    {
+      "path": "candidate/experiments/run_dab_tool_agent.py",
+      "change": "modified; opt-in G11 installer, sidecar path, task-end summary, fixed authoring-policy injection, and G11 observation-carrier redaction",
+      "sha256": "3a01c4ad16cd49ec0acb7b81d7aa35a745ee009f4c60e1c4b3759122ff9b1ad0"
+    },
+    {
+      "path": "candidate/prompts/dab/g011_plan_evidence_authoring_policy.txt",
+      "change": "added; frozen rendered new-experiment authoring policy",
+      "sha256": "111eb0726c7a9c795ace1ef96267d085294b6d2e8257d984117763427e50b277"
+    },
+    {
+      "path": "candidate/tests/g011_support.py",
+      "change": "added; synthetic no-task fake agent and helper fixtures",
+      "sha256": "30be69710cfb1cb4f51ec4118fefe553709bfc0e2927e8cca69ed78352f7617d"
+    },
+    {
+      "path": "candidate/tests/test_g011_plan_evidence_record.py",
+      "change": "added; exact schema, lifecycle, status, unknown, and no-semantic-overclaim tests",
+      "sha256": "796eea883e0a9ec2f5a079201934f176c852db964299e91d3db7b9c61f792e71"
+    },
+    {
+      "path": "candidate/tests/test_g011_runtime_plan_evidence.py",
+      "change": "added; enabled-versus-disabled, carrier redaction, caps, deadline, sidecar, and no-forgery tests",
+      "sha256": "e8bc5b3ce073106d7c0e442912903329d0021c4736c5d8f3722def8de0c8f689"
+    },
+    {
+      "path": "candidate/tests/test_g011_interface_contract.py",
+      "change": "added; hash-bound prototype, carrier, authoring-policy, sidecar, and admission-mapping tests",
+      "sha256": "c88244e18a0fc7cba17327305cdf307f75a79595ca76d2bc9eab1e99afb1242f"
+    },
+    {
+      "path": "candidate/tests/test_g011_evidence_extractor.py",
+      "change": "added; pre-registered extractor, unknown fallback, cap, wall-extension, and no-leak tests",
+      "sha256": "0447c7a2d40a585113e84c799be1bb5edd2a8c98e410a8bcba433da8ad776593"
+    }
+  ],
+  "prototype_binding": {
+    "authority": "bounded synthetic interface research only; not formal benchmark Evidence",
+    "manifest_sha256": "3fac0dbe10a18c16ef3fc226bbdc1235903397ccffda8be5043d041be3912b44",
+    "source_sha256": "b9b6d521e68b16bb788f795132946a09fc3ba535477eb84f439bd979f31cfef8",
+    "bounded_findings_sha256": "445f578014d1677117665287491a871cf2cd4202541bcfab81ab98d710ae1ff8",
+    "independent_verification_sha256": "2d102dc3c100896029a2d78ac925f70ef3c2866ee03dfc604644c1588da390ff",
+    "schema_identifier": "g011_plan_record_v1",
+    "record_fields": ["schema", "plan_id", "revision", "supersedes", "steps"],
+    "step_fields": ["step_id", "refs"],
+    "supersedes_fields": ["plan_id", "revision"],
+    "limits": {
+      "max_steps": 16,
+      "max_refs_per_step": 32,
+      "max_total_refs": 128
+    },
+    "initial_revision": 1,
+    "initial_supersedes": null,
+    "ref_statuses": [
+      "unique",
+      "absent",
+      "duplicate",
+      "pre_entry",
+      "late",
+      "stale",
+      "truncated",
+      "failed",
+      "reordered",
+      "ambiguous",
+      "invalid",
+      "unknown"
+    ],
+    "record_statuses": [
+      "accepted",
+      "no_op",
+      "malformed",
+      "stale",
+      "reordered",
+      "duplicate",
+      "ambiguous",
+      "unknown"
+    ],
+    "action_codes": [
+      "proceed",
+      "acquire_evidence",
+      "revise_plan",
+      "preserve_unknown"
+    ],
+    "no_substitutions": true
+  },
+  "carrier_decision": {
+    "carrier": "self_observation.freeform",
+    "declared_by_reviewed_source": true,
+    "prefix_compatibility": "G011_PLAN_RECORD_V1",
+    "accepts_plain_json_with_exact_schema": true,
+    "nested_plan_record_supported": false,
+    "nested_plan_record_reason": "The nested self_observation.plan_record property is undeclared and is dropped by the existing observation normalizer; it is not selected as the formal carrier.",
+    "actual_tool_name_default": "record_self_observation",
+    "actual_tool_name_source": "args.self_observation_tool_name with --self-observation-tool-name",
+    "tool_description_changed_by_g11": false,
+    "provider_acceptance_fixture": "passed_declared_schema_conformance_no_provider_call",
+    "live_provider_acceptance_verified": false,
+    "raw_record_persistence": {
+      "g11_sidecar": "no raw record identifiers or content",
+      "g11_extractor": "no raw record identifiers or content",
+      "existing_agent_self_observations_jsonl": "G11 record payload suppressed when G11 is enabled; ordinary non-record observations unchanged",
+      "base_tool_dispatch_arguments": "G11 record sidecar removed before base dispatch when G11 is enabled",
+      "model_context": "The model-authored record remains in the assistant tool-call context, which the contract permits as model context; the G11 extractor never reads the upstream model-call trace."
+    }
+  },
+  "authoring_policy": {
+    "status": "new_unverified_experiment_policy",
+    "prototype_established": false,
+    "new_experiment_policy": true,
+    "task_agnostic": true,
+    "rendered_sha256": "5c9a4ead247dda6d624c82ebec0512760ca17e8b1062f36a3caa6249b380bffa",
+    "prompt_file": "candidate/prompts/dab/g011_plan_evidence_authoring_policy.txt",
+    "prompt_file_sha256": "111eb0726c7a9c795ace1ef96267d085294b6d2e8257d984117763427e50b277",
+    "only_substitutions": [
+      "schema identifier g011_plan_record_v1",
+      "initial revision 1",
+      "initial supersedes null"
+    ],
+    "injection_path": "existing prompt_builder.init_messages system prompt",
+    "new_tool_added": false
+  },
+  "guidance_policy": {
+    "template_sha256": "344163771b7de18613097a12b347a0615d4aac97c3a009dec12f867bfcaf13b8",
+    "template_exact_in_interface_contract": true,
+    "guidance_cap": 3,
+    "tested_prototype_default_guidance_cap": 8,
+    "prototype_default_used": false,
+    "max_guidance_messages_per_model_turn": 1,
+    "max_extra_model_turns_attributable_to_guidance": 3,
+    "max_extra_tool_dispatches_attributable_to_guidance": 3,
+    "max_mechanism_initiated_tool_calls": 0,
+    "deadline_guard_seconds": 180.0,
+    "per_task_wall_timeout_seconds": 1200.0,
+    "wall_timeout_extension_allowed": false,
+    "zero_binding_interpretation": "untested, not failed or confirmed"
+  },
+  "sidecar_contract": {
+    "sidecar_filename": "g011_plan_evidence_sidecar.jsonl",
+    "summary_filename": "g011_plan_evidence_summary.json",
+    "sidecar_path_env": "DAB_G011_PLAN_EVIDENCE_PATH",
+    "record_fields_exact": [
+      "schema_version",
+      "anonymous_task_index",
+      "record_ordinal",
+      "plan_revision",
+      "authored_at_boundary",
+      "record_status",
+      "accepted",
+      "state_changed",
+      "is_current_record",
+      "step_count",
+      "ref_count",
+      "resolved_ref_count",
+      "unresolved_ref_count",
+      "has_unique",
+      "has_absent",
+      "has_duplicate",
+      "has_pre_entry",
+      "has_late",
+      "has_stale",
+      "has_truncated",
+      "has_failed",
+      "has_reordered",
+      "has_ambiguous",
+      "has_unknown",
+      "has_invalid",
+      "has_empty_step",
+      "action_code",
+      "action_reason",
+      "target_step_index",
+      "target_ref_index",
+      "target_status",
+      "semantic_status",
+      "correctness_status",
+      "coverage_status",
+      "model_authored"
+    ],
+    "summary_fields_exact": [
+      "schema_version",
+      "event_phase",
+      "anonymous_task_index",
+      "record_count",
+      "accepted_record_count",
+      "rejected_record_count",
+      "state_changed_record_count",
+      "resolved_ref_count",
+      "unresolved_ref_count",
+      "action_counts",
+      "record_status_counts",
+      "guidance_message_count",
+      "guidance_binding_count",
+      "guidance_suppressed_cap_count",
+      "guidance_suppressed_deadline_count",
+      "guidance_suppressed_duplicate_count",
+      "guidance_suppressed_no_state_count",
+      "extra_model_turn_count",
+      "extra_tool_dispatch_count",
+      "mechanism_initiated_tool_call_count",
+      "redacted_plan_record_observation_count",
+      "deadline_guard_seconds",
+      "guidance_cap",
+      "wall_timeout_extension_allowed",
+      "semantic_status",
+      "correctness_status",
+      "coverage_status",
+      "model_authored"
+    ],
+    "raw_ids_or_content_persisted": false,
+    "no_leak_checker": "find_sidecar_violations",
+    "status": "passing_synthetic"
+  },
+  "evidence_extractor": {
+    "path": "candidate/experiments/g011_evidence_extractor.py",
+    "rules_version": "g011_measurement_plan_frozen_v001",
+    "frozen_before_run": true,
+    "reads_only_g11_sidecar_and_summary": true,
+    "frozen_task_count": 56,
+    "per_task_wall_timeout_seconds": 1200.0,
+    "formal_runs": 1,
+    "second_arm": false,
+    "sham_run": false,
+    "probe_run": false,
+    "reference_denominators_reused": false,
+    "semantic_status": "unknown",
+    "correctness_status": "unknown",
+    "coverage_status": "unknown",
+    "benchmark_evidence_claimed": false,
+    "causal_claim_allowed": false
+  },
+  "test_commands_and_results": [
+    {
+      "name": "runner_import_and_compile_check",
+      "command": "python -B -m py_compile experiments/g011_plan_evidence_record.py experiments/g011_interface_contract.py experiments/g011_runtime_plan_evidence.py experiments/g011_evidence_extractor.py experiments/run_dab_tool_agent.py; python -B -c \"import experiments.run_dab_tool_agent\"",
+      "working_directory": "candidate",
+      "result": "COMPILE_OK; IMPORT_OK",
+      "status": "passed"
+    },
+    {
+      "name": "baseline_inherited_suite_before_changes",
+      "command": "$env:TMP=(Resolve-Path candidate/.tmp); $env:TEMP=$env:TMP; $env:TMPDIR=$env:TMP; python -B -m pytest tests -q --tb=no",
+      "working_directory": "candidate",
+      "result": "14 failed, 144 passed",
+      "interpretation": "Pre-existing candidate snapshot failures caused by missing external DataAgent source and inherited runtime assumptions; recorded before G11 edits."
+    },
+    {
+      "name": "g11_focused_suite",
+      "command": "$env:TMP=(Resolve-Path candidate/.tmp); $env:TEMP=$env:TMP; $env:TMPDIR=$env:TMP; python -B -m pytest tests/test_g011_plan_evidence_record.py tests/test_g011_runtime_plan_evidence.py tests/test_g011_interface_contract.py tests/test_g011_evidence_extractor.py -q --tb=short",
+      "working_directory": "candidate",
+      "result": "110 passed",
+      "status": "passed"
+    },
+    {
+      "name": "complete_inherited_suite_after_changes",
+      "command": "$env:TMP=(Resolve-Path candidate/.tmp); $env:TEMP=$env:TMP; $env:TMPDIR=$env:TMP; python -B -m pytest tests -q --tb=no",
+      "working_directory": "candidate",
+      "result": "14 failed, 254 passed",
+      "status": "same_pre_existing_failures_no_new_failures",
+      "pre_existing_failed_tests": [
+        "tests/test_g004_evidence_extractor.py::test_tool_identity_is_not_compared_across_boundaries",
+        "tests/test_g004_evidence_extractor.py::test_explicit_postrun_ordinals_support_one_to_many_negative",
+        "tests/test_g004_evidence_extractor.py::test_absent_tool_calls_source_is_incomplete_and_not_zero_match",
+        "tests/test_g004_evidence_extractor.py::test_present_zero_row_tool_calls_source_is_distinct_from_missing",
+        "tests/test_g005_evidence_extractor.py::test_partial_cohort_cannot_claim_overall_support",
+        "tests/test_g005_evidence_extractor.py::test_shifted_56_task_cohort_denominators_complete_protocol_without_g4_counts",
+        "tests/test_g007_evidence_extractor.py::test_interface_contract_passes",
+        "tests/test_g007_interface_contract.py::test_source_contract_passes_without_formal_run",
+        "tests/test_g007_interface_contract.py::test_source_contract_covers_frozen_interface_checks",
+        "tests/test_tool_failure_recovery.py::test_active_dispatch_normal_success_avoids_recovery",
+        "tests/test_tool_failure_recovery.py::test_zero_iterations_resolves_unbounded",
+        "tests/test_tool_failure_recovery.py::test_active_dispatch_recovery_contract",
+        "tests/test_tool_failure_recovery.py::test_active_dispatch_keeps_one_root_and_bounds_two_repairs",
+        "tests/test_tool_failure_recovery.py::test_active_dispatch_handles_malformed_json_and_unknown_tools"
+      ]
+    },
+    {
+      "name": "interface_contract_verification",
+      "command": "python -B -c \"import sys,json; sys.path.insert(0,'candidate'); from experiments.g011_interface_contract import build_interface_contract; print(json.dumps(build_interface_contract(), indent=2))\"",
+      "result": "status=passed, failed_check_count=0, checks=34",
+      "status": "passed"
+    },
+    {
+      "name": "admission_mapping_verification",
+      "command": "python -B -c \"import sys,json; sys.path.insert(0,'candidate'); from experiments.g011_admission_checks import verify_admission_mapping; print(json.dumps(verify_admission_mapping(), indent=2))\"",
+      "result": "status=passed, required_admission_check_count=16, missing_admission_checks=[], missing_test_ids=[]",
+      "status": "passed"
+    }
+  ],
+  "admission_check_mapping": {
+    "path": "g011_admission_mapping.json",
+    "sha256": "d32c11b35760b254fcf04cad30f31fbf6b12cbb4b9dd5fb7244726c8dfd66e1d",
+    "status": "passed",
+    "required_admission_check_count": 16,
+    "missing_admission_checks": [],
+    "extra_admission_checks": [],
+    "missing_test_ids": []
+  },
+  "interface_contract_report": {
+    "path": "g011_interface_contract_report.json",
+    "sha256": "b37cb92ce61cbcded3bea90183f289c626542aa3c192fcea5136612bfd5d94b7",
+    "status": "passed",
+    "failed_check_count": 0,
+    "check_count": 34
+  },
+  "generated_artifacts": [
+    {
+      "path": "implementation_manifest.json",
+      "note": "this manifest; a self-hash is intentionally omitted"
+    },
+    {
+      "path": "g011_interface_contract_report.json",
+      "sha256": "b37cb92ce61cbcded3bea90183f289c626542aa3c192fcea5136612bfd5d94b7"
+    },
+    {
+      "path": "g011_admission_mapping.json",
+      "sha256": "d32c11b35760b254fcf04cad30f31fbf6b12cbb4b9dd5fb7244726c8dfd66e1d"
+    },
+    {
+      "path": "test_artifacts/baseline_tests.log",
+      "sha256": "44047f0f20f4b32e80374804f423628054ea34389f6ef2052cd41f90ef0cfa9c"
+    },
+    {
+      "path": "test_artifacts/baseline_pytest.log",
+      "sha256": "f57521cd8df39b825f03f11721e45cf0a27bcf544e2e70daae6e132bfa199e5b"
+    },
+    {
+      "path": "test_artifacts/baseline_pytest_notb.log",
+      "sha256": "1baba575159466f673539057658084839daf0106ed55bb75e4fb583cec40754a"
+    },
+    {
+      "path": "test_artifacts/baseline_pytest_tmp.log",
+      "sha256": "c33bff3cfa8cc93042bf1dd17035f6e6a5e323fd496cfbf5c2e78212906d9071"
+    },
+    {
+      "path": "test_artifacts/g011_tests.log",
+      "sha256": "2c5bbd0d90d22eb0dc010f1682b8c42f7c306c27ea205a523bce7b02aec8dc39"
+    },
+    {
+      "path": "test_artifacts/full_inherited_tests.log",
+      "sha256": "1195d0cdb6f0c0c4eea6e76e5548d602c95b2c57b6403853ab333138189fa3a1"
+    }
+  ],
+  "source_grounded_interface_conclusions": [
+    {
+      "source": "context/upstream_DataAgent.py",
+      "symbol": "DataAgent.__init__",
+      "conclusion": "self.messages is built from prompt_builder.init_messages; no structured plan object is exposed. A model-authored record must use an existing model-visible carrier."
+    },
+    {
+      "source": "context/upstream_DataAgent.py",
+      "symbol": "DataAgent._handle_tool_call",
+      "conclusion": "One role=tool message with the matching tool_call_id is appended, and small successful results are stored under var_<tool_call_id>. These are structural provenance keys, not semantic support."
+    },
+    {
+      "source": "context/upstream_DataAgent.py",
+      "symbol": "DataAgent._handle_tool_call",
+      "conclusion": "Large successful results are written to a file with a preview; failed calls are not stored as data. The validator treats large results as truncated and failed calls as failed."
+    },
+    {
+      "source": "context/upstream_DataAgent.py",
+      "symbol": "DataAgent.handle_reponse and DataAgent.run",
+      "conclusion": "The assistant tool-call message is appended before dispatch, so a result dispatched in response N is first available at N+1. DataAgent.run catches exceptions into final_result and terminate_reason; instrumentation must swallow its own failures."
+    },
+    {
+      "source": "candidate/experiments/run_dab_tool_agent.py",
+      "symbol": "install_self_observation_tool / normalize_self_observation_payload",
+      "conclusion": "The existing sidecar declares self_observation.freeform as a string, preserves it, and pops the sidecar before base dispatch. This is the selected formal carrier."
+    },
+    {
+      "source": "candidate/experiments/run_dab_tool_agent.py",
+      "symbol": "install_deadline_reserve_signal",
+      "conclusion": "call_llm is an existing bounded runtime boundary that appends a user-role notice. G11 uses the same boundary for at most one structural guidance message per model turn."
+    },
+    {
+      "source": "candidate/experiments/run_dab_tool_agent.py",
+      "symbol": "DataAgentWithSelfObservation._handle_tool_call and install order",
+      "conclusion": "An outer wrapper can read the raw tool-call arguments before the self-observation subclass pops the sidecar and can observe dispatch without replacing it. G11 is installed after the carrier, deadline, and G2 wrappers."
+    },
+    {
+      "source": "context/upstream_DataAgent.py",
+      "symbol": "return_answer and record_self_observation",
+      "conclusion": "return_answer is terminal and model-authored; the standalone self-observation tool is also model-authored. Both are non-evidence and cannot resolve a ledger reference."
+    }
+  ],
+  "no_leak_review": {
+    "g11_sidecar_record_rows": "exact structural export allow-list only",
+    "g11_sidecar_summary": "anonymous aggregate facts only",
+    "g11_extractor": "reads only G11 sidecar and summary files; never opens task, answer, hint, validator, conversation, tool-argument, tool-result, trace, or credential files",
+    "g11_guidance": "exact fixed template; no task content, identifiers, arguments, results, or semantic status",
+    "existing_observation_log": "G11 record payload is skipped when G11 is enabled; ordinary non-record observations follow the original path",
+    "base_tool_dispatch_arguments": "G11 record sidecar is removed before base dispatch when G11 is enabled",
+    "model_context_trace": "the model-authored record remains in the assistant tool-call context; the G11 extractor never reads the upstream model-call trace",
+    "forbidden_content_persisted_count": 0,
+    "status": "passing_synthetic_no_formal_run"
+  },
+  "unresolved_risks": [
+    "Live provider acceptance of the declared freeform carrier is not exercised by a no-task fixture; only declared-schema conformance is proven.",
+    "A real model's willingness and ability to author the exact record and copy opaque identifiers accurately remain unknown.",
+    "A real model's compliance with bounded structural guidance remains unknown; zero guidance binding means the mechanism is untested.",
+    "Real-DAB wrapper inertness is not established; only synthetic enabled-versus-disabled checks were run.",
+    "The upstream model-call trace retains the model-authored record in model context; G11 never reads or exports it, but a future formal no-leak review should confirm the model-context boundary.",
+    "The G11 sidecar is written at task end; an abrupt external process kill may lose structural rows. This does not change dispatch or scoring.",
+    "The installer is per-process/per-task, consistent with the existing runner sidecars; reusing one imported DataAgent class for multiple tasks in a single process is not exercised by the synthetic tests.",
+    "The candidate snapshot omits external DataAgent source and some inherited runtime dependencies; the complete inherited suite has 14 pre-existing failures, identical before and after G11.",
+    "No benchmark task, formal run, evaluation, or causal comparison was performed; no benchmark Evidence or performance claim is made."
+  ],
+  "not_claimed": [
+    "No semantic support, contradiction, task relevance, coverage, answer correctness, plan quality, confidence, or truth status.",
+    "No benchmark benefit, strict-score improvement, timeout reduction, directional effect, or causal score change.",
+    "No real-model authorship, real guidance compliance, or real-DAB inertness.",
+    "No live provider acceptance of the freeform payload location.",
+    "No formal run or evaluation.",
+    "No G8/G9/G10 audit substitution, semantic verifier, new tool, replacement record field, or deadline extension."
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "claim_boundary": {
+    "benchmark_evidence": false,
+    "formal_candidate": false,
+    "gap_directed_model_action_proven": false,
+    "semantic_support_proven": false,
+    "strict_benefit_proven": false
+  },
+  "established": [
+    "A model-facing freeform record carrier and fixed authoring policy exist in the frozen source.",
+    "The reviewed ledger distinguishes structural provenance and uncertainty states without semantic promotion.",
+    "A synthetic unresolved state changes an internal directive and whether fixed guidance is present.",
+    "The fixture preserves tool dispatch and result behavior in its status-sensitivity comparison."
+  ],
+  "evidence_class": "interface_research_not_benchmark_evidence",
+  "findings_sha256": "4be36232917fea5b46d777054f8905cefb70e14d2ecd92a326a5dad59a14466a",
+  "implementation_manifest_sha256": "6e9c91bc97a806a0b88ccdb2054e91ec2308ae4fa00606b4b61f1c7b4aa7333c",
+  "independent_no_task_tests": "26 passed",
+  "input_binding_sha256": "1fbf40735cf4719b594686c9f61263df22e8ec9a2276d1fa421098c88d7f048c",
+  "open_gaps": [
+    "The fixed model-facing guidance is generic and does not expose the selected action, target, or status.",
+    "The synthetic fixture does not show a model selecting a different next action in response to a gap.",
+    "Real provider acceptance, model-authored record adoption, and model compliance remain untested.",
+    "Obligations are model-authored; omitted obligations and semantic support are not independently detected.",
+    "The existing raw-context log surface requires separate no-leak review before formal admission."
+  ],
+  "output_hashes_match": true,
+  "reference_hashes_match": true,
+  "schema_version": "g012_interface_independent_verification_v1",
+  "scoped_file_set_match": true,
+  "selected_target_id": "research_target:g012:001",
+  "status": "artifacts_verified_bounded_substrate_action_gap_open"
+}

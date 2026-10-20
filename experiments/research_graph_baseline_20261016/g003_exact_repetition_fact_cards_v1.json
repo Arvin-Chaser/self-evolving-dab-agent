@@ -1,0 +1,66 @@
+{
+  "activity_by_cohort": {
+    "kind": "observation",
+    "statement": "Known strict-fail tasks have 745 LLM requests and 990 tool-call ends over 21 tasks; strict-pass tasks have 719 and 1018 over 30 tasks. Compare per-task rates, not raw totals; totals alone do not locate an obstruction."
+  },
+  "exact_repeat_coverage_gap": {
+    "kind": "uncertainty",
+    "statement": "Only 3/21 known strict-fail and 4/30 strict-pass tasks have complete call coverage, below the predeclared 80% minimum in both cohorts. The exact-repeat cohort-difference hypothesis is untested, not confirmed or falsified; no complete-cohort rate comparison is admitted."
+  },
+  "exact_repeat_partial_counts": {
+    "kind": "observation",
+    "statement": "Across all completed traces, the known strict-fail cohort has 1 exact repeats among 967 eligible starts and 23 unknown starts; the strict-pass cohort has 0 among 971 eligible and 47 unknown. These are partial totals, not complete per-task cohort rates."
+  },
+  "exact_repeat_rule": {
+    "kind": "observation",
+    "statement": "A predeclared read-only G2 recount compared canonical tool_name and validated_args within each completed task. It did not change the agent. Exact equality is only a structural repetition signal, not task progress or correctness."
+  },
+  "known_failure_mass": {
+    "kind": "observation",
+    "statement": "The 21 known strict-fail completed tasks outnumber the 2 timeout failures. Population size is a priority input, not evidence that a safe or effective intervention has been identified."
+  },
+  "outcome_partition": {
+    "kind": "observation",
+    "statement": "On the fixed 56 G2 tasks: 30 strict passes, 21 known strict failures after normal completion, 3 completed with unknown strict verdict, and 2 runner timeouts. The primary strict rate is 30/56; timeout remains failure in this denominator."
+  },
+  "prior_hypothesis_unexercised": {
+    "kind": "counterexample",
+    "statement": "G2's pre-event abort localization hypothesis was not exercised: all 56 tasks reached first LLM-call return, and no G1-style pre-event failure recurred."
+  },
+  "repetition_not_obstruction": {
+    "kind": "counterexample",
+    "statement": "Even an exact repeated call can be a legitimate state-dependent re-query or retry. Equality alone does not show wasted work, explain strict failure, or justify suppression."
+  },
+  "semantic_failure_unknown": {
+    "kind": "uncertainty",
+    "statement": "Structural call counts and terminal-call presence do not reveal whether the 21 known strict failures reflect wrong reasoning, wrong tool use, answer formatting, unsupported claims, or evaluation mismatch. No answer, tool result, or validator content was inspected."
+  },
+  "terminal_coverage": {
+    "kind": "observation",
+    "statement": "A return_answer tool-call end is recorded in 20/21 known strict-fail completed tasks and 30/30 strict-pass tasks. One known strict-fail task has no such call; return_answer presence does not establish correctness."
+  },
+  "timeout_mechanism_unknown": {
+    "kind": "uncertainty",
+    "statement": "No completed event near the terminal window in the two timeout partial logs does not exclude an unfinished call, retry sleep, stall, or harness wait; a late dispatch was not observed."
+  },
+  "timeout_trace_gap": {
+    "kind": "observation",
+    "statement": "The 2 runner timeouts have no normalized full trace in the frozen manifest; the 54 completed traces were hash-verified. Earlier bounded timing evidence cannot identify their final in-flight operation."
+  },
+  "tool_failure_not_discriminative": {
+    "kind": "counterexample",
+    "statement": "Tool success=false occurs in 20/21 known strict-fail tasks, but also in all 30/30 strict-pass tasks. Its mere occurrence is not sufficient to explain strict failure; the flag can mark exploratory calls."
+  },
+  "unknown_verdicts": {
+    "kind": "uncertainty",
+    "statement": "Three normally completed tasks lack a strict verdict and stay unknown within the fixed 56 denominator; this is a separate evaluation-validity issue, not an established agent failure."
+  },
+  "unpaired_runs": {
+    "kind": "uncertainty",
+    "statement": "G0, G1, and G2 are separate stochastic single runs; differences in cohort sizes or scores cannot establish treatment effects."
+  },
+  "validated_args_runtime_gap": {
+    "kind": "uncertainty",
+    "statement": "Validated arguments in tool_call_start are post-execution trace fields, not verified inputs to the live pre-exec dispatch hook. Blocking calls still lacks a verified replacement tool-message, terminal, and result-storage contract."
+  }
+}

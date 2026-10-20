@@ -1,0 +1,50 @@
+{
+  "bound_selection_uncertain": {
+    "kind": "uncertainty",
+    "statement": "Triggering is selected by reaching a late turn boundary, so triggered and untriggered cohorts are not randomized or exchangeable; their strict rates cannot identify treatment effect."
+  },
+  "failure_cause_unknown": {
+    "kind": "uncertainty",
+    "statement": "Both other run failures have the coarse class FatalError, but the answer-blind sidecar does not establish their cause or whether G1 introduced them."
+  },
+  "g0_g1_descriptive_comparison": {
+    "kind": "observation",
+    "statement": "The independent G0 baseline had 33 strict passes and six timeout failures over the same frozen 56; G1 had 30 strict passes and zero timeout failures. These are unpaired single-run totals, not causal treatment effects."
+  },
+  "g1_bound_outcomes": {
+    "kind": "observation",
+    "statement": "All five triggered tasks completed; one had a strict-true verdict and four had strict-false verdicts. This is an outcome partition, not a counterfactual effect estimate."
+  },
+  "g1_outcome_partition": {
+    "kind": "observation",
+    "statement": "G1 ended all 56 frozen no-hint tasks: 54 completed, zero 1200-second runner timeouts, two other run failures, 30 strict passes over all 56, and three completed tasks with unknown strict verdicts. Timeouts remain failures in the fixed denominator."
+  },
+  "g1_trigger_reach": {
+    "kind": "observation",
+    "statement": "The answer-blind deadline-reserve event recorded a trigger on five tasks and no trigger on 51; the trigger path was exercised but only a small subset reached it."
+  },
+  "g1_unbound_outcomes": {
+    "kind": "observation",
+    "statement": "Among 51 untriggered tasks, 49 completed and two failed; 29 were strict-true, 17 strict-false, and three had unknown strict verdicts. The two run failures were recorded only as FatalError class, without a cause taxonomy."
+  },
+  "nonbinding_not_causal_control": {
+    "kind": "counterexample",
+    "statement": "An untriggered G1 task is only an in-run mechanism guard; comparison with a separate stochastic G0 run cannot prove the added policy was inert or isolate a causal effect."
+  },
+  "timeout_mechanism_unproven": {
+    "kind": "uncertainty",
+    "statement": "The evidence does not show which G0 timeout tasks correspond to G1 triggered tasks or whether the changed timeout total arose from the reserve signal rather than run-to-run variation."
+  },
+  "timeouts_not_equal_task_gain": {
+    "kind": "counterexample",
+    "statement": "The timeout count is lower in G1 while the strict pass count is also lower; a timeout-count change cannot by itself be treated as task-success improvement."
+  },
+  "trigger_not_sufficient_for_strict": {
+    "kind": "counterexample",
+    "statement": "Four of five triggered G1 tasks completed without a strict pass, so reaching the reserve and submitting within the limit is not sufficient for a strict pass."
+  },
+  "unknown_verdicts": {
+    "kind": "uncertainty",
+    "statement": "Three completed G1 tasks lack a strict verdict. They remain unknown and in the fixed denominator; no validator or answer inspection is permitted to repair the labels."
+  }
+}

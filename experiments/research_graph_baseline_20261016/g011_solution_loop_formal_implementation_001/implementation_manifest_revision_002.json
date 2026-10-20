@@ -1,0 +1,449 @@
+{
+  "schema_version": "g011_solution_loop_formal_implementation_manifest_revision_v2",
+  "status": "implementation_complete_no_formal_run",
+  "repair_attempt": 2,
+  "repair_status": "repaired_and_verified",
+  "mechanism_id": "mech_g011_structural_plan_evidence_ledger",
+  "formal_candidate": true,
+  "formal_candidate_scope": "implementation_and_admission_checks_complete_no_formal_run",
+  "formal_candidate_basis": "F4 repaired and verified by no-task command-construction tests; all G11-focused tests pass and the complete suite has exactly the five inherited G7 failures.",
+  "evaluation_run": false,
+  "formal_run_performed": false,
+  "benchmark_evidence_claimed": false,
+  "semantic_support_claimed": false,
+  "causal_claim_claimed": false,
+  "candidate_root": "candidate",
+  "history": {
+    "prior_formal_manifest": {
+      "path": "implementation_manifest_revision_001.json",
+      "sha256": "5f484ff5278b35d43a4f2dfbf21c0c27b354c91c4b5019428abe9f01bc42eaba",
+      "binding_expected_sha256": "5f484ff5278b35d43a4f2dfbf21c0c27b354c91c4b5019428abe9f01bc42eaba",
+      "verified": true,
+      "preserved_unchanged": true
+    },
+    "repair_input_binding": {
+      "path": "repair_input_binding_002.json",
+      "sha256": "03cae40eb6468fbdff882af774237e35c0b1a03484fe87c4447870f6a54eca28",
+      "schema_version": "g011_solution_loop_formal_repair_input_v2",
+      "repair_attempt": 2,
+      "candidate_tree_sha256_before_repair": "2bad7999f98d3359a0407724b3aba66a0b83e6e11aa69e00e5e8a47f05a6277b",
+      "research_sha256": "9a0d6943a4b262429b8270664b0ede8bc9effbae5a15d0c882d63691e236d193"
+    },
+    "research_contract": {
+      "path": "context/research_contract_revision_004.json",
+      "revision": "004",
+      "sha256": "9a0d6943a4b262429b8270664b0ede8bc9effbae5a15d0c882d63691e236d193"
+    }
+  },
+  "repair_binding_verification": {
+    "candidate_tree_sha256_before_repair_expected": "2bad7999f98d3359a0407724b3aba66a0b83e6e11aa69e00e5e8a47f05a6277b",
+    "candidate_tree_sha256_before_repair_observed": "2bad7999f98d3359a0407724b3aba66a0b83e6e11aa69e00e5e8a47f05a6277b",
+    "candidate_tree_before_repair_matched": true,
+    "prior_implementation_manifest_sha256_expected": "5f484ff5278b35d43a4f2dfbf21c0c27b354c91c4b5019428abe9f01bc42eaba",
+    "prior_implementation_manifest_sha256_observed": "5f484ff5278b35d43a4f2dfbf21c0c27b354c91c4b5019428abe9f01bc42eaba",
+    "prior_implementation_manifest_matched": true,
+    "research_sha256_expected": "9a0d6943a4b262429b8270664b0ede8bc9effbae5a15d0c882d63691e236d193",
+    "research_sha256_observed": "9a0d6943a4b262429b8270664b0ede8bc9effbae5a15d0c882d63691e236d193",
+    "research_sha256_matched": true
+  },
+  "mechanical_findings": [
+    {
+      "id": "F4",
+      "status": "repaired",
+      "finding": "The single-task runner exposes --enable-g011-plan-evidence-ledger and leaves it false by default, but run_multi_query_baseline.py had no matching opt-in and never appended that flag to its child command. The fixed 56-task launcher therefore could not explicitly activate the selected mechanism without an unrecorded orchestration substitution.",
+      "required_action": "Add one explicit outer-runner opt-in with the same name and propagate it verbatim to every single-task child command. Keep the default disabled. Add no-task tests proving default-off, enabled propagation, prepare-only propagation, and no unrelated command or protocol changes.",
+      "resolution": "run_multi_query_baseline.py now exposes --enable-g011-plan-evidence-ledger with dest enable_g011_plan_evidence_ledger and action=store_true (default false), and appends exactly that token to the shared child command when enabled. The single-task runner already exposed the same flag and remains false by default. No environment variable is read or written for this opt-in, and G11 is not silently enabled.",
+      "evidence": [
+        "tests/test_g011_outer_runner_opt_in.py::OuterRunnerOptInTests::test_outer_runner_and_single_runner_default_off",
+        "tests/test_g011_outer_runner_opt_in.py::OuterRunnerOptInTests::test_enabled_flag_propagates_to_prepare_only_child",
+        "tests/test_g011_outer_runner_opt_in.py::OuterRunnerOptInTests::test_opt_in_changes_only_the_appended_child_flag"
+      ]
+    }
+  ],
+  "f4_resolution": {
+    "outer_runner_opt_in_added": true,
+    "outer_runner_flag": "--enable-g011-plan-evidence-ledger",
+    "outer_runner_dest": "enable_g011_plan_evidence_ledger",
+    "outer_runner_default": false,
+    "single_runner_default": false,
+    "propagation_target": "every command constructed for experiments/run_dab_tool_agent.py by the shared per-query run_query path",
+    "propagation_is_verbatim": true,
+    "environment_variable_used_for_opt_in": false,
+    "silent_enable": false,
+    "prepare_only_propagation": true,
+    "command_delta_when_enabled": "exactly one appended --enable-g011-plan-evidence-ledger token and no other argument changes",
+    "formal_launcher_can_enable_explicitly": true,
+    "formal_launcher_added_or_executed": false,
+    "status": "repaired"
+  },
+  "frozen_scope_preserved": {
+    "research_revision_004_mechanism": true,
+    "record_schema": true,
+    "freeform_carrier": true,
+    "authoring_policy": true,
+    "semantic_boundary": true,
+    "caps": true,
+    "measurement_plan": true,
+    "g7_parent": true,
+    "exact56_protocol": true,
+    "base_db_description_protocol": true,
+    "no_hint_input_protocol": true,
+    "timeout_protocol": true,
+    "worker_count_protocol": true,
+    "task_selection": true,
+    "scoring": true,
+    "prompt_content": true,
+    "safe_fallbacks": true,
+    "selection_reopened": false
+  },
+  "candidate_tree": {
+    "before_repair_sha256": "2bad7999f98d3359a0407724b3aba66a0b83e6e11aa69e00e5e8a47f05a6277b",
+    "after_repair_sha256": "7a08559bad85ac3de94bc897759cc0f41aeb3260816a3e0ff21989687fae24ac",
+    "hash_method": "experiments.intent_candidate_workspace.source_tree_hash",
+    "hash_surface": [
+      "AGENTS.md",
+      "llm_client.py",
+      "experiments/*.py",
+      "adapters/**/*.py",
+      "prompts/dab/**/*.txt",
+      "meta_agent/**/*.md",
+      "tests/**/*.py"
+    ],
+    "excluded_from_source_tree_hash": [
+      ".tmp",
+      ".pytest_cache",
+      "__pycache__",
+      "candidate/b test basetemp",
+      "candidate/br2 test basetemp",
+      "candidate/external test dependency"
+    ],
+    "source_file_count_after_repair": 114,
+    "supplemental_full_file_tree_sha256_after_repair": "8f5883ab1eedfb68656d46e4a0ce490ba5c4a676353fddd5af5292eec083d842",
+    "supplemental_full_file_tree_method": "SHA256 of canonical JSON list of [relative_path, file_sha256] for every candidate file, excluding .tmp, .pytest_cache, b, br2, __pycache__, and *.pyc",
+    "supplemental_full_file_count": 116
+  },
+  "parent_tree": {
+    "generation": 7,
+    "expected_sha256_from_input_binding": "572b8c92f4aaa3834e36a7899d667123eb548d0a6f1675a243cc07a9974244ac",
+    "parent_files_checked_against_input_binding": 103,
+    "parent_file_mismatch_count": 2,
+    "parent_file_missing": [],
+    "unexpected_parent_file_mismatches": [],
+    "expected_mismatches": [
+      {
+        "path": "candidate/experiments/run_dab_tool_agent.py",
+        "input_binding_sha256": "d4fb415e3201922d142434aa59964ef22ee741a12aaeecaa05f4f91edaa32cd8",
+        "candidate_sha256": "3a01c4ad16cd49ec0acb7b81d7aa35a745ee009f4c60e1c4b3759122ff9b1ad0",
+        "reason": "prior G11 opt-in integration; unchanged in repair attempt 2"
+      },
+      {
+        "path": "candidate/experiments/run_multi_query_baseline.py",
+        "input_binding_sha256": "0913497e451a52dcd1e59a68da9bc596e4ea907450c35f13d04d8973804c7152",
+        "candidate_sha256": "399d0da715d1118ed857f85e2f8f890275c8e023565a63c402b27e42ffb2d086",
+        "reason": "intentional F4 outer opt-in and child-command propagation"
+      }
+    ],
+    "all_other_parent_files_unchanged": true
+  },
+  "changed_files": [
+    {
+      "path": "candidate/experiments/run_multi_query_baseline.py",
+      "change": "added the explicit --enable-g011-plan-evidence-ledger store_true opt-in (default false) and appended the same token to each single-task child command when enabled; no timeout, worker, task-selection, description, or protocol value changed",
+      "before_sha256": "0913497e451a52dcd1e59a68da9bc596e4ea907450c35f13d04d8973804c7152",
+      "after_sha256": "399d0da715d1118ed857f85e2f8f890275c8e023565a63c402b27e42ffb2d086"
+    },
+    {
+      "path": "candidate/tests/test_g011_outer_runner_opt_in.py",
+      "change": "added three synthetic no-task tests for outer and single runner default-off, enabled prepare-only child propagation, and exact command delta",
+      "before_sha256": null,
+      "after_sha256": "ceac6efd0a0221aa004778be142b00ed3e49ba6f2a8c49c7b3187b6f64ce806a"
+    }
+  ],
+  "frozen_files_unchanged": [
+    {
+      "path": "candidate/experiments/run_dab_tool_agent.py",
+      "before_sha256": "3a01c4ad16cd49ec0acb7b81d7aa35a745ee009f4c60e1c4b3759122ff9b1ad0",
+      "after_sha256": "3a01c4ad16cd49ec0acb7b81d7aa35a745ee009f4c60e1c4b3759122ff9b1ad0"
+    },
+    {
+      "path": "candidate/experiments/g011_plan_evidence_record.py",
+      "before_sha256": "8f6ecf5aa8693ac41b1b19caebd0f6ba9d8f4558904192d90781ac3fd874a452",
+      "after_sha256": "8f6ecf5aa8693ac41b1b19caebd0f6ba9d8f4558904192d90781ac3fd874a452"
+    },
+    {
+      "path": "candidate/experiments/g011_interface_contract.py",
+      "before_sha256": "fb656c9a220c51de471455e43370fae0eff220e27f9449b35b0d9931d6446e64",
+      "after_sha256": "fb656c9a220c51de471455e43370fae0eff220e27f9449b35b0d9931d6446e64"
+    },
+    {
+      "path": "candidate/experiments/g011_admission_checks.py",
+      "before_sha256": "fbf79625baa5672529247c68f345a9e741cc31ce2744a823624ae4290f531764",
+      "after_sha256": "fbf79625baa5672529247c68f345a9e741cc31ce2744a823624ae4290f531764"
+    },
+    {
+      "path": "candidate/experiments/g011_runtime_plan_evidence.py",
+      "before_sha256": "9d61a2c677787b8f7012a169e3afdc812a19e2dc2288934435100cc0c8a4b223",
+      "after_sha256": "9d61a2c677787b8f7012a169e3afdc812a19e2dc2288934435100cc0c8a4b223"
+    },
+    {
+      "path": "candidate/experiments/g011_evidence_extractor.py",
+      "before_sha256": "6d4f1f9ab16004296c6eac31707acf8860c8b37b91c1db71ded1d997afc40cea",
+      "after_sha256": "6d4f1f9ab16004296c6eac31707acf8860c8b37b91c1db71ded1d997afc40cea"
+    },
+    {
+      "path": "candidate/tests/g011_support.py",
+      "before_sha256": "30be69710cfb1cb4f51ec4118fefe553709bfc0e2927e8cca69ed78352f7617d",
+      "after_sha256": "30be69710cfb1cb4f51ec4118fefe553709bfc0e2927e8cca69ed78352f7617d"
+    },
+    {
+      "path": "candidate/tests/test_g011_plan_evidence_record.py",
+      "before_sha256": "796eea883e0a9ec2f5a079201934f176c852db964299e91d3db7b9c61f792e71",
+      "after_sha256": "796eea883e0a9ec2f5a079201934f176c852db964299e91d3db7b9c61f792e71"
+    },
+    {
+      "path": "candidate/tests/test_g011_runtime_plan_evidence.py",
+      "before_sha256": "e8bc5b3ce073106d7c0e442912903329d0021c4736c5d8f3722def8de0c8f689",
+      "after_sha256": "e8bc5b3ce073106d7c0e442912903329d0021c4736c5d8f3722def8de0c8f689"
+    },
+    {
+      "path": "candidate/tests/test_g011_interface_contract.py",
+      "before_sha256": "4ca084088a6ea87f6a724c3d4ee8bc7281f5d1b6e092af4c8ad5fb8caab32ed7",
+      "after_sha256": "4ca084088a6ea87f6a724c3d4ee8bc7281f5d1b6e092af4c8ad5fb8caab32ed7"
+    },
+    {
+      "path": "candidate/tests/test_g011_evidence_extractor.py",
+      "before_sha256": "0447c7a2d40a585113e84c799be1bb5edd2a8c98e410a8bcba433da8ad776593",
+      "after_sha256": "0447c7a2d40a585113e84c799be1bb5edd2a8c98e410a8bcba433da8ad776593"
+    },
+    {
+      "path": "candidate/prompts/dab/g011_plan_evidence_authoring_policy.txt",
+      "before_sha256": "111eb0726c7a9c795ace1ef96267d085294b6d2e8257d984117763427e50b277",
+      "after_sha256": "111eb0726c7a9c795ace1ef96267d085294b6d2e8257d984117763427e50b277"
+    }
+  ],
+  "test_commands_and_results": [
+    {
+      "name": "compile_and_import",
+      "command": "python -B -m py_compile experiments/run_multi_query_baseline.py tests/test_g011_outer_runner_opt_in.py; python -B -c \"import experiments.run_multi_query_baseline, experiments.run_dab_tool_agent; print('COMPILE_OK'); print('IMPORT_OK')\"",
+      "working_directory": "candidate",
+      "result": "COMPILE_OK; IMPORT_OK",
+      "status": "passed"
+    },
+    {
+      "name": "outer_runner_help_exposes_flag",
+      "command": "python -B experiments/run_multi_query_baseline.py --help",
+      "working_directory": "candidate",
+      "result": "--enable-g011-plan-evidence-ledger is listed; help states the opt-in is off by default and propagated to every single-task child runner",
+      "status": "passed"
+    },
+    {
+      "name": "g11_focused_suite",
+      "command": "$env:TMP=(Resolve-Path .).Path; $env:TEMP=$env:TMP; $env:TMPDIR=$env:TMP; python -B -m pytest tests/test_g011_plan_evidence_record.py tests/test_g011_runtime_plan_evidence.py tests/test_g011_interface_contract.py tests/test_g011_evidence_extractor.py tests/test_g011_outer_runner_opt_in.py -q --tb=short -p no:cacheprovider --basetemp=.tmp/r2_g011_focus",
+      "working_directory": "candidate",
+      "result": "116 passed",
+      "status": "passed",
+      "artifact": "test_artifacts/repair_attempt2_g011_tests.log",
+      "artifact_sha256": "8910518c2dfb80ccac0513c71cb52c1d19fa63a828e8578b1dd86cf2b3000331"
+    },
+    {
+      "name": "outer_runner_opt_in_no_task_tests",
+      "command": "python -B -m pytest tests/test_g011_outer_runner_opt_in.py -q --tb=short -p no:cacheprovider --basetemp=.tmp/r2_focus_optin",
+      "working_directory": "candidate",
+      "result": "3 passed",
+      "status": "passed",
+      "test_ids": [
+        "tests/test_g011_outer_runner_opt_in.py::OuterRunnerOptInTests::test_outer_runner_and_single_runner_default_off",
+        "tests/test_g011_outer_runner_opt_in.py::OuterRunnerOptInTests::test_enabled_flag_propagates_to_prepare_only_child",
+        "tests/test_g011_outer_runner_opt_in.py::OuterRunnerOptInTests::test_opt_in_changes_only_the_appended_child_flag"
+      ]
+    },
+    {
+      "name": "complete_candidate_suite",
+      "command": "$env:TMP=(Resolve-Path .).Path; $env:TEMP=$env:TMP; $env:TMPDIR=$env:TMP; python -B -m pytest tests -q --tb=no -p no:cacheprovider --basetemp=br2",
+      "working_directory": "candidate",
+      "result": "5 failed, 269 passed",
+      "status": "passed_acceptance_exactly_inherited_five_failures",
+      "artifact": "test_artifacts/repair_attempt2_full_tests.log",
+      "artifact_sha256": "32b6be90c34c7c5c1f664e380a77d3ea3e5661c0fc4b0f9fcdb191725ace7274",
+      "note": "The short in-workspace basetemp avoids unrelated Windows MAX_PATH failures. The only failures are the five inherited G7 tool-failure-recovery tests."
+    },
+    {
+      "name": "parent_file_binding_comparison",
+      "command": "compare all 103 candidate files in input_binding.json source_bindings",
+      "result": "checked=103; missing=0; mismatches=2; all other 101 files unchanged",
+      "status": "passed",
+      "note": "The two mismatches are the prior G11 integration file and the intentional F4 outer runner change."
+    }
+  ],
+  "complete_suite_failure_set": {
+    "count": 5,
+    "inherited_from_g7_parent": true,
+    "failures": [
+      "tests/test_tool_failure_recovery.py::test_active_dispatch_normal_success_avoids_recovery",
+      "tests/test_tool_failure_recovery.py::test_zero_iterations_resolves_unbounded",
+      "tests/test_tool_failure_recovery.py::test_active_dispatch_recovery_contract",
+      "tests/test_tool_failure_recovery.py::test_active_dispatch_keeps_one_root_and_bounds_two_repairs",
+      "tests/test_tool_failure_recovery.py::test_active_dispatch_handles_malformed_json_and_unknown_tools"
+    ],
+    "g11_specific_failures": [],
+    "new_failures": [],
+    "prior_complete_suite_result": "5 failed, 266 passed",
+    "current_complete_suite_result": "5 failed, 269 passed",
+    "acceptance": "exactly the inherited five failures and no new failures"
+  },
+  "success_criteria": {
+    "g011_focused_tests_all_pass": true,
+    "outer_runner_default_remains_disabled": true,
+    "single_task_default_remains_disabled": true,
+    "formal_launcher_can_enable_explicitly": true,
+    "research_semantics_unchanged": true,
+    "complete_suite_failure_set": "exactly the five inherited G7 tool_failure_recovery failures",
+    "all_satisfied": true
+  },
+  "claim_to_check_mapping": [
+    {
+      "claim": "The outer runner exposes one explicit G11 opt-in and leaves it disabled by default.",
+      "checks": [
+        "outer_runner_flag=--enable-g011-plan-evidence-ledger",
+        "outer_runner_default=false",
+        "single_runner_default=false",
+        "environment_variable_used_for_opt_in=false"
+      ],
+      "tests": [
+        "tests/test_g011_outer_runner_opt_in.py::OuterRunnerOptInTests::test_outer_runner_and_single_runner_default_off"
+      ],
+      "status": "passed"
+    },
+    {
+      "claim": "The opt-in propagates verbatim to prepare-only and ordinary single-task child commands without changing other arguments.",
+      "checks": [
+        "prepare_only_propagation=true",
+        "command_delta_when_enabled=exactly one appended flag token"
+      ],
+      "tests": [
+        "tests/test_g011_outer_runner_opt_in.py::OuterRunnerOptInTests::test_enabled_flag_propagates_to_prepare_only_child",
+        "tests/test_g011_outer_runner_opt_in.py::OuterRunnerOptInTests::test_opt_in_changes_only_the_appended_child_flag"
+      ],
+      "status": "passed"
+    },
+    {
+      "claim": "All G11-focused tests pass.",
+      "checks": [
+        "g11_focused_suite=116 passed"
+      ],
+      "evidence": [
+        "test_artifacts/repair_attempt2_g011_tests.log"
+      ],
+      "status": "passed"
+    },
+    {
+      "claim": "The complete candidate suite has exactly the five inherited G7 failures and no new failure.",
+      "checks": [
+        "complete_candidate_suite=5 failed, 269 passed",
+        "g11_specific_failures=[]",
+        "new_failures=[]"
+      ],
+      "evidence": [
+        "test_artifacts/repair_attempt2_full_tests.log"
+      ],
+      "status": "passed"
+    },
+    {
+      "claim": "Frozen G11 source, prompt, record, runtime, extractor, admission, and prior tests are unchanged.",
+      "checks": [
+        "frozen_files_unchanged=12 entries with identical before/after hashes",
+        "run_dab_tool_agent_sha256=3a01c4ad16cd49ec0acb7b81d7aa35a745ee009f4c60e1c4b3759122ff9b1ad0"
+      ],
+      "status": "passed"
+    },
+    {
+      "claim": "Unrelated inherited parent behavior is unchanged.",
+      "checks": [
+        "parent_files_checked=103",
+        "unexpected_parent_file_mismatches=[]",
+        "all_other_parent_files_unchanged=true"
+      ],
+      "evidence": [
+        "input_binding.json"
+      ],
+      "status": "passed"
+    }
+  ],
+  "preserved_artifacts": [
+    {
+      "path": "implementation_manifest.json",
+      "sha256": "c9cb355a8c7c84b3ed3c160ea7dc0dfaff0ab1371e9a3db296aabd342b290ef8",
+      "preserved_unchanged": true
+    },
+    {
+      "path": "implementation_manifest_revision_001.json",
+      "sha256": "5f484ff5278b35d43a4f2dfbf21c0c27b354c91c4b5019428abe9f01bc42eaba",
+      "preserved_unchanged": true
+    },
+    {
+      "path": "g011_interface_contract_report.json",
+      "sha256": "b37cb92ce61cbcded3bea90183f289c626542aa3c192fcea5136612bfd5d94b7",
+      "preserved_unchanged": true
+    },
+    {
+      "path": "g011_interface_contract_report_revision_001.json",
+      "sha256": "b29da370263a56cdd0f985bfe7834883643571e4d269867f4aa4292d68fdaa35",
+      "preserved_unchanged": true
+    },
+    {
+      "path": "g011_admission_mapping.json",
+      "sha256": "d32c11b35760b254fcf04cad30f31fbf6b12cbb4b9dd5fb7244726c8dfd66e1d",
+      "preserved_unchanged": true
+    },
+    {
+      "path": "g011_admission_mapping_revision_001.json",
+      "sha256": "2d1db5e6567dbb53fa423ce1a6cba4c287cc3a57baeedab7e28e067d0ec82ee7",
+      "preserved_unchanged": true
+    },
+    {
+      "path": "repair_input_binding_001.json",
+      "sha256": "8d17ede3229e1b9330155f6927b0f64fd338acad20c28593990cb9a4e5a8c349",
+      "preserved_unchanged": true
+    }
+  ],
+  "unresolved_risks": [
+    "This repair only exposes and propagates an explicit opt-in. No hash-bound formal launcher was added or executed; the future 56-task launcher must pass --enable-g011-plan-evidence-ledger explicitly.",
+    "The outer batch runner's execution_context schema is unchanged, so formal provenance of the opt-in must come from the immutable launcher command and manifest rather than a new batch-summary field.",
+    "Live provider acceptance of the declared self_observation.freeform carrier is not exercised by a no-task fixture; only declared-schema conformance and preserved-normalizer checks are proven.",
+    "A real model's willingness and ability to author the exact record and copy opaque identifiers accurately remain unknown.",
+    "A real model's compliance with bounded structural guidance remains unknown; zero guidance binding means the mechanism is untested.",
+    "Real-DAB wrapper inertness is not established; only synthetic enabled-versus-disabled checks were run.",
+    "The upstream model-call trace retains the model-authored record in model context; G11 never reads or exports it, but a future formal no-leak review should confirm the model-context boundary.",
+    "The G11 sidecar is written at task end; an abrupt external process kill may lose structural rows. This does not change dispatch or scoring.",
+    "The installer is per-process/per-task, consistent with the existing runner sidecars; reusing one imported DataAgent class for multiple tasks in a single process is not exercised by the synthetic tests.",
+    "The explicit-context verifier was run locally against the hash-bound Revision 004 context in the prior repair, but default tests do not exercise it; outer admission must independently verify context and artifact hashes.",
+    "The complete candidate suite requires the hash-bound upstream DataAgent test dependency and a short pytest basetemp to avoid unrelated Windows MAX_PATH failures; these are test-harness facts, not G11 behavior changes.",
+    "The scoped candidate still omits some inherited runtime modules (for example, the standalone routing module); the exact runner --help path is not a G11 test and was not repaired here.",
+    "The five inherited G7 test_tool_failure_recovery failures remain and are not claimed as repaired.",
+    "No benchmark task, formal run, evaluation, or causal comparison was performed; no benchmark Evidence or performance claim is made."
+  ],
+  "not_claimed": [
+    "No semantic support, contradiction, task relevance, coverage, answer correctness, plan quality, confidence, or truth status.",
+    "No benchmark benefit, strict-score improvement, timeout reduction, directional effect, or causal score change.",
+    "No real-model authorship, real guidance compliance, or real-DAB inertness.",
+    "No live provider acceptance of the freeform payload location.",
+    "No formal run or evaluation.",
+    "No G8/G9/G10 audit substitution, semantic verifier, new tool, replacement record field, or deadline extension.",
+    "No claim that the five inherited G7 test_tool_failure_recovery failures were repaired.",
+    "No claim that the outer opt-in was exercised in a formal 56-task run."
+  ],
+  "generated_artifacts": [
+    {
+      "path": "implementation_manifest_revision_002.json",
+      "note": "this manifest; a self-hash is intentionally omitted"
+    },
+    {
+      "path": "test_artifacts/repair_attempt2_g011_tests.log",
+      "sha256": "8910518c2dfb80ccac0513c71cb52c1d19fa63a828e8578b1dd86cf2b3000331"
+    },
+    {
+      "path": "test_artifacts/repair_attempt2_full_tests.log",
+      "sha256": "32b6be90c34c7c5c1f664e380a77d3ea3e5661c0fc4b0f9fcdb191725ace7274"
+    }
+  ]
+}

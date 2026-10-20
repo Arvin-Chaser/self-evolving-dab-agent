@@ -37,3 +37,26 @@ Use these files for the active DAB / tool-agent line:
 - `prompts/dab/dab_tool_agent_policy_zero_start.txt`
 
 `llm_client.py` remains in the repository root for shared LLM-call compatibility, but new DAB tool-agent runs primarily go through `experiments/run_dab_tool_agent.py` and observer feedback goes through `experiments/run_fine_grained_observer_agent.py`.
+
+## Cross-Session Research Memory
+
+For non-trivial DAB research work, restore context from `docs/agent_memory/` before acting. Read in this order:
+
+1. `CURRENT_STATE.md` for the verified present boundary and blockers.
+2. `HANDOFF.md` for the next safe actions and prohibitions.
+3. `PROJECT_OVERVIEW.md` for architecture and terminology.
+4. `DECISIONS.md` and `EXPERIMENTS.md` when changing research direction, interpreting results, or selecting evidence.
+5. `ENVIRONMENT.md` before any provider, server, database, or formal-run work.
+6. `HISTORY_INDEX.md` only when historical provenance or the old Codex session must be traced.
+
+Treat evidence in this order: current immutable experiment artifacts and manifests, current code/tests, Git metadata, then the redacted historical session index. A historical plan or assistant statement is not implementation evidence. Keep these states distinct: proposed, implemented, local tests passed, admitted, formally evaluated, and independently verified.
+
+Update the memory after a material milestone:
+
+- update `CURRENT_STATE.md` and `HANDOFF.md` when the active boundary or next action changes;
+- append decisions and corrected beliefs to `DECISIONS.md`;
+- append completed, invalid, interrupted, or superseded runs to `EXPERIMENTS.md` without erasing failures;
+- update `ENVIRONMENT.md` only from a bounded verification, never with credential values;
+- update `HISTORY_INDEX.md` when a new source archive or extraction pass is added.
+
+Memory documents are not execution authorization. Re-check the dirty worktree, artifact hashes, live process state, disk space, provider boundary, and the user's current authorization before any formal run or destructive cleanup.

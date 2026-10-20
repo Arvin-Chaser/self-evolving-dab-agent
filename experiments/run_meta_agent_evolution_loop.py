@@ -1059,9 +1059,14 @@ key_env, api_key = first_env([
     "DAB_TOOL_AGENT_API_KEY",
     "TOGETHER_API_KEY",
 ])
-base_env, base_from_env = first_env(["DAB_TOOL_AGENT_BASE_URL", "DASHSCOPE_BASE_URL", "BAILIAN_BASE_URL"])
+base_env, base_from_env = first_env([
+    "DAB_TOOL_AGENT_OPENAI_BASE_URL",
+    "DAB_TOOL_AGENT_BASE_URL",
+    "DASHSCOPE_BASE_URL",
+    "BAILIAN_BASE_URL",
+])
 base_url = normalize_openai_base_url(base_from_env)
-model = os.getenv("DAB_TOOL_AGENT_MODEL", "qwen-plus")
+model = os.getenv("DAB_TOOL_AGENT_MODEL", "glm-5.3-flash")
 timeout = float(os.getenv("META_LOOP_LLM_PREFLIGHT_TIMEOUT_SEC", "30"))
 max_retries = int(os.getenv("META_LOOP_LLM_PREFLIGHT_MAX_RETRIES", "0"))
 started = time.time()

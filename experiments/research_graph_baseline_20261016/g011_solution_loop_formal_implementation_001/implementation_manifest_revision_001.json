@@ -1,0 +1,464 @@
+{
+  "schema_version": "g011_solution_loop_formal_implementation_manifest_revision_v1",
+  "status": "implementation_complete_no_formal_run",
+  "repair_attempt": 1,
+  "repair_status": "repaired_and_verified",
+  "mechanism_id": "mech_g011_structural_plan_evidence_ledger",
+  "formal_candidate": true,
+  "formal_candidate_scope": "implementation_and_admission_checks_complete_no_formal_run",
+  "evaluation_run": false,
+  "formal_run_performed": false,
+  "benchmark_evidence_claimed": false,
+  "semantic_support_claimed": false,
+  "causal_claim_claimed": false,
+  "candidate_root": "candidate",
+  "history": {
+    "prior_implementation_manifest": {
+      "path": "implementation_manifest.json",
+      "sha256": "c9cb355a8c7c84b3ed3c160ea7dc0dfaff0ab1371e9a3db296aabd342b290ef8",
+      "preserved_unchanged": true
+    },
+    "repair_input_binding": {
+      "path": "repair_input_binding_001.json",
+      "sha256": "8d17ede3229e1b9330155f6927b0f64fd338acad20c28593990cb9a4e5a8c349",
+      "schema_version": "g011_solution_loop_formal_repair_input_v1"
+    },
+    "research_contract": {
+      "path": "context/research_contract_revision_004.json",
+      "revision": "004",
+      "sha256": "9a0d6943a4b262429b8270664b0ede8bc9effbae5a15d0c882d63691e236d193"
+    }
+  },
+  "mechanical_findings": [
+    {
+      "id": "F1",
+      "status": "repaired_by_research_revision_004",
+      "required_action": "Bind all source and tests to Revision 004, which freezes self_observation.freeform and explicitly rejects nested plan_record.",
+      "resolution": "The deployable source embeds Revision 004 constants and all 22 Revision 004 admission checks. The default contract reports revision 004 and the 9a0d6943... hash. The carrier is self_observation.freeform; nested self_observation.plan_record is rejected and is not a fallback.",
+      "evidence": [
+        "tests/test_g011_interface_contract.py::test_revision_004_carrier_and_nested_rejection_are_bound",
+        "tests/test_g011_interface_contract.py::test_source_grounding_hashes_are_bound",
+        "g011_interface_contract_report_revision_001.json"
+      ]
+    },
+    {
+      "id": "F2",
+      "status": "repaired",
+      "required_action": "Remove deploy-time and default-test dependence on external incubation context. Keep outer admission responsible for hashing Research/prototype artifacts; runtime source and deployable tests must be self-contained and must not ship or read research history.",
+      "resolution": "The default load_prototype_contract() path is a pure in-memory constant read. Runtime, record, extractor, and default tests read no adjacent context, prototype, or Research file. A separate explicit-context verifier is retained only for outer admission and requires a caller-supplied context_dir.",
+      "evidence": [
+        "tests/test_g011_interface_contract.py::test_default_contract_is_self_contained",
+        "tests/test_g011_interface_contract.py::test_explicit_context_verification_is_opt_in",
+        "test_artifacts/repair_attempt1_deploy_g011_tests.log"
+      ]
+    },
+    {
+      "id": "F3",
+      "status": "parent_preexisting_unchanged",
+      "required_action": "Do not modify or claim to fix the five inherited failures. Prove the repaired candidate has exactly the same inherited failure set and no G11-specific failures.",
+      "resolution": "The complete candidate suite has exactly the five inherited test_tool_failure_recovery failures and no G11-specific failures. All 91 non-G11 parent source bindings checked against input_binding.json are unchanged; only the prior G11 integration file remains changed.",
+      "evidence": [
+        "test_artifacts/repair_attempt1_full_tests.log",
+        "parent_file_binding_comparison"
+      ]
+    }
+  ],
+  "parent_tree": {
+    "generation": 7,
+    "expected_sha256": "572b8c92f4aaa3834e36a7899d667123eb548d0a6f1675a243cc07a9974244ac",
+    "verified_before_edit_in_prior_manifest": true,
+    "parent_files_checked_against_input_binding": 91,
+    "parent_file_mismatches": [],
+    "parent_file_missing": [],
+    "changed_parent_integration_file": {
+      "path": "candidate/experiments/run_dab_tool_agent.py",
+      "sha256": "3a01c4ad16cd49ec0acb7b81d7aa35a745ee009f4c60e1c4b3759122ff9b1ad0",
+      "note": "Unchanged from the prior G11 implementation; contains only the prior opt-in G11 integration."
+    }
+  },
+  "candidate_tree": {
+    "before_repair_sha256": "54b00d2ef02acc937921c3276239876d4ed195b8988fb17d10d12680ac464e1a",
+    "after_repair_sha256": "2bad7999f98d3359a0407724b3aba66a0b83e6e11aa69e00e5e8a47f05a6277b",
+    "hash_method": "experiments.intent_candidate_workspace.source_tree_hash",
+    "hash_surface": [
+      "AGENTS.md",
+      "llm_client.py",
+      "experiments/*.py",
+      "adapters/**/*.py",
+      "prompts/dab/**/*.txt",
+      "meta_agent/**/*.md",
+      "tests/**/*.py"
+    ],
+    "excluded_from_source_tree_hash": [
+      ".tmp",
+      ".pytest_cache",
+      "__pycache__",
+      "candidate/b test basetemp",
+      "candidate/external test dependency"
+    ],
+    "supplemental_full_file_tree_sha256_after_repair": "c8ad189562dabb02d934d1e89aea28dd16d450d8240cd5fe50a17fec369206e2",
+    "supplemental_full_file_tree_method": "SHA256 of canonical JSON list of relative path and file SHA256 for every candidate file, excluding .tmp, .pytest_cache, b, __pycache__, and *.pyc",
+    "supplemental_full_file_count": 115
+  },
+  "changed_files": [
+    {
+      "path": "candidate/experiments/g011_plan_evidence_record.py",
+      "change": "updated docstring only to state that the frozen constants are embedded and no context/prototype file is read at runtime",
+      "before_sha256": "86439e0145b97abb26d8ab4d6d8797553d162e3d3a5c40b5f18d14b84db3dce3",
+      "after_sha256": "8f6ecf5aa8693ac41b1b19caebd0f6ba9d8f4558904192d90781ac3fd874a452"
+    },
+    {
+      "path": "candidate/experiments/g011_interface_contract.py",
+      "change": "Revision 004 binding; embedded default contract; explicit admission-only context verifier; self-containment and no-runtime-research-read checks; freeform/nested carrier checks",
+      "before_sha256": "8e3fab515a741f5729f112bc3e15ad02a4896ac77abf7cbbd236c39fe84a49ae",
+      "after_sha256": "fb656c9a220c51de471455e43370fae0eff220e27f9449b35b0d9931d6446e64"
+    },
+    {
+      "path": "candidate/experiments/g011_admission_checks.py",
+      "change": "embedded-default admission mapping for all 22 Revision 004 checks; removed obsolete revision-003 mapping",
+      "before_sha256": "95e8cec8e5fb4459176ee5789ee3adff3236e3cbe56388ec06e615e47ef50972",
+      "after_sha256": "fbf79625baa5672529247c68f345a9e741cc31ce2744a823624ae4290f531764"
+    },
+    {
+      "path": "candidate/tests/test_g011_interface_contract.py",
+      "change": "Revision 004 assertions, 22-check mapping expectation, self-contained default test, opt-in admission-context test",
+      "before_sha256": "c88244e18a0fc7cba17327305cdf307f75a79595ca76d2bc9eab1e99afb1242f",
+      "after_sha256": "4ca084088a6ea87f6a724c3d4ee8bc7281f5d1b6e092af4c8ad5fb8caab32ed7"
+    },
+    {
+      "path": "candidate/external/DataAgentBench_official/common_scaffold/DataAgent.py",
+      "change": "added verbatim hash-bound upstream DataAgent source as a self-contained test dependency for the inherited G7 source-contract tests",
+      "before_sha256": null,
+      "after_sha256": "ea64b4e2b54ca32545c006d9d2aa77ad3d788ecf337b50c898b268631b24f80a",
+      "note": "This is upstream runtime source, not research history. It is excluded from the active source tree hash and hashed separately."
+    },
+    {
+      "path": "candidate/experiments/g011_runtime_plan_evidence.py",
+      "change": "unchanged",
+      "before_sha256": "9d61a2c677787b8f7012a169e3afdc812a19e2dc2288934435100cc0c8a4b223",
+      "after_sha256": "9d61a2c677787b8f7012a169e3afdc812a19e2dc2288934435100cc0c8a4b223"
+    },
+    {
+      "path": "candidate/experiments/g011_evidence_extractor.py",
+      "change": "unchanged",
+      "before_sha256": "6d4f1f9ab16004296c6eac31707acf8860c8b37b91c1db71ded1d997afc40cea",
+      "after_sha256": "6d4f1f9ab16004296c6eac31707acf8860c8b37b91c1db71ded1d997afc40cea"
+    },
+    {
+      "path": "candidate/experiments/run_dab_tool_agent.py",
+      "change": "unchanged from prior G11 implementation",
+      "before_sha256": "3a01c4ad16cd49ec0acb7b81d7aa35a745ee009f4c60e1c4b3759122ff9b1ad0",
+      "after_sha256": "3a01c4ad16cd49ec0acb7b81d7aa35a745ee009f4c60e1c4b3759122ff9b1ad0"
+    },
+    {
+      "path": "candidate/prompts/dab/g011_plan_evidence_authoring_policy.txt",
+      "change": "unchanged",
+      "before_sha256": "111eb0726c7a9c795ace1ef96267d085294b6d2e8257d984117763427e50b277",
+      "after_sha256": "111eb0726c7a9c795ace1ef96267d085294b6d2e8257d984117763427e50b277"
+    },
+    {
+      "path": "candidate/tests/g011_support.py",
+      "change": "unchanged",
+      "before_sha256": "30be69710cfb1cb4f51ec4118fefe553709bfc0e2927e8cca69ed78352f7617d",
+      "after_sha256": "30be69710cfb1cb4f51ec4118fefe553709bfc0e2927e8cca69ed78352f7617d"
+    },
+    {
+      "path": "candidate/tests/test_g011_plan_evidence_record.py",
+      "change": "unchanged",
+      "before_sha256": "796eea883e0a9ec2f5a079201934f176c852db964299e91d3db7b9c61f792e71",
+      "after_sha256": "796eea883e0a9ec2f5a079201934f176c852db964299e91d3db7b9c61f792e71"
+    },
+    {
+      "path": "candidate/tests/test_g011_runtime_plan_evidence.py",
+      "change": "unchanged",
+      "before_sha256": "e8bc5b3ce073106d7c0e442912903329d0021c4736c5d8f3722def8de0c8f689",
+      "after_sha256": "e8bc5b3ce073106d7c0e442912903329d0021c4736c5d8f3722def8de0c8f689"
+    },
+    {
+      "path": "candidate/tests/test_g011_evidence_extractor.py",
+      "change": "unchanged",
+      "before_sha256": "0447c7a2d40a585113e84c799be1bb5edd2a8c98e410a8bcba433da8ad776593",
+      "after_sha256": "0447c7a2d40a585113e84c799be1bb5edd2a8c98e410a8bcba433da8ad776593"
+    }
+  ],
+  "test_commands_and_results": [
+    {
+      "name": "compile_and_import",
+      "command": "python -B -m py_compile candidate/experiments/g011_plan_evidence_record.py candidate/experiments/g011_interface_contract.py candidate/experiments/g011_admission_checks.py candidate/experiments/g011_runtime_plan_evidence.py candidate/experiments/g011_evidence_extractor.py candidate/experiments/run_dab_tool_agent.py candidate/tests/test_g011_interface_contract.py; python -B -c \"import experiments.run_dab_tool_agent, experiments.g011_interface_contract, experiments.g011_runtime_plan_evidence, experiments.g011_evidence_extractor, experiments.g011_admission_checks\"",
+      "result": "COMPILE_OK; IMPORT_OK",
+      "status": "passed"
+    },
+    {
+      "name": "g11_focused_suite",
+      "command": "$env:TMP=(Resolve-Path candidate/.tmp).Path; $env:TEMP=$env:TMP; $env:TMPDIR=$env:TMP; python -B -m pytest tests/test_g011_plan_evidence_record.py tests/test_g011_runtime_plan_evidence.py tests/test_g011_interface_contract.py tests/test_g011_evidence_extractor.py -q --tb=short -p no:cacheprovider",
+      "working_directory": "candidate",
+      "result": "113 passed",
+      "status": "passed",
+      "artifact": "test_artifacts/repair_attempt1_g011_tests.log"
+    },
+    {
+      "name": "deployable_no_context_focused_suite",
+      "command": "copy candidate source/tests to .tmp/dc2/repo without an adjacent context directory; $env:TMP=.tmp/dc2; $env:TEMP=$env:TMP; $env:TMPDIR=$env:TMP; python -B -m pytest tests/test_g011_plan_evidence_record.py tests/test_g011_runtime_plan_evidence.py tests/test_g011_interface_contract.py tests/test_g011_evidence_extractor.py -q --tb=short -p no:cacheprovider",
+      "working_directory": ".tmp/dc2/repo",
+      "result": "113 passed",
+      "status": "passed",
+      "artifact": "test_artifacts/repair_attempt1_deploy_g011_tests.log"
+    },
+    {
+      "name": "deployable_no_context_complete_suite",
+      "command": "copy candidate source/tests and the hash-bound upstream DataAgent test dependency to .tmp/dc2/repo without an adjacent context directory; $env:TMP=.tmp/dc2; python -B -m pytest tests -q --tb=no -p no:cacheprovider --basetemp=b",
+      "working_directory": ".tmp/dc2/repo",
+      "result": "5 failed, 266 passed",
+      "status": "passed_acceptance_exactly_inherited_five_failures",
+      "artifact": "test_artifacts/repair_attempt1_deploy_full_tests.log"
+    },
+    {
+      "name": "complete_candidate_suite",
+      "command": "$env:TMP=(Resolve-Path .).Path; $env:TEMP=$env:TMP; $env:TMPDIR=$env:TMP; python -B -m pytest tests -q --tb=no -p no:cacheprovider --basetemp=b",
+      "working_directory": "candidate",
+      "result": "5 failed, 266 passed",
+      "status": "passed_acceptance_exactly_inherited_five_failures",
+      "artifact": "test_artifacts/repair_attempt1_full_tests.log",
+      "note": "The short in-workspace basetemp and the hash-bound upstream DataAgent test dependency avoid unrelated Windows MAX_PATH and source-dependency failures; neither changes G11 behavior."
+    },
+    {
+      "name": "explicit_admission_context_verification",
+      "command": "python -B -c \"from experiments.g011_interface_contract import verify_admission_context; import json; print(json.dumps(verify_admission_context('context')))\"",
+      "result": "status=passed; failed_check_count=0; check_count=46; admission_only=true; evaluation_run=false; formal_run_performed=false",
+      "status": "passed",
+      "artifact": "test_artifacts/repair_attempt1_admission_context.json"
+    },
+    {
+      "name": "interface_contract_verification",
+      "command": "python -B -c \"from experiments.g011_interface_contract import verify_source_contract; import json; print(json.dumps(verify_source_contract()))\"",
+      "result": "status=passed; failed_check_count=0; check_count=46; research_contract_revision=004; embedded_contract_source=embedded_candidate_constants; runtime_reads_research_context=false",
+      "status": "passed",
+      "artifact": "g011_interface_contract_report_revision_001.json"
+    },
+    {
+      "name": "admission_mapping_verification",
+      "command": "python -B -c \"from experiments.g011_admission_checks import verify_admission_mapping; import json; print(json.dumps(verify_admission_mapping()))\"",
+      "result": "status=passed; required_admission_check_count=22; missing_admission_checks=[]; extra_admission_checks=[]; missing_test_ids=[]",
+      "status": "passed",
+      "artifact": "g011_admission_mapping_revision_001.json"
+    },
+    {
+      "name": "parent_file_binding_comparison",
+      "command": "compare candidate files with input_binding.json source_bindings, excluding G11 files and the prior G11 integration file",
+      "result": "parent_files_checked=91; mismatches=[]; missing=[]",
+      "status": "passed"
+    }
+  ],
+  "complete_suite_failure_set": {
+    "count": 5,
+    "inherited_from_g7_parent": true,
+    "failures": [
+      "tests/test_tool_failure_recovery.py::test_active_dispatch_normal_success_avoids_recovery",
+      "tests/test_tool_failure_recovery.py::test_zero_iterations_resolves_unbounded",
+      "tests/test_tool_failure_recovery.py::test_active_dispatch_recovery_contract",
+      "tests/test_tool_failure_recovery.py::test_active_dispatch_keeps_one_root_and_bounds_two_repairs",
+      "tests/test_tool_failure_recovery.py::test_active_dispatch_handles_malformed_json_and_unknown_tools"
+    ],
+    "g11_specific_failures": [],
+    "new_failures": [],
+    "acceptance": "exactly the inherited five failures and no new failures"
+  },
+  "claim_to_check_mapping": [
+    {
+      "claim": "All G11 source constants and default tests are bound to Research Revision 004.",
+      "checks": [
+        "g11_research_revision_004_bound",
+        "prototype_schema_identifier_exact",
+        "prototype_limits_exact",
+        "prototype_ref_statuses_exact",
+        "prototype_record_statuses_exact",
+        "prototype_action_codes_exact",
+        "prototype_reason_codes_exact",
+        "prototype_token_grammar_exact"
+      ],
+      "tests": [
+        "tests/test_g011_interface_contract.py::test_source_grounding_hashes_are_bound",
+        "tests/test_g011_interface_contract.py::test_prototype_binding_passes"
+      ],
+      "status": "passed"
+    },
+    {
+      "claim": "self_observation.freeform is the only selected carrier and nested self_observation.plan_record is rejected.",
+      "checks": [
+        "g11_freeform_carrier_selected",
+        "g11_nested_plan_record_rejected",
+        "sidecar_freeform_is_declared_string",
+        "freeform_carrier_fixture_extracts_record"
+      ],
+      "tests": [
+        "tests/test_g011_interface_contract.py::test_revision_004_carrier_and_nested_rejection_are_bound",
+        "tests/test_g011_interface_contract.py::test_carrier_is_declared_freeform_and_nested_is_not_selected"
+      ],
+      "status": "passed"
+    },
+    {
+      "claim": "The default runtime and default tests are self-contained and read no adjacent context, prototype, or Research file.",
+      "checks": [
+        "g11_default_contract_is_embedded",
+        "g11_no_adjacent_context_default",
+        "g11_runtime_reads_no_research_context",
+        "upstream_source_hash_is_admission_only"
+      ],
+      "tests": [
+        "tests/test_g011_interface_contract.py::test_default_contract_is_self_contained"
+      ],
+      "evidence": [
+        "test_artifacts/repair_attempt1_deploy_g011_tests.log"
+      ],
+      "status": "passed"
+    },
+    {
+      "claim": "The optional explicit-context verifier is strictly admission-only and is not used by the runtime or default tests.",
+      "checks": [
+        "explicit_context_binding",
+        "admission_only=true",
+        "runtime_reads_research_context=false"
+      ],
+      "tests": [
+        "tests/test_g011_interface_contract.py::test_explicit_context_verification_is_opt_in",
+        "tests/test_g011_interface_contract.py::test_missing_hash_bound_context_blocks"
+      ],
+      "evidence": [
+        "test_artifacts/repair_attempt1_admission_context.json"
+      ],
+      "status": "passed"
+    },
+    {
+      "claim": "All 22 Revision 004 admission checks are explicitly mapped to existing no-task tests.",
+      "checks": [
+        "g11_revision_004_admission_checks_bound",
+        "required_admission_check_count=22",
+        "missing_admission_checks=[]",
+        "extra_admission_checks=[]",
+        "missing_test_ids=[]"
+      ],
+      "tests": [
+        "tests/test_g011_interface_contract.py::test_admission_mapping_covers_every_contract_check"
+      ],
+      "evidence": [
+        "g011_admission_mapping_revision_001.json"
+      ],
+      "status": "passed"
+    },
+    {
+      "claim": "All focused G11 tests pass in the candidate and in a deployable copy without an adjacent incubation context.",
+      "checks": [
+        "g11_focused_suite=113 passed",
+        "deployable_no_context_focused_suite=113 passed"
+      ],
+      "evidence": [
+        "test_artifacts/repair_attempt1_g011_tests.log",
+        "test_artifacts/repair_attempt1_deploy_g011_tests.log"
+      ],
+      "status": "passed"
+    },
+    {
+      "claim": "The complete candidate suite has exactly the five inherited G7 failures and no new failures.",
+      "checks": [
+        "complete_candidate_suite=5 failed, 266 passed",
+        "g11_specific_failures=[]",
+        "new_failures=[]"
+      ],
+      "evidence": [
+        "test_artifacts/repair_attempt1_full_tests.log",
+        "test_artifacts/repair_attempt1_deploy_full_tests.log"
+      ],
+      "status": "passed"
+    },
+    {
+      "claim": "Unrelated parent behavior is unchanged.",
+      "checks": [
+        "parent_files_checked_against_input_binding=91",
+        "parent_file_mismatches=[]",
+        "parent_file_missing=[]"
+      ],
+      "evidence": [
+        "input_binding.json"
+      ],
+      "status": "passed"
+    }
+  ],
+  "context_bindings_verified": {
+    "research_contract_revision_004.json": "9a0d6943a4b262429b8270664b0ede8bc9effbae5a15d0c882d63691e236d193",
+    "exploratory_implementation_manifest.json": "3fac0dbe10a18c16ef3fc226bbdc1235903397ccffda8be5043d041be3912b44",
+    "prototype/plan_evidence_record.py": "b9b6d521e68b16bb788f795132946a09fc3ba535477eb84f439bd979f31cfef8",
+    "BOUNDED_FINDINGS.md": "445f578014d1677117665287491a871cf2cd4202541bcfab81ab98d710ae1ff8",
+    "independent_verification.json": "2d102dc3c100896029a2d78ac925f70ef3c2866ee03dfc604644c1588da390ff",
+    "upstream_DataAgent.py": "ea64b4e2b54ca32545c006d9d2aa77ad3d788ecf337b50c898b268631b24f80a",
+    "verification_mode": "explicit_admission_context_only",
+    "runtime_dependency": false
+  },
+  "no_leak_review": {
+    "g11_sidecar_record_rows": "exact structural export allow-list only",
+    "g11_sidecar_summary": "anonymous aggregate facts only",
+    "g11_extractor": "reads only G11 sidecar and summary files; never opens task, answer, hint, validator, conversation, tool-argument, tool-result, trace, or credential files",
+    "g11_guidance": "exact fixed template; no task content, identifiers, arguments, results, or semantic status",
+    "existing_observation_log": "G11 record payload is skipped when G11 is enabled; ordinary non-record observations follow the original path",
+    "base_tool_dispatch_arguments": "G11 record sidecar is removed before base dispatch when G11 is enabled",
+    "model_context_trace": "the model-authored record remains in the assistant tool-call context; the G11 extractor never reads or exports the upstream model-call trace",
+    "runtime_research_reads": false,
+    "forbidden_content_persisted_count": 0,
+    "status": "passing_synthetic_no_formal_run"
+  },
+  "unresolved_risks": [
+    "Live provider acceptance of the declared self_observation.freeform carrier is not exercised by a no-task fixture; only declared-schema conformance and preserved-normalizer checks are proven.",
+    "A real model's willingness and ability to author the exact record and copy opaque identifiers accurately remain unknown.",
+    "A real model's compliance with bounded structural guidance remains unknown; zero guidance binding means the mechanism is untested.",
+    "Real-DAB wrapper inertness is not established; only synthetic enabled-versus-disabled checks were run.",
+    "The upstream model-call trace retains the model-authored record in model context; G11 never reads or exports it, but a future formal no-leak review should confirm the model-context boundary.",
+    "The G11 sidecar is written at task end; an abrupt external process kill may lose structural rows. This does not change dispatch or scoring.",
+    "The installer is per-process/per-task, consistent with the existing runner sidecars; reusing one imported DataAgent class for multiple tasks in a single process is not exercised by the synthetic tests.",
+    "The explicit-context verifier was run locally against the hash-bound Revision 004 context, but default tests do not exercise it; outer admission must independently verify the context and artifact hashes.",
+    "The complete candidate suite requires the hash-bound upstream DataAgent test dependency and a short pytest basetemp to avoid unrelated Windows MAX_PATH failures; these are test-harness facts, not G11 behavior changes.",
+    "The scoped candidate still omits some inherited runtime modules (for example, the standalone routing module); the exact runner --help path is not a G11 test and was not repaired here.",
+    "No benchmark task, formal run, evaluation, or causal comparison was performed; no benchmark Evidence or performance claim is made."
+  ],
+  "not_claimed": [
+    "No semantic support, contradiction, task relevance, coverage, answer correctness, plan quality, confidence, or truth status.",
+    "No benchmark benefit, strict-score improvement, timeout reduction, directional effect, or causal score change.",
+    "No real-model authorship, real guidance compliance, or real-DAB inertness.",
+    "No live provider acceptance of the freeform payload location.",
+    "No formal run or evaluation.",
+    "No G8/G9/G10 audit substitution, semantic verifier, new tool, replacement record field, or deadline extension.",
+    "No claim that the five inherited G7 test_tool_failure_recovery failures were repaired."
+  ],
+  "generated_artifacts": [
+    {
+      "path": "implementation_manifest_revision_001.json",
+      "note": "this manifest; a self-hash is intentionally omitted"
+    },
+    {
+      "path": "g011_interface_contract_report_revision_001.json",
+      "sha256": "b29da370263a56cdd0f985bfe7834883643571e4d269867f4aa4292d68fdaa35"
+    },
+    {
+      "path": "g011_admission_mapping_revision_001.json",
+      "sha256": "2d1db5e6567dbb53fa423ce1a6cba4c287cc3a57baeedab7e28e067d0ec82ee7"
+    },
+    {
+      "path": "test_artifacts/repair_attempt1_g011_tests.log",
+      "sha256": "d1fcee85b71b4b43e71e7e3583171cc5eeefa60db6494ce8d46db7ba2a69befb"
+    },
+    {
+      "path": "test_artifacts/repair_attempt1_deploy_g011_tests.log",
+      "sha256": "a19ca78cb4bacadb3ae40abe92cb73cef65f27c22d8d074ce152ab3235706dc4"
+    },
+    {
+      "path": "test_artifacts/repair_attempt1_deploy_full_tests.log",
+      "sha256": "1dbf42a2304a86080d106f2c8bf528bb737b1d8d10bdf1eed19918190c797d78"
+    },
+    {
+      "path": "test_artifacts/repair_attempt1_full_tests.log",
+      "sha256": "48a2e53f150fea4ace37e6b6ed10cb61acbe5815b5ccdff146eb56d19cb0a57d"
+    },
+    {
+      "path": "test_artifacts/repair_attempt1_admission_context.json",
+      "sha256": "5c9169a0d6276e4ee1aee89bab8f78bb30ee533b4dfabf4da6ea1e3f1408ff74"
+    }
+  ]
+}

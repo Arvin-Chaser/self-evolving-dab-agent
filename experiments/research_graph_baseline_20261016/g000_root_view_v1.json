@@ -1,0 +1,37 @@
+{
+  "immutable_source": {
+    "evidence_sha256": "a915af3cebbb09bfbecfd31584e19af85ba393fafeab0dde1ed00e9d87c5ec5d",
+    "graph_path": "/srv/text2sql/evolution_runtime/research_graph_baseline_20261016/graph/g000_graph.json",
+    "graph_sha256": "256570b3813f79bced5332994c5e3506765cd88ebdbaf6371115e9e3290bc86e",
+    "pre_execution_sha256": "05485a3f2890fef2b6deebbf250b89b561d0faaf3bed71dca3b16544a55e80c1"
+  },
+  "interpretation": "G0 is a baseline fact root, not a tested causal hypothesis; G1 is the first research generation.",
+  "nodes": [
+    {
+      "id": "baseline_protocol:g000",
+      "kind": "baseline_protocol",
+      "role": "frozen task, no-hint, timeout and scoring protocol",
+      "source": "experiment:g000"
+    },
+    {
+      "id": "baseline_agent:g000",
+      "kind": "baseline_agent",
+      "role": "unmodified zero-start code parent",
+      "source": "experiment:g000"
+    },
+    {
+      "id": "baseline_execution:g000",
+      "kind": "baseline_execution",
+      "role": "single frozen G0 run",
+      "source": "experiment:g000"
+    },
+    {
+      "id": "baseline_evidence:g000",
+      "kind": "baseline_evidence",
+      "role": "outcomes and trace-bound observations",
+      "source": "evidence:g000"
+    }
+  ],
+  "schema_version": "dab_research_graph_baseline_root_projection_v1",
+  "status": "post_hoc_structural_projection_not_pre_registered_nodes"
+}
