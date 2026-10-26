@@ -1,0 +1,66 @@
+{
+  "schema_version": "g011_g013_integrated_repair_validation_v1",
+  "revision": "001",
+  "status": "valid_provider_free_local_repair_pending_independent_review",
+  "validated_date": "2026-10-22",
+  "git_target": {
+    "expected_branch": "repair/patents-feedback-analyzer-v4",
+    "observed_branch": "repair/patents-feedback-analyzer-v4",
+    "expected_head": "2ec626da9bdfb9982bc2f1358b7047f1041a8373",
+    "observed_head": "2ec626da9bdfb9982bc2f1358b7047f1041a8373",
+    "matches": true,
+    "dirty_worktree_preserved": true
+  },
+  "parent_hash_validation": {
+    "implementation_contract": true,
+    "rejected_independent_review": true,
+    "candidate_implementation_manifest": true,
+    "candidate_validation_manifest": true
+  },
+  "finding_to_test_mapping": {
+    "F01": ["test_t03_t04_visible_provenance_and_structural_transitions", "test_t03_duplicate_non_evidence_and_pre_boundary_rules"],
+    "F02": ["test_t10_strict_telemetry_schema_rejects_types_unknown_content_and_nonfinite", "test_t10_telemetry_serializes_through_analyzer_and_evidence_pack"],
+    "F03": ["test_t08_repeated_install_is_single_path_and_conflicts_fail_closed"],
+    "F04": ["test_t11_runtime_activation_miss_once_per_enabled_response"]
+  },
+  "contract_coverage": {
+    "required_ids": ["T01", "T02", "T03", "T04", "T05", "T06", "T07", "T08", "T09", "T10", "T11", "T12", "T13", "T14"],
+    "mapped_ids": ["T01", "T02", "T03", "T04", "T05", "T06", "T07", "T08", "T09", "T10", "T11", "T12", "T13", "T14"],
+    "missing_ids": [],
+    "focused_passes": 38,
+    "focused_failures": 0,
+    "selected_current_mainline_passes": 58,
+    "selected_current_mainline_failures": 0
+  },
+  "deterministic_checks": {
+    "py_compile": {"exit_code": 0, "result": "passed"},
+    "json_and_hash_validation": {"exit_code": 0, "result": "passed"},
+    "credential_pattern_scan": {"exit_code": 0, "result": "no credential value patterns found"},
+    "git_diff_check_scoped": {"exit_code": 0, "result": "tracked integrated wiring passed; repair.patch reverse-apply check passed with whitespace=error-all; added lines have no trailing whitespace"},
+    "global_git_diff_check_preexisting_dirty_path_failure": "legacy/text2sql_demo/archive/prompts/text2sql_prompt.txt:Zone.Identifier is already deleted in the preserved dirty worktree"
+  },
+  "file_hashes": {
+    "experiments/g011_g013_integrated_agent.py": "c16b09d13f30acb8aa6539d7993d1c9cf30f94f75f0b430371d1449fd60f79a7",
+    "tests/test_g011_g013_integrated_agent.py": "be0200e8021d9643cf8f8cb13ea2d174789387d4ea8998eb3cfb5311c9783e01",
+    "experiments/g011_g013_integrated_implementation_20261022/repair_001/repair.patch": "d6659b951f4785e5902655b341a2f47bfe536f6950832a3c35762350c81a6ffe",
+    "experiments/g011_g013_integrated_implementation_20261022/repair_001/focused_suite_output.txt": "2d7db4797383566f1ade6d25acb27ae724391ae77015549482f68b7ce1b6f4a6",
+    "experiments/g011_g013_integrated_implementation_20261022/repair_001/current_mainline_regression_output.txt": "115550efce8b068b61f2dc701bc448a4e72beb82bb13485a75647123b89e7d27",
+    "experiments/g011_g013_integrated_implementation_20261022/repair_001/repair_manifest.json": "7e919fc80c8bbdcbd93653cf8d80026bab42929b7e91e01f215cde46ccafe5c4",
+    "experiments/g011_g013_integrated_implementation_20261022/repair_001/TEST_REPORT.md": "e8992591b4030959588be3dd6ac4cc0cd35c458d33f26bc4437da845888ce278",
+    "experiments/g011_g013_integrated_implementation_20261022/repair_001/validation_output.txt": "6344af0b21157f27923aa6986541ad360b017310d1f6c21ddd2387243b8ed950"
+  },
+  "claim_boundary": {
+    "local_repair_complete": true,
+    "fresh_independent_review_complete": false,
+    "external_evaluation_performed": false,
+    "admission_claimed": false,
+    "formal_completion_claimed": false,
+    "score_improvement_claimed": false,
+    "causal_benefit_claimed": false
+  },
+  "unknowns": [
+    "Fresh independent source/privacy/contract review outcome.",
+    "Real-provider and real-model activation behavior.",
+    "Benchmark score, timeout impact, and causal benefit."
+  ]
+}

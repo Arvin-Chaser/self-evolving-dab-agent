@@ -1,0 +1,140 @@
+{
+  "schema_version": "g011_g013_integrated_panel_prepare_independent_validation_v1",
+  "validated_at_utc": "2026-10-22T00:10:42.6425163Z",
+  "status": "accepted_content_blind_provider_free_prepare_validation_passed",
+  "git": {
+    "head": "2ec626da9bdfb9982bc2f1358b7047f1041a8373",
+    "branch": "repair/patents-feedback-analyzer-v4",
+    "dirty_worktree_preserved": true
+  },
+  "remote_capacity_precheck": {
+    "performed_first": true,
+    "filesystem": "/dev/mapper/pve-vm--104--disk--0",
+    "filesystem_type": "ext4",
+    "size": "125G",
+    "used": "103G",
+    "available": "16G",
+    "use_percent": "87%"
+  },
+  "hash_gate": {
+    "passed": true,
+    "prepare_manifest_sha256": "4f727aad54c15a341c8c06089d4145af8dcfea2537bc24583e3ac38b9537df7a",
+    "prepare_inventory_sha256": "15da0ea48c93598e4e239076ff004937a4e96201c7b4afc53a4dc238552da554",
+    "remote_operational_summary_sha256": "3b8b04e9e0a603c4b39bad35a41993ba33d9a5ea7c88085948bed0ddafbb76b0",
+    "remote_progress_sha256": "25d001da4b9a481069300a4ff450fa62ea88abe20bd32851d627fe9552ece10a",
+    "remote_batch_copy_sha256": "7f00732f7811c441f5127f78f7b931d8fb3635218637bf9b88fe59b9aee30978",
+    "remote_binding_hash_count": 3,
+    "remote_frozen_source_hash_count": 8,
+    "all_hashes_match": true
+  },
+  "remote_binding_hashes": {
+    "registry": "7aba9897753c6a3394f1a6d0b27df35a39ac05ca099b815a1e2b9c6d931218ff",
+    "upstream_data_agent": "ea64b4e2b54ca32545c006d9d2aa77ad3d788ecf337b50c898b268631b24f80a",
+    "selected_python": "3008abbb48c1e2b0fa3072ae72334b9b352e1346ea3a20d34126a455f0c7bc66"
+  },
+  "remote_source_hashes": {
+    "experiments/run_multi_query_baseline.py": "fa2b2dcf1d68dcf07d93353ea4bbf2026d979ecef77a6b907b8581108b85d331",
+    "experiments/run_g011_g013_integrated_small_panel.py": "6d414ff7abe7325e8b34f5fbc9369f9cca816410bf78e616c92087f035a1edcd",
+    "experiments/run_dab_tool_agent.py": "a37143b9809ff11cc11544e067c55d2d91fd5676b11a4f6e5e807c1e3f54e64b",
+    "experiments/run_dab_tool_agent_g011_g013_integrated.py": "bedb1aa93b3c3c0eba539168009f317c18226aa1b2d7de30be847bb186cde9af",
+    "experiments/g011_g013_integrated_agent.py": "c16b09d13f30acb8aa6539d7993d1c9cf30f94f75f0b430371d1449fd60f79a7",
+    "prompts/dab/dab_tool_agent_policy_g011_g013_integrated.txt": "869cfa801d785f07b5af1a853c68b0dd8d5ace8c7168f55182ce600780bb0dfb",
+    "experiments/g011_g013_integrated_small_panel_20261022/operational_batch.json": "7f00732f7811c441f5127f78f7b931d8fb3635218637bf9b88fe59b9aee30978",
+    "experiments/g011_g013_integrated_small_panel_20261022/protocol.json": "4d941b9d1ffb736cc967cbb0fbba2e1205df77d8ca673a268e83cb110ac01035"
+  },
+  "remote_outcome": {
+    "operational_summary_count": 1,
+    "progress_count": 1,
+    "batch_copy_count": 1,
+    "summary_status": "completed",
+    "planned_row_count": 6,
+    "completed_row_count": 6,
+    "summary_query_count": 6,
+    "progress_query_count": 6,
+    "child_summary_count": 6,
+    "prepared_count": 6,
+    "run_exit_zero_count": 6,
+    "analyzer_exit_nonnull_count": 0,
+    "observer_exit_nonnull_count": 0,
+    "stop_reason_is_null": true
+  },
+  "remote_protocol": {
+    "child_schema": "dab_tool_agent_prepare_v001",
+    "runner_module": "experiments.run_dab_tool_agent_g011_g013_integrated",
+    "runner_module_origin_matches_runner_path": true,
+    "runner_sha256": "bedb1aa93b3c3c0eba539168009f317c18226aa1b2d7de30be847bb186cde9af",
+    "batch_launcher_sha256": "6d414ff7abe7325e8b34f5fbc9369f9cca816410bf78e616c92087f035a1edcd",
+    "batch_runner_sha256": "fa2b2dcf1d68dcf07d93353ea4bbf2026d979ecef77a6b907b8581108b85d331",
+    "max_iterations": 0,
+    "model_attempts_per_turn": 1,
+    "sdk_internal_retries": 0,
+    "retry_sleep_seconds": 0,
+    "model_request_timeout_seconds": 600,
+    "task_wall_timeout_seconds": 1200,
+    "postgres_statement_timeout_ms": 1080000,
+    "db_description_mode": "base",
+    "description_input_count": 0,
+    "workers": 1,
+    "scheduling": "sequential_fail_fast",
+    "operational_only": true,
+    "stop_on_query_error": true,
+    "literal_pythonpath_empty": "attested_by_frozen_prepare_manifest",
+    "material_module_origin_invariant_independently_verified": true
+  },
+  "output_tree_inventory": {
+    "root_aggregate_files": 3,
+    "child_summary_files": 6,
+    "run_stdout_files": 6,
+    "run_stderr_files": 6,
+    "unclassified_files": 0,
+    "child_directories": 6,
+    "unclassified_directories": 0,
+    "log_content_read": false
+  },
+  "prohibited_artifact_counts": {
+    "multi_query_repair_seed.json": 0,
+    "multi_query_summary.json": 0,
+    "operational_stop.json": 0,
+    "llm_calls.jsonl": 0,
+    "tool_calls.jsonl": 0,
+    "workflow_trace.jsonl": 0,
+    "full_execution_trace.jsonl": 0,
+    "final_agent.json": 0,
+    "validation.jsonl": 0,
+    "observer_fine_grained_feedback.json": 0,
+    "observer_raw_behavior_input.json": 0
+  },
+  "control_flow_validation": {
+    "prepare_branch_precedes_docker_check": true,
+    "prepare_branch_precedes_postgres_check": true,
+    "prepare_branch_precedes_upstream_agent_import": true,
+    "prepare_branch_precedes_provider_config_load": true,
+    "prepare_branch_precedes_agent_execution": true,
+    "prepare_branch_precedes_trace_normalization": true,
+    "skipped_database_checks_rejected_outside_prepare_only": true,
+    "provider_credential_loaded": false,
+    "provider_call_possible_on_reviewed_path": false,
+    "database_call_possible_on_reviewed_path": false
+  },
+  "privacy_validation": {
+    "content_blind_reducers_only": true,
+    "task_identifiers_exposed_to_reviewer_or_exported": false,
+    "task_text_exposed_to_reviewer_or_exported": false,
+    "answers_exposed_to_reviewer_or_exported": false,
+    "trace_or_tool_content_exposed_to_reviewer_or_exported": false,
+    "environment_or_credential_values_exposed_to_reviewer_or_exported": false,
+    "remote_aggregate_copied_locally": false,
+    "research_export_allowed": false
+  },
+  "reviewer_execution_boundary": {
+    "read_only_ssh_commands": 3,
+    "remote_mutations": 0,
+    "provider_calls": 0,
+    "database_calls": 0,
+    "benchmark_runs": 0,
+    "panel_runs": 0,
+    "tests_run": 0
+  },
+  "review_verdict": "accepted",
+  "blocking_findings": []
+}

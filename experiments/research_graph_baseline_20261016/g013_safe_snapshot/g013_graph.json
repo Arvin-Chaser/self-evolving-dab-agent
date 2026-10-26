@@ -1,0 +1,252 @@
+{
+  "binding": {
+    "candidate_tree_sha256": "31277b0514798b52b7547bb5cc12900c63d556fca0fc4919bff0b8be4902322c",
+    "contract_selected_target_id": "research_target:g013:002",
+    "description_mode": "base_no_hint",
+    "generation": 13,
+    "implementation_manifest_sha256": "d8bd9714718343c51b30290e4ab1b8c8db5a077543a128f163cd48c34e36b5e1",
+    "mechanism_id": "mech_requirement_observation_coverage",
+    "parent_generation": 7,
+    "parent_tree_sha256": "572b8c92f4aaa3834e36a7899d667123eb548d0a6f1675a243cc07a9974244ac",
+    "query_timeout_sec": 1200,
+    "research_contract_sha256": "5c60ad036745f2219582d1e0a9e6ef10ce82920461537702df3ed691121d917c",
+    "research_target_id": "research_target:g013:003",
+    "runtime_admission_sha256": "2f1759d93ef77337e88a501b7b286b381fb4860ef421dfe94f32ef84741bae5e",
+    "same_dataset_family_serialized": true,
+    "task_count": 56,
+    "task_manifest_sha256": "576a7d718bbe54d94ce6b7c32b92530394f55b39865d718a376320a5b11d51f7",
+    "workers": 4
+  },
+  "edges": [
+    {
+      "relation": "motivated_by",
+      "source": "problem:g013",
+      "target": "evidence:g012"
+    },
+    {
+      "relation": "explains",
+      "source": "hypothesis:g013",
+      "target": "problem:g013"
+    },
+    {
+      "relation": "tests",
+      "source": "experiment:g013",
+      "target": "hypothesis:g013"
+    },
+    {
+      "relation": "derives_code_from",
+      "source": "experiment:g013",
+      "target": "experiment:g007"
+    },
+    {
+      "relation": "observes",
+      "source": "evidence:g013",
+      "target": "experiment:g013"
+    },
+    {
+      "relation": "tests",
+      "source": "evidence:g013",
+      "target": "hypothesis:g013"
+    }
+  ],
+  "evidence_sha256": "8dfdcaa180e2641475e5c481f98f612f788eea6f8bd82070f87bd85b4f83bcb7",
+  "generation": 13,
+  "independent_review_sha256": "3e6249178e8a5aedcd88023468e8da8c361402d40d9207284cdd0202d4fb72c7",
+  "nodes": [
+    {
+      "id": "problem:g013",
+      "kind": "problem",
+      "mechanism_id": "mech_requirement_observation_coverage",
+      "statement": "The fixed-56 history shows persistent known strict failures and completed strict-verdict unknowns while structural observability and audit exposure changed, but it does not show whether failures involve incomplete task decomposition, unaddressed observable requirements, or evidence gaps that the agent never makes explicit.",
+      "why_now": "The second interface finding closes the practical carrier and provider-boundary question by accepting the source-generated production schema at the actual DeepSeek response boundary, preserving both opaque tokens exactly, failing closed on structural faults, and keeping the non-carrier path inert. Further interface work would merely pre-prove formal authorship or action endpoints, which are now appropriate measured endpoints under a frozen contract."
+    },
+    {
+      "claim_boundaries": [
+        "Model-authored requirement rows and structural coverage are not semantic support, relevance, requirement satisfaction, answer correctness, or truth.",
+        "Real-model authorship and action compliance are formal measured endpoints, not interface facts and not proof of benchmark benefit.",
+        "A single formal score is descriptive and not causal; no strict improvement is predicted.",
+        "The no-benchmark provider probe is admission evidence only and cannot substitute for formal authorship or action endpoints.",
+        "Interface findings remain interface research, not benchmark evidence.",
+        "Structural resolution must never be promoted to semantic coverage or correctness.",
+        "No omitted semantic requirement, semantic completeness, benchmark benefit, or causal effect may be inferred from this contract."
+      ],
+      "id": "hypothesis:g013",
+      "kind": "hypothesis",
+      "mechanism_id": "mech_requirement_observation_coverage",
+      "statement": "If a real model authors structurally typed requirement rows and opaque visible-observation references, and the runtime exposes only structural coverage, freshness, and instrumentation states at an eligible model-facing boundary, then at least some formal runs will exhibit schema-valid authorship and a bounded directive-consistent next action or explicit unknown preservation. The hypothesis is falsifiable through structural binding, authorship, coverage-state, and action endpoints. It does not predict strict-pass improvement, semantic coverage, answer correctness, benchmark benefit, or causality."
+    },
+    {
+      "binding": {
+        "candidate_tree_sha256": "31277b0514798b52b7547bb5cc12900c63d556fca0fc4919bff0b8be4902322c",
+        "contract_selected_target_id": "research_target:g013:002",
+        "description_mode": "base_no_hint",
+        "generation": 13,
+        "implementation_manifest_sha256": "d8bd9714718343c51b30290e4ab1b8c8db5a077543a128f163cd48c34e36b5e1",
+        "mechanism_id": "mech_requirement_observation_coverage",
+        "parent_generation": 7,
+        "parent_tree_sha256": "572b8c92f4aaa3834e36a7899d667123eb548d0a6f1675a243cc07a9974244ac",
+        "query_timeout_sec": 1200,
+        "research_contract_sha256": "5c60ad036745f2219582d1e0a9e6ef10ce82920461537702df3ed691121d917c",
+        "research_target_id": "research_target:g013:003",
+        "runtime_admission_sha256": "2f1759d93ef77337e88a501b7b286b381fb4860ef421dfe94f32ef84741bae5e",
+        "same_dataset_family_serialized": true,
+        "task_count": 56,
+        "task_manifest_sha256": "576a7d718bbe54d94ce6b7c32b92530394f55b39865d718a376320a5b11d51f7",
+        "workers": 4
+      },
+      "candidate_source_tree_sha256": "31277b0514798b52b7547bb5cc12900c63d556fca0fc4919bff0b8be4902322c",
+      "evaluation_run_id": "g013_requirement_coverage_nohint_56_v1",
+      "id": "experiment:g013",
+      "kind": "experiment",
+      "measurement_plan": {
+        "aggregation": "Report task and step counts with numerators, denominators, and rates separately for strict pass, known strict fail, completed strict-verdict unknown, timeout failure, and other terminal failure; report structural binding, authorship, coverage, freshness, fault, directive delivery, action consistency, and action contradiction separately by observed cohort. Never pool cohorts to mask missing coverage. The fixed-56 denominator is authoritative for strict outcome, timeouts and other terminal failures count as failures, and the single unpaired run yields no causal comparison.",
+        "allowed_sources": [
+          "Model-authored strict coverage records in self_observation.freeform.",
+          "Model-visible structured view metadata without raw view text export.",
+          "Pre-dispatch tool-call provenance metadata and opaque observation-token preservation results.",
+          "Actual source-grounded response-boundary metadata from choices[0].message.tool_calls.",
+          "Structural completeness, freshness, fault, cap, and deadline metadata.",
+          "Anonymous task-local ordinals and aggregate relations without task identifiers.",
+          "Frozen evaluator cohort labels joined only after the run.",
+          "Hash-bound no-task admission artifacts and interface-finding hashes."
+        ],
+        "behavioral_action_endpoint": {
+          "no_forced_action": true,
+          "refuted": "Refuted if a non-timeout directive-bearing task with a later actionable turn and sufficient budget takes a structurally contradictory action.",
+          "supported": "Supported if at least one such task takes an action from the frozen action vocabulary that is structurally consistent with the delivered view and no such task takes a structurally contradictory action.",
+          "unit": "per non-timeout directive-bearing task with a later actionable model turn",
+          "untested": "Untested if no non-proceed state or no delivered directive occurs; unknown for a task with no later actionable turn, insufficient budget, cap exhaustion, deadline-guard suppression, or ambiguous response boundary."
+        },
+        "claim_boundaries": [
+          "Model-authored requirement rows and structural coverage are not semantic support, relevance, requirement satisfaction, answer correctness, or truth.",
+          "Real-model authorship and action compliance are formal measured endpoints, not interface facts and not proof of benchmark benefit.",
+          "A single formal score is descriptive and not causal; no strict improvement is predicted.",
+          "The no-benchmark provider probe is admission evidence only and cannot substitute for formal authorship or action endpoints.",
+          "Interface findings remain interface research, not benchmark evidence.",
+          "Structural resolution must never be promoted to semantic coverage or correctness.",
+          "No omitted semantic requirement, semantic completeness, benchmark benefit, or causal effect may be inferred from this contract."
+        ],
+        "coverage_state_endpoint": {
+          "states": [
+            "uncovered",
+            "observed",
+            "ambiguous",
+            "failed",
+            "unavailable",
+            "unknown"
+          ],
+          "supported": "Supported if at least one accepted record is observed and every observed transition is deterministic, preserves unknown on faults, and never treats instrumentation loss as evidence absence or structural resolution as semantic support.",
+          "unknown_rule": "Missing, malformed, truncated, rejected, unavailable, failed, or ambiguous input remains unknown; a later observation may update freshness only through the frozen deterministic rules.",
+          "untested": "Untested if no accepted record is observed."
+        },
+        "real_model_authorship_endpoint": {
+          "not_semantic": "Authorship support establishes only that a real model produced a structurally valid row with an exact visible-token copy; it does not establish requirement relevance, semantic coverage, correctness, or task truth.",
+          "supported": "Supported if at least one task has a schema-valid model-authored record with at least one exact opaque observation-token copy from a genuinely visible prior observation. Report the count over the fixed 56 and separately by observed cohort.",
+          "unit": "per task",
+          "untested": "Untested if no schema-valid model-authored record or no exact token copy is observed."
+        },
+        "refutation_conditions": [
+          "False acceptance or misbinding of any invalid, non-visible, non-unique, stale, or boundary-invalid reference refutes structural binding.",
+          "Any delivered view or action derived from an absent, malformed, or invalid record refutes the intended channel.",
+          "Any promotion of structural resolution to semantic support, relevance, coverage, correctness, or truth refutes the non-semantic boundary.",
+          "Any non-timeout directive-bearing task with a later actionable turn and sufficient budget that takes a structurally contradictory action refutes behavioral action choice.",
+          "Any prohibited-content persistence, raw-context export, agent-visible read, scoring mutation, forced tool call, forced answer, timeout extension, or uncorrected no-leak failure invalidates the run and cannot count as support or refutation of the mechanism itself.",
+          "A strict-pass difference, timeout difference, or single-run score magnitude never refutes the mechanism; those are descriptive outcomes only."
+        ],
+        "strict_outcome_endpoint": {
+          "denominator": "56",
+          "interpretation": "Strict pass over the fixed 56 is reported descriptively. Timeouts and other terminal failures are failures in the fixed denominator; completed strict-verdict unknowns are preserved as unknown and never reclassified. A single formal score is descriptive and not causal.",
+          "metrics": [
+            "strict_pass_count",
+            "known_strict_fail_count",
+            "completed_strict_verdict_unknown_count",
+            "timeout_failure_count",
+            "other_terminal_failure_count"
+          ]
+        },
+        "structural_binding_endpoint": {
+          "refuted": "Refuted by false acceptance of an invalid or non-visible reference, misbinding of a row or target, guidance from an absent or invalid state, prohibited-content persistence, an agent-visible read, or any behavior change outside the intended channel.",
+          "supported": "Supported if at least one model-authored record is observed, every accepted row validates against the frozen schema, every non-null observation token maps to exactly one prior same-task model-visible observation available before the record boundary, and no semantic promotion, prohibited persistence, or inertness failure occurs.",
+          "unit": "per observed model-authored record and per task",
+          "untested": "Untested if no model-authored record is observed."
+        },
+        "support_conditions": [
+          "Structural binding is supported only by the separate structural-binding endpoint and never by score movement.",
+          "Real-model authorship is supported only by a schema-valid model-authored record with at least one exact visible opaque-token copy.",
+          "Coverage-state behavior is supported only by accepted records with deterministic transitions and no unknown promotion.",
+          "Behavioral action choice is supported only by a directive-consistent action in a non-timeout task with a later actionable turn and no contradictory action in the same eligible set.",
+          "All support requires zero prohibited-content persistence, zero mechanism-initiated tool calls, zero forced answers, zero scoring mutation, zero wall-timeout extension, and preserved unknown.",
+          "Strict outcome has no mechanism-support condition; a score change alone neither supports nor refutes the hypothesis."
+        ],
+        "unknown_rules": [
+          "Zero valid model-authored records leave structural binding, authorship, and coverage-state behavior untested, not refuted.",
+          "Zero exact opaque-token copies leave real-model authorship untested.",
+          "Zero non-proceed states or zero delivered directives leave behavioral action choice untested.",
+          "No later actionable model turn, insufficient remaining budget, cap exhaustion, deadline-guard suppression, timeout, or ambiguous response boundary leaves the action measurement unknown for that task.",
+          "Missing evaluator labels, incomplete response-boundary metadata, or incomplete coverage records remain unknown and are never imputed.",
+          "Timeout and other terminal-failure tasks are reported separately and never forced into a non-timeout action-coverage rate.",
+          "Instrumentation loss remains unknown and is always reported separately from genuine evidence absence.",
+          "Unknown is never converted to resolved, supported, correct, failed, positive, or semantically covered."
+        ]
+      },
+      "mechanism_id": "mech_requirement_observation_coverage",
+      "statement": "One frozen base/no-hint 56-task formal evaluation of requirement-observation coverage."
+    },
+    {
+      "artifact_refs": {
+        "admission_review_sha256": "8d499cd636b651dc30faf7b83b8bc0180a2d599f2650f6246898025233926341",
+        "admission_sha256": "2f1759d93ef77337e88a501b7b286b381fb4860ef421dfe94f32ef84741bae5e",
+        "closure_draft_sha256": "b146f7aeb62159b144aa2b1e1b26ccc631ae27eec349de3b1d640d81cffe4b69",
+        "contract_sha256": "5c60ad036745f2219582d1e0a9e6ef10ce82920461537702df3ed691121d917c",
+        "environment_attestation_sha256": "160d131451a9bf15249aaefe62b1bf1b105656a852c7f230db51eb4003786435",
+        "evidence_draft_sha256": "cca47010fe711b2de4aa4f190fcd4d415d47baa59d7016c396ad1c6c5a3797f5",
+        "failure_receipt_sha256": "8d5d777f11de27b0ccb02f911cd4f8e42cf66d3f40bec8926ce9cedec158ddda",
+        "implementation_sha256": "d8bd9714718343c51b30290e4ab1b8c8db5a077543a128f163cd48c34e36b5e1",
+        "independent_review_sha256": "3e6249178e8a5aedcd88023468e8da8c361402d40d9207284cdd0202d4fb72c7",
+        "outcome_sha256": "c4bdcb7f23682d286b15e5003ff6ba9dc74413564220e04157954c1cab5f29f3",
+        "privacy_sha256": "0e18d16a35ee581e7cab5ed4b17185fe1bfde9c852846eb7f6000d1cf067f1b3",
+        "recovery_binding_sha256": "35056b5e8d8baddc8d3cee5c845117d357cdba31b1d38dc1daa2bd8062b895ec",
+        "recovery_execution_sha256": "5f8999d7c650124415400dabb5e0785714d812f0c83fe7e5abc335313b413607",
+        "recovery_preflight_sha256": "91deed93b40661183538006f252f7883153c5ec69aafdbaca250706560864b7c",
+        "source_review_sha256": "095d36fa7b32a4f0b4b9f6bb048dffacacb9274574b8d993ac4566dee4629880",
+        "specialized_sha256": "5961a68f3641380b717f07c09792c2d904ccf2827b7e56492e6ca60f12576afb",
+        "terminal_receipt_sha256": "a9f7ad3152116cd8b117f7705980b289f785f26fe0146258669f54c19e141b62"
+      },
+      "completed_count": 52,
+      "ended_count": 56,
+      "frozen_task_count": 56,
+      "id": "evidence:g013",
+      "kind": "evidence",
+      "known_strict_fail_count": 18,
+      "limits": [
+        "No model-authored record, accepted record, directive, view, or post-directive action was observed; the mechanism is untested.",
+        "The 31/56 score is one unpaired descriptive outcome and is not a causal or benefit claim.",
+        "Structural coverage is non-semantic and does not establish support, relevance, correctness, completeness, or truth.",
+        "Three completed strict verdicts remain unknown and are not reclassified.",
+        "The four runner wall timeouts remain failures in the fixed 56 denominator.",
+        "The recovery interpreter SHA was verified after execution rather than pre-bound; this procedural limitation is retained in the independent review."
+      ],
+      "mechanism_endpoints": {
+        "behavioral_action_choice": "untested",
+        "coverage_state_behavior": "untested",
+        "real_model_authorship": "untested",
+        "structural_binding": "untested"
+      },
+      "other_terminal_failure_count": 0,
+      "query_wall_timeout_sec": 1200,
+      "same_dataset_family_serialized": true,
+      "score_policy": "completed_and_strict_true_over_all_56;timeout_is_failure",
+      "specialized_signal_kind": "requirement_observation_coverage",
+      "specialized_status": "untested",
+      "statement": "G13 completed one frozen 56-task formal run at 31/56 strict. No model-authored record, accepted record, directive, view, or post-directive action was observed, so all pre-registered mechanism endpoints remain untested.",
+      "strict_pass_count": 31,
+      "strict_pass_rate_all": 0.553571,
+      "strict_verdict_missing_completed_count": 3,
+      "timeout_failure_count": 4,
+      "workers": 4
+    }
+  ],
+  "pre_execution_sha256": "9e518a206beb4bb958d87cb0ab2b7bb9be8a5b63710c5ab13ce4606dea7c13ad",
+  "schema_version": "dab_research_graph_generation_v1",
+  "status": "four_nodes_complete"
+}

@@ -1,0 +1,133 @@
+{
+  "binding": {
+    "admission_sha256": "5cbdc4908d373bcd84efdadf359089c5816c87c9527d3d7d9a7359d5add99ee9",
+    "agent_sha256": "83980fd974bb7ac2728adcbceecae035eba199acad0d2147cfda4b86bc31173f",
+    "batch_sha256": "576a7d718bbe54d94ce6b7c32b92530394f55b39865d718a376320a5b11d51f7",
+    "candidate_tree_sha256": "8c96392f656d38454272257b7ba78583fc46f22ca1fa3863b9a066a9a20a387d",
+    "description_mode": "full_db_description_no_hints",
+    "g0_graph_sha256": "256570b3813f79bced5332994c5e3506765cd88ebdbaf6371115e9e3290bc86e",
+    "parent_tree_sha256": "93e4d9ebf9d8e8b0f4d6b8b356926b7ab7a66a125dc9652d30aac86e930d4eb9",
+    "policy_sha256": "d6e022a462960e961087e618087dcd1d884bab49389acae64c463583d8643797",
+    "query_count": 56,
+    "query_timeout_sec": 1200,
+    "registry_sha256": "7aba9897753c6a3394f1a6d0b27df35a39ac05ca099b815a1e2b9c6d931218ff",
+    "research_result_sha256": "fc8bf2c66be8c53fbe4af12fc5af15d27f460351400fed44a7f9e50805be0459",
+    "runner_sha256": "f0a48379538d5cedb8b030dd9ae9fa957230a78ca81c195b53b22a20ff4e3211",
+    "timeout_scoring": "timeout_failure_in_fixed_56_denominator",
+    "timeout_sidecar_sha256": "6d88608247da569d2987cfb954a7c0df60bb533b43df77788c60c4b8f0283196"
+  },
+  "edges": [
+    {
+      "relation": "motivated_by",
+      "source": "problem:g001",
+      "target": "evidence:g000"
+    },
+    {
+      "relation": "explains",
+      "source": "hypothesis:g001",
+      "target": "problem:g001"
+    },
+    {
+      "relation": "tests",
+      "source": "experiment:g001",
+      "target": "hypothesis:g001"
+    },
+    {
+      "relation": "observes",
+      "source": "evidence:g001",
+      "target": "experiment:g001"
+    }
+  ],
+  "evidence_sha256": "86471222974901b812f481817a569ba225b5c47e8e702608512d1cbeff89a290",
+  "generation": 1,
+  "nodes": [
+    {
+      "evidence_fact_ids": [
+        "outcome_partition",
+        "timeout_late_activity",
+        "timeout_early_log_end",
+        "timeout_heterogeneity",
+        "timeout_partial_logs_exist",
+        "answer_return_calls",
+        "all_known_failures_tool_failure",
+        "tool_failure_not_sufficient",
+        "raw_totals_not_rates",
+        "tool_flag_semantics"
+      ],
+      "id": "problem:g001",
+      "kind": "problem",
+      "non_goals": [
+        "No change to the frozen 56 tasks, no-hint protocol, 1200 s wall limit, or strict all-56 scoring with the six timeouts counted as failures",
+        "No revisions to any task's expected answer, no answer-specific or task-specific logic",
+        "No second arm, sham run, probe run, or held-out data use; the only negative control is the in-run non-binding-task guard",
+        "No attempt to explain or repair the four early-log-end intervals, whose cause the evidence does not identify",
+        "No claim that the timeout bucket is the only bucket agent-side behavior could touch, and no claim that baseline strict passes all finish before any trigger",
+        "No claim that a timeout conversion would yield a strict pass, and no claim of established causal benefit"
+      ],
+      "scope": "Behavior of the unmodified zero-start agent under an unchanged 56-task frozen no-hint evaluation with a 1200 s per-task wall limit and strict pass over all 56 tasks with timeouts as failures.",
+      "statement": "Six of the frozen 56 tasks end as wall-limit timeout failures under the fixed 1200 s per-task limit and are counted as strict failures regardless of partial-log content. The six are heterogeneous: two show completed events up to 1136 s and 1178 s with 50 and 69 completed LLM calls (about 2-3x the ~23.3 LLM requests per task implied by the 768 strict-pass requests over 33 tasks), while four show only 153-238 s of completed events and no normalized full trace, leaving their remaining interval unexplained. The non-timeout failures give no clean actionable lever: flagged tool failures are present in all 14 known strict-fail tasks, so they are not shown to be dispensable, but they are also present in 31 of 33 strict-pass tasks, so occurrence alone is not sufficient and the near-identical per-task densities (54/14 = 3.9 vs 124/33 = 3.8; per-call 9.4% vs 11.1%) come from unequal-group raw totals rather than rates; success-flag semantics cannot separate expected exploratory errors from obstructive ones. This does not establish that the timeout bucket is the only bucket agent-side behavior could affect: the known strict-fail and unknown-verdict buckets remain candidate outcomes and are not excluded. The bounded, evidence-anchored question this leaves is whether late finalization, rather than a tool-error property, plausibly contributes to timeout membership: the terminal mechanism demonstrably exists and is used exactly once per task in all 50 verified completed traces (50 return_answer calls for 50 verified traces), while two timeouts show activity continuing to 1136-1178 s. That is a motivation for a falsifiable exploratory test, not evidence that the intervention will improve any outcome.",
+      "why_actionable_and_bounded": "The lever is a single pre-declared time reserve (120 s of the 1200 s limit) plus exposure of remaining budget at turn boundaries, with per-task logging of whether the trigger bound. It adds no new tool, no new task, no sham arm, no per-task special case, no answer content, and no hyperparameter search; exactly one formal 56-task evaluation is performed. Its failure mode is directly observable as an unchanged timeout count, and its attribution is checked in-run by requiring that any change be conditional on the trigger having bound, so no isolated causal benefit is presumed."
+    },
+    {
+      "falsification_condition": "Falsified if the child run's timeout-failure count is not lower than the parent's 6 while the strict-pass count is not higher than 33 (no observable effect on the predicted bucket), or if the strict-pass count falls below 33 (net strict result degraded), or if both late-active timeout tasks again record last completed events at or beyond 1136 s without a terminal return_answer (the deadline-finalization requirement did not bind). Also void if the in-run guard fails: if tasks on which the reserve trigger never bound show newly introduced final-window calls, a new timeout failure, or a systematic shift in completed-event spans or call counts, the effect is attributable to the added policy sentence or run-to-run variance rather than to deadline-aware finalization. If the trigger binds on zero tasks, the mechanism is untested rather than confirmed, even if the outcome partition changes. A result in which the four early-log-end tasks also convert is outside the pre-declared prediction and is neither confirmatory nor a falsification; it would need separate evidence before being called explained.",
+      "id": "hypothesis:g001",
+      "kind": "hypothesis",
+      "possible_counterexample": "Timeout membership may be caused by something other than late finalization. A call issued early could remain in flight to the end of the wall limit: partial logs record completed calls only, so an in-flight query_db or execute_python call leaves no turn boundary at which the agent can observe the remaining-budget signal or emit return_answer, and the task would time out exactly as before. The four early-log-end tasks (only 153-238 s of completed events under a 1200 s limit) are the concrete instance of this pattern, and their unobserved interval cannot be attributed to an unfinished call by the recorded evidence; the same gap could equally reflect harness-level termination or normalization that no agent-side policy can change. A second counterexample is a task that does finalize early but still fails strict evaluation, because earlier stopping has not been shown to yield a strict pass; the timeout bucket would shrink while the strict-pass count does not rise. A third is that the added policy sentence itself changes behavior on tasks that never reach the reserve, which would show the effect is not the deadline mechanism.",
+      "prediction": "In the single formal child run over the identical frozen 56 no-hint tasks with the identical 1200 s per-task limit and strict scoring, expected (exploratory, not guaranteed): (1) at least one of the two late-active timeout tasks emits a completed return_answer before the wall limit and is no longer recorded as a timeout failure, so the timeout-failure count is lower than 6; (2) no currently verified strict pass is lost, i.e., the strict-pass count is at least the parent's 33; (3) the four early-log-end timeout tasks remain timeout failures, since a budget instruction cannot act on an interval in which no turn boundary is recorded; (4) tasks on which the reserve trigger never bound show no systematic change in completed-event spans or completed call counts, which is the in-run negative-control expectation rather than an assumed property.",
+      "statement": "In the unmodified zero-start code parent, late finalization is one candidate contributor to the timeout-failure bucket: partial logs show two tasks with completed events at 1136 s and 1178 s and 50 and 69 completed LLM calls, while every one of the 50 verified completed traces contains exactly one terminal return_answer. If the remaining wall-clock budget is made visible to the agent at turn boundaries and the policy requires it to stop starting new calls and emit its existing return_answer with the best currently supported answer once the remaining budget falls to a pre-declared 120 s reserve, then tasks whose activity is concentrated near the deadline may terminate within the limit. This is a falsifiable exploratory hypothesis: the proximate cause of the six timeouts is not established, earlier stopping has not been shown to yield a strict pass, and no improvement in any outcome is guaranteed. The four early-log-end timeouts (153-238 s of completed events) are explicitly outside the predicted effect because the recorded evidence does not identify what occupies their unobserved interval."
+    },
+    {
+      "candidate_source_tree_sha256": "8c96392f656d38454272257b7ba78583fc46f22ca1fa3863b9a066a9a20a387d",
+      "code_parent": "root_baseline",
+      "evaluation_run_id": "baseline_g001_deadline_reserve_nohint_56_v1",
+      "expected_behavior": "The intervention is designed to be inert before the reserve: the runner reports elapsed and remaining seconds only, adds no task content, and the policy sentence is conditioned on a remaining budget at or below the fixed 120 s reserve. Whether the added sentence also shifts planning before the trigger is not known and is exactly what the in-run non-binding-task guard checks; it is not assumed. For a task that reaches the reserve with usable work already performed, the agent emits its existing terminal return_answer inside the limit, so its partial log ends with a completed terminal call instead of running to the wall limit; the resulting verdict is whatever the strict evaluation assigns to that answer and may still be a strict failure. For a task blocked inside a single call at the reserve, no turn boundary occurs, the signal is never observed, and behavior is unchanged. The baseline group average of 768 LLM requests over 33 strict passes (~23.3 per task) is consistent with most passes finishing before the reserve, but per-task spans for the pass group are absent from the evidence, so that is not asserted and is logged rather than presumed.",
+      "frozen_evaluation": "Exactly one formal candidate evaluation: a single child run of the same frozen set of 56 no-hint tasks, the same single 1200 s per-task wall limit, the same harness and evidence-integrity binding, and the same strict pass criterion applied over all 56 tasks with the six timeouts still counted as failures. No task is added, removed, re-scored, re-weighted, or reinterpreted; no partial-log content overrides a timeout verdict; no held-out data or prior graphs are consulted; no control arm, sham run, or probe run is added. The child's outcome partition (strict pass, known strict fail, unknown verdict, timeout failure) is compared against the recorded baseline partition of 33 / 14 / 3 / 6 using both outcome counts and trace-bound observables (completed-event span, terminal return_answer presence, completed call counts, per-task trigger-binding log), together with the in-run guard on non-binding tasks. Because this is one run over a 6-task timeout bucket with a 2-task predicted subset, any change is reported as a small-count observation and not as an established causal benefit.",
+      "id": "experiment:g001",
+      "implementation_scope": "Bounded and non-searching: one runner hook that reads the existing per-task wall clock, exposes remaining seconds at turn boundaries, and logs per task whether the reserve trigger bound (boolean plus index of the first binding turn and remaining seconds at that turn); plus one added sentence in the zero-start policy with a single pre-declared constant (120 s reserve, fixed a priori as 10% of the 1200 s limit and not tuned against results). No second arm or extra evaluation, no per-task special casing, no answer content, no new tools, no change to tool dispatch, retry behavior, or error handling, no change to task selection, hints, timing limit, or scoring. A determinism caveat is accepted: earlier finalization may change the strict verdict of a task either way, and that is measured, not assumed.",
+      "intervention": "One bounded edit to the root_baseline child, in two parts. (a) Runner-side budget signal: at every turn boundary the runner injects the remaining wall-clock budget for the current task into the agent's context, computed from the harness clock that already enforces the 1200 s limit; the signal carries only elapsed/remaining seconds and adds no task content. (b) One added policy sentence in the zero-start tool-agent policy: when the injected remaining budget is at or below a pre-declared 120 s reserve, the agent must not start new exploratory or verification calls, must not retry a failed call, and must immediately emit its existing terminal return_answer with the best answer currently supported by the work already done. The terminal mechanism is the return_answer call already present in every verified trace; no new tool is added, no error taxonomy is introduced, and the tool-failure behavior is otherwise unchanged. In the same run, the runner records per task whether the reserve trigger ever bound; this log field, not a second arm, supplies the negative-control observable.",
+      "kind": "experiment",
+      "negative_control": "An in-run mechanism guard, not an extra arm and not a second run. The runner logs per task whether the reserve trigger bound at a turn boundary (boolean, first-binding turn index, remaining seconds at binding). Guard rule A (inertness): any task on which the trigger never bound must behave as the unmodified policy would; if such a task acquires new calls inside its final 120 s window, converts to a timeout failure, or shifts its completed-event span or completed call count systematically, the added policy sentence is not inert and the deadline-finalization attribution is void. Guard rule B (locality): any reduction in the timeout-failure count must come from tasks on which the trigger bound; a timeout reduction on a non-binding task is not attributable to the mechanism. Guard rule C (instrument validity): if the trigger binds on zero tasks, the mechanism is untested regardless of the outcome partition. Guard rule D (scope): if the trigger binds on tasks that are neither currently timed out nor near the deadline, the pre-declared scope of the prediction is void. Because only one formal evaluation is permitted, the guard is a within-run conditioning check on small counts and cannot by itself establish a causal benefit."
+    },
+    {
+      "artifact_refs": {
+        "launch_manifest_path": "/srv/text2sql/evolution_runtime/research_graph_baseline_20261016/graph/g001_launch_manifest.json",
+        "launch_manifest_sha256": "15f406e3a4e53645414af6feaef8442fecaed8e159b72994e50ba54954dad15b",
+        "pre_execution_path": "/srv/text2sql/evolution_runtime/research_graph_baseline_20261016/graph/g001_pre_execution.json",
+        "pre_execution_sha256": "4d6f3392d910588b43f12fcf512a623b43b597010c15f59e5f7babd804ef2088",
+        "progress_path": "/srv/text2sql/evolution_runtime/research_graph_baseline_20261016/g001_revision001/evaluation/baseline_g001_deadline_reserve_nohint_56_v1/multi_query_progress.json",
+        "progress_sha256": "480916c488c6c73d9ce34a926de4657eae71232b71bc4af9d47ac5fda929fe9d",
+        "summary_path": "/srv/text2sql/evolution_runtime/research_graph_baseline_20261016/g001_revision001/evaluation/baseline_g001_deadline_reserve_nohint_56_v1/multi_query_summary.json",
+        "summary_sha256": "8209eb122b2c6faad2431e4fd4f5427198994e22421f9c0290e3242645912aba",
+        "trace_manifest_path": "/srv/text2sql/evolution_runtime/research_graph_baseline_20261016/graph/g001_trace_manifest.json",
+        "trace_manifest_sha256": "f38265bb69a290af149892cab4bd5fd85c5bbb963fe0f3cc4ab2f9fdd6ac0f56"
+      },
+      "completed_count": 54,
+      "ended_count": 56,
+      "final_answer_nonempty_count": 53,
+      "frozen_task_count": 56,
+      "id": "evidence:g001",
+      "kind": "evidence",
+      "limits": [
+        "A single unpaired run cannot establish a causal benefit over G0.",
+        "A reserve trigger is a mechanism observation, not evidence of a correct answer.",
+        "Missing strict verdicts remain unknown without shrinking the fixed denominator."
+      ],
+      "other_terminal_failure_count": 2,
+      "query_wall_timeout_sec": 1200,
+      "reserve_trigger_counts": {
+        "bound": 5,
+        "unbound": 51
+      },
+      "score_policy": "completed_and_strict_true_over_all_56;timeout_is_failure",
+      "statement": "G1 deadline-reserve result on the unchanged no-hint frozen 56; 1200-second timeouts count as failures.",
+      "strict_pass_count": 30,
+      "strict_pass_rate_all": 0.535714,
+      "strict_verdict_known_count": 53,
+      "strict_verdict_missing_completed_count": 3,
+      "timeout_failure_count": 0
+    }
+  ],
+  "pre_execution_sha256": "4d6f3392d910588b43f12fcf512a623b43b597010c15f59e5f7babd804ef2088",
+  "schema_version": "dab_research_graph_generation_v1",
+  "status": "four_nodes_complete"
+}

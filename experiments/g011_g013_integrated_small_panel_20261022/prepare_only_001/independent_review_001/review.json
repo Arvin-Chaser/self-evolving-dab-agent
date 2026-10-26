@@ -1,0 +1,146 @@
+{
+  "schema_version": "g011_g013_integrated_panel_prepare_independent_review_v1",
+  "reviewed_at_utc": "2026-10-22T00:10:42.6425163Z",
+  "reviewer": "independent_codex_agent",
+  "verdict": "accepted",
+  "review_scope": [
+    "remote_prepare_only_outcome",
+    "privacy_and_export_boundary",
+    "protocol_parameters",
+    "runtime_and_source_bindings",
+    "prohibited_artifact_absence"
+  ],
+  "input_gate": {
+    "passed": true,
+    "prepare_manifest_sha256": "4f727aad54c15a341c8c06089d4145af8dcfea2537bc24583e3ac38b9537df7a",
+    "prepare_inventory_sha256": "15da0ea48c93598e4e239076ff004937a4e96201c7b4afc53a4dc238552da554",
+    "launcher_review_sha256": "c46c08338d5c61a26b9d5175bb539d590666191912af16d7e0f290a671d69462",
+    "launcher_validation_sha256": "8eaa6c842b40cb7d84a73d352d41d755d45d2a5a73623b6ce58a6262816ddfc9",
+    "all_reviewed_remote_bindings_and_artifact_hashes_match": true
+  },
+  "severity_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0
+  },
+  "findings": [],
+  "confirmed_outcome": {
+    "summary_status": "completed",
+    "planned_row_count": 6,
+    "completed_row_count": 6,
+    "prepared_child_count": 6,
+    "child_run_exit_zero_count": 6,
+    "stop_reason_absent": true,
+    "operational_stop_absent": true,
+    "panel_task_executed": false,
+    "benchmark_result_claimed": false
+  },
+  "confirmed_protocol": {
+    "prepare_only": true,
+    "integrated_runner_module": "experiments.run_dab_tool_agent_g011_g013_integrated",
+    "runner_module_origin_matches_hash_bound_path": true,
+    "one_model_attempt_per_turn": true,
+    "zero_sdk_internal_retries": true,
+    "base_no_hint_description": true,
+    "workers": 1,
+    "sequential_fail_fast": true,
+    "observer_disabled": true,
+    "model_request_timeout_seconds": 600,
+    "task_wall_timeout_seconds": 1200,
+    "postgres_statement_timeout_ms": 1080000,
+    "operational_only": true,
+    "docker_and_postgres_checks_skipped_only_for_prepare": true
+  },
+  "confirmed_privacy": {
+    "remote_operational_summary_declares_task_identifiers": true,
+    "remote_operational_summary_declares_research_export_allowed_false": true,
+    "task_identifiers_or_text_inspected_or_copied": false,
+    "answers_or_answer_previews_inspected_or_copied": false,
+    "trace_or_tool_content_inspected_or_copied": false,
+    "environment_or_credential_values_inspected_or_copied": false,
+    "remote_operational_summary_copied_to_local_workspace": false,
+    "research_shaped_summary_absent": true,
+    "repair_seed_absent": true,
+    "llm_and_tool_trace_artifacts_absent": true,
+    "observer_artifacts_absent": true
+  },
+  "execution_boundary": {
+    "provider_calls": 0,
+    "database_calls": 0,
+    "model_attempts_executed": 0,
+    "observer_calls": 0,
+    "benchmark_tasks_executed": 0,
+    "remote_mutations_by_reviewer": 0,
+    "read_only_ssh_commands_by_reviewer": 3,
+    "frozen_56_run": false
+  },
+  "evidence_basis": {
+    "remote_artifact_facts": [
+      "Exactly one operational summary, one progress artifact, one batch copy, and six child prepare summaries were found.",
+      "All six aggregate and child statuses are prepared with zero child exit codes; analyzer and observer exit fields are null.",
+      "The summary, progress, batch, frozen source, registry, upstream DataAgent, and selected Python hashes match the receipt.",
+      "The output tree contains only three root aggregates, six child summaries, and twelve run log files; no unclassified files or directories exist.",
+      "All prohibited research, repair, observer, validation, LLM, tool, and trace artifact counts are zero."
+    ],
+    "hash_bound_control_flow_facts": [
+      "The prepare-only branch returns before Docker or PostgreSQL readiness checks, upstream DataAgent import, provider client configuration, agent execution, or trace normalization.",
+      "The dedicated launcher permits skipped Docker/PostgreSQL checks only with prepare-only and binds the integrated module before child dispatch.",
+      "The selected module origin equals the recorded hash-bound runner path."
+    ],
+    "attested_invocation_fact": "The frozen receipt records an empty PYTHONPATH. Remote output does not persist the literal environment value, so the review independently checks the material import-origin invariant instead of inspecting environment values."
+  },
+  "inspected_path_category_inventory": [
+    {
+      "category": "remote_filesystem_capacity",
+      "path_pattern": "/srv/text2sql",
+      "fields": ["filesystem_type", "size", "used", "available", "use_percent"]
+    },
+    {
+      "category": "remote_runtime_bindings",
+      "path_pattern": "manifest-listed registry, upstream DataAgent, and selected Python paths",
+      "fields": ["exists", "sha256"]
+    },
+    {
+      "category": "remote_frozen_source",
+      "path_pattern": "/srv/text2sql/evolution_runtime/g011_g013_integrated_small_panel_20261022/source/<manifest-listed-file>",
+      "fields": ["exists", "sha256"]
+    },
+    {
+      "category": "remote_operational_aggregates",
+      "path_pattern": "<prepare-output>/{operational_panel_summary.json,multi_query_progress.json,batch.json}",
+      "fields": ["sha256", "schema", "status counts", "exit-code counts", "protocol fields", "row counts"]
+    },
+    {
+      "category": "remote_child_prepare_summaries",
+      "path_pattern": "<prepare-output>/runs/*/summary.json",
+      "fields": ["count", "schema counts", "status counts"]
+    },
+    {
+      "category": "remote_log_inventory",
+      "path_pattern": "<prepare-output>/logs/*",
+      "fields": ["file category counts", "aggregate byte counts"],
+      "content_read": false
+    },
+    {
+      "category": "remote_prohibited_artifact_scan",
+      "path_pattern": "<prepare-output>/**/<prohibited-basename>",
+      "fields": ["existence count"]
+    },
+    {
+      "category": "local_hash_bound_control_flow",
+      "path_pattern": "experiments/{run_g011_g013_integrated_small_panel.py,run_multi_query_baseline.py,run_dab_tool_agent.py,run_dab_tool_agent_g011_g013_integrated.py}",
+      "fields": ["prepare-only branch", "module binding", "retry and timeout wiring", "operational export boundary"]
+    }
+  ],
+  "excluded_content": [
+    "task identifiers",
+    "task text",
+    "answers",
+    "final-answer previews",
+    "stdout and stderr content",
+    "LLM or tool content",
+    "environment values",
+    "credential names or values"
+  ],
+  "disposition": "Accepted as the provider-free prepare-only gate only. This is not a panel outcome, benchmark result, admission, Evidence, or authorization for provider/database execution; a fresh formal preflight and current user authorization remain required."
+}

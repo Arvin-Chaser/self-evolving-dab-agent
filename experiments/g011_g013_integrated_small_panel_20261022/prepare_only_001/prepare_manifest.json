@@ -1,0 +1,75 @@
+{
+  "schema_version": "g011_g013_integrated_panel_prepare_manifest_v1",
+  "created_date": "2026-10-22",
+  "status": "completed_awaiting_independent_outcome_privacy_protocol_review",
+  "scope": "Provider-free six-row prepare-only activation gate; not a panel outcome, benchmark result, admission, or Evidence.",
+  "launcher_review": {
+    "revision": "launcher_revision_005",
+    "launcher_manifest_sha256": "7e62db8483f7fb8bc2e4b4e02c6759a3ef2419c60e53305bacc5c3b59b2d4937",
+    "independent_review_sha256": "c46c08338d5c61a26b9d5175bb539d590666191912af16d7e0f290a671d69462",
+    "independent_validation_sha256": "8eaa6c842b40cb7d84a73d352d41d755d45d2a5a73623b6ce58a6262816ddfc9"
+  },
+  "remote_binding": {
+    "staging_root": "/srv/text2sql/evolution_runtime/g011_g013_integrated_small_panel_20261022",
+    "source_root": "/srv/text2sql/evolution_runtime/g011_g013_integrated_small_panel_20261022/source",
+    "registry_path": "/srv/text2sql/evolution_runtime/research_graph_baseline_20261016/g013_formal_001/bindings/registry.json",
+    "registry_sha256": "7aba9897753c6a3394f1a6d0b27df35a39ac05ca099b815a1e2b9c6d931218ff",
+    "upstream_path": "/srv/text2sql/external/DataAgentBench_official",
+    "upstream_data_agent_sha256": "ea64b4e2b54ca32545c006d9d2aa77ad3d788ecf337b50c898b268631b24f80a",
+    "python_path": "/srv/text2sql/.venv/bin/python",
+    "python_sha256": "3008abbb48c1e2b0fa3072ae72334b9b352e1346ea3a20d34126a455f0c7bc66"
+  },
+  "source_hashes": {
+    "experiments/run_multi_query_baseline.py": "fa2b2dcf1d68dcf07d93353ea4bbf2026d979ecef77a6b907b8581108b85d331",
+    "experiments/run_g011_g013_integrated_small_panel.py": "6d414ff7abe7325e8b34f5fbc9369f9cca816410bf78e616c92087f035a1edcd",
+    "experiments/run_dab_tool_agent.py": "a37143b9809ff11cc11544e067c55d2d91fd5676b11a4f6e5e807c1e3f54e64b",
+    "experiments/run_dab_tool_agent_g011_g013_integrated.py": "bedb1aa93b3c3c0eba539168009f317c18226aa1b2d7de30be847bb186cde9af",
+    "experiments/g011_g013_integrated_agent.py": "c16b09d13f30acb8aa6539d7993d1c9cf30f94f75f0b430371d1449fd60f79a7",
+    "prompts/dab/dab_tool_agent_policy_g011_g013_integrated.txt": "869cfa801d785f07b5af1a853c68b0dd8d5ace8c7168f55182ce600780bb0dfb",
+    "operational_batch.json": "7f00732f7811c441f5127f78f7b931d8fb3635218637bf9b88fe59b9aee30978",
+    "protocol.json": "4d941b9d1ffb736cc967cbb0fbba2e1205df77d8ca673a268e83cb110ac01035"
+  },
+  "command_contract": {
+    "prepare_only": true,
+    "pythonpath": "empty",
+    "model_attempts_per_turn": 1,
+    "sdk_internal_retries": 0,
+    "description_mode": "base_no_hint",
+    "workers": 1,
+    "observer": "disabled",
+    "model_request_timeout_seconds": 600,
+    "task_wall_timeout_seconds": 1200,
+    "postgres_statement_timeout_ms": 1080000,
+    "provider_credential_loaded": false,
+    "docker_and_postgres_checks_skipped_only_for_prepare": true
+  },
+  "result": {
+    "summary_status": "completed",
+    "planned_row_count": 6,
+    "completed_row_count": 6,
+    "all_rows_prepared": true,
+    "runner_module": "experiments.run_dab_tool_agent_g011_g013_integrated",
+    "runner_module_origin_matches_path": true,
+    "runner_sha256": "bedb1aa93b3c3c0eba539168009f317c18226aa1b2d7de30be847bb186cde9af",
+    "batch_launcher_sha256": "6d414ff7abe7325e8b34f5fbc9369f9cca816410bf78e616c92087f035a1edcd",
+    "operational_summary_sha256": "3b8b04e9e0a603c4b39bad35a41993ba33d9a5ea7c88085948bed0ddafbb76b0",
+    "progress_sha256": "25d001da4b9a481069300a4ff450fa62ea88abe20bd32851d627fe9552ece10a",
+    "batch_copy_sha256": "7f00732f7811c441f5127f78f7b931d8fb3635218637bf9b88fe59b9aee30978",
+    "repair_seed_exists": false,
+    "research_shaped_summary_exists": false,
+    "operational_stop_exists": false,
+    "llm_or_tool_trace_exists": false
+  },
+  "privacy": {
+    "answer_or_task_content_copied_to_this_manifest": false,
+    "operational_summary_copied_to_local_workspace": false,
+    "research_export_allowed": false
+  },
+  "execution_boundary": {
+    "provider_calls": 0,
+    "database_calls": 0,
+    "benchmark_result_claimed": false,
+    "six_task_panel_executed": false,
+    "frozen_56_run": false
+  }
+}

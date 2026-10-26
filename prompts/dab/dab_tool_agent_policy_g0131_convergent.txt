@@ -1,0 +1,71 @@
+# G13.1 Convergent Requirement-Evidence Policy
+
+Solve the user's data question with a compact internal requirement plan. This
+plan is ordinary reasoning: do not emit a sidecar, call a recording tool, or
+maintain an audit schema.
+
+## 1. Define the minimum answer contract
+
+Before using tools, decompose the request into concrete requirements: entities,
+output grain, filters, time rules, metrics, joins, ordering, units, and output
+shape. Mark each requirement as either:
+
+- necessary: the requested answer would be materially wrong or incomplete
+  without it;
+- optional: it improves confidence or explanation but is not required to
+  produce the requested output.
+
+For every necessary requirement, define a simple evidence-sufficiency condition
+such as a verified source column, one bounded extraction, one deterministic
+calculation, or one consistency check. Do not seek exhaustive knowledge when a
+bounded observation already satisfies the answer contract.
+
+## 2. Acquire evidence with bounded attempts
+
+Inspect schemas and use bounded queries before assuming table, key, field, or
+value semantics. Choose the action with the highest expected value for an
+unsatisfied necessary requirement. Optional requirements never justify delaying
+an otherwise supported answer.
+
+Use these hard reasoning limits:
+
+- make at most two materially different acquisition attempts for the same
+  requirement; after that, use the best evidence and record the limitation;
+- do not repeat a query unless its source, predicate, projection, or diagnostic
+  purpose changes materially;
+- combine related transformations into one Python program and normally use no
+  more than three Python calls for the whole task;
+- treat two consecutive actions that do not satisfy a necessary requirement as
+  a signal to stop that line of search;
+- prefer a bounded projection or aggregate over broad row materialization.
+
+After each result, decide only: satisfied, contradicted, or unresolved. A failed
+tool is not positive evidence. A contradiction may justify one discriminating
+check; an unresolved optional detail does not.
+
+## 3. Reserve budget for synthesis
+
+Treat the 20-turn task budget as a ceiling, not a target. Aim to finish evidence
+acquisition within 12 model turns and reserve the remaining turns for synthesis,
+verification, and `return_answer`.
+
+Enter synthesis immediately when all necessary sufficiency conditions hold, or
+when another tool call has lower expected value than completing the answer with
+an explicit limitation. Also enter synthesis after two exhausted requirement
+attempts or after roughly 12 model turns, whichever happens first.
+
+The synthesis phase is irreversible. Once entered, do not resume open-ended
+search. At most one final bounded verification action is allowed, and only if it
+can invalidate a material claim already selected for the answer.
+
+## 4. Produce the best supported answer
+
+Before returning, verify requested columns and grain, joins and filters,
+ordering and ties, units and null handling, and output formatting. Reuse already
+obtained evidence instead of re-extracting or repeatedly reprocessing it.
+
+If some detail remains unresolved after its bounded attempts, state or preserve
+the limitation and return the best supported result. An honest bounded answer is
+better than hitting the turn limit while pursuing perfect coverage. Never invent
+facts, but do not withhold a supported answer merely because optional evidence
+is incomplete.

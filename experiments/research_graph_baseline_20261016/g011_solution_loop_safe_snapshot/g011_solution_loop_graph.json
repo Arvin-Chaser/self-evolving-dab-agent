@@ -1,0 +1,454 @@
+{
+  "binding": {
+    "admission_sha256": "9121bfb8a6797d55086c18f433b067addd3df8f2ed0a950530442c21423ad068",
+    "assembly_sha256": "e251b93d3e1d98b2acbb095a8ea133f3e1a9da16f64ebdd3d471dc1837ad48d7",
+    "authoring_policy_sha256": "111eb0726c7a9c795ace1ef96267d085294b6d2e8257d984117763427e50b277",
+    "batch_sha256": "576a7d718bbe54d94ce6b7c32b92530394f55b39865d718a376320a5b11d51f7",
+    "candidate_tree_sha256": "7a08559bad85ac3de94bc897759cc0f41aeb3260816a3e0ff21989687fae24ac",
+    "code_parent_generation": 7,
+    "description_mode": "full_db_description_no_hints",
+    "formal_activation_flag": "--enable-g011-plan-evidence-ledger",
+    "generation": 11,
+    "implementation_manifest_sha256": "44a7a9508f8f1c68ab0ab70dfb3c820ca8f61eeefe880d1bc37453f614c75675",
+    "mechanism_id": "mech_g011_structural_plan_evidence_ledger",
+    "parent_graph_generation": 10,
+    "parent_graph_sha256": "2426502a697c988c77edc134bba0a4dd9612543733d19ce9d7bb3107083f3b3a",
+    "parent_tree_sha256": "572b8c92f4aaa3834e36a7899d667123eb548d0a6f1675a243cc07a9974244ac",
+    "policy_sha256": "d6e022a462960e961087e618087dcd1d884bab49389acae64c463583d8643797",
+    "query_count": 56,
+    "query_timeout_sec": 1200,
+    "registry_sha256": "7aba9897753c6a3394f1a6d0b27df35a39ac05ca099b815a1e2b9c6d931218ff",
+    "research_memory_v5_sha256": "0c83c560e7c94522ca2b618f7cec6b8b7a81c833c6e054ff0f18dfa7d1d481bf",
+    "research_result_sha256": "9a0d6943a4b262429b8270664b0ede8bc9effbae5a15d0c882d63691e236d193",
+    "timeout_scoring": "failure_in_fixed_56_denominator",
+    "upstream_data_agent_sha256": "ea64b4e2b54ca32545c006d9d2aa77ad3d788ecf337b50c898b268631b24f80a"
+  },
+  "edges": [
+    {
+      "relation": "motivated_by",
+      "source": "problem:g011",
+      "target": "evidence:g007"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "problem:g011",
+      "target": "evidence:g008"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "problem:g011",
+      "target": "evidence:g009"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "problem:g011",
+      "target": "evidence:g010"
+    },
+    {
+      "relation": "explains",
+      "source": "hypothesis:g011",
+      "target": "problem:g011"
+    },
+    {
+      "relation": "tests",
+      "source": "experiment:g011",
+      "target": "hypothesis:g011"
+    },
+    {
+      "relation": "derives_code_from",
+      "source": "experiment:g011",
+      "target": "experiment:g007"
+    },
+    {
+      "relation": "observes",
+      "source": "evidence:g011",
+      "target": "experiment:g011"
+    }
+  ],
+  "evidence_sha256": "05794e42ae2e1513e7356cba6857fbca611d679f390c4b3feba2f5e8a3e59ae4",
+  "generation": 11,
+  "nodes": [
+    {
+      "id": "problem:g011",
+      "kind": "problem",
+      "mechanism_id": "mech_g011_structural_plan_evidence_ledger",
+      "scope": "structural plan/evidence state and guidance; semantic validity remains unknown",
+      "statement": "G8 and G9 establish structural audit exposure without semantic verification, G10's different fixed checklist is formally contradicted in its two-run repair view, and the G0-G10 series lacks a runtime-maintained state that makes missing, stale, ambiguous, truncated, failed, unavailable, or unknown evidence structurally explicit enough to redirect work. The bounded question is whether the exact tested model-authored plan and evidence record can be carried and validated in a real run without semantic overclaim or protocol leakage."
+    },
+    {
+      "id": "hypothesis:g011",
+      "kind": "hypothesis",
+      "mechanism_id": "mech_g011_structural_plan_evidence_ledger",
+      "prediction_policy": "No strict improvement, timeout reduction, directional score effect, semantic improvement, or causal benefit is predicted.",
+      "statement": "A model-authored plan and evidence record using the exact tested schema, deterministic structural validation, and a bounded task-agnostic structural guidance channel can make unresolved evidence and revision state explicit and may change evidence acquisition, plan revision, or preservation of unknown. Structural validity is not semantic support, task relevance, answer correctness, or benchmark benefit. No strict improvement, timeout reduction, or directional score effect is predicted, and real-model adoption remains unknown."
+    },
+    {
+      "activation_flag": "--enable-g011-plan-evidence-ledger",
+      "candidate_source_tree_sha256": "7a08559bad85ac3de94bc897759cc0f41aeb3260816a3e0ff21989687fae24ac",
+      "evaluation_run_id": "g011_structural_plan_evidence_ledger_nohint_56_v1",
+      "formal_spec": {
+        "admission_checks": [
+          "The G7 code parent is executable and resolves exactly to candidate tree 572b8c92f4aaa3834e36a7899d667123eb548d0a6f1675a243cc07a9974244ac.",
+          "The implementation loads the exact schema, structural enums, limits, token grammar, revision and supersession lifecycle, terminal lifecycle, and unknown fallbacks from the hash-bound prototype manifest with no substitutions; any missing or ambiguous manifest value blocks admission.",
+          "The record contains exactly schema, plan_id, revision, supersedes, and steps; every step contains exactly step_id and refs; no additional field is accepted and no schema transformation is used.",
+          "No-task tests prove model-authored assertions remain distinct from derived structural facts and are never promoted to semantic support or correctness.",
+          "No-task tests cover record creation, revision ordering, supersession, active head, step uniqueness, unique prior ordinary-dispatch provenance, pre-boundary availability, self-observation exclusion, return_answer exclusion, truncation, failure, ambiguity, staleness, unavailability, and unknown fallbacks.",
+          "No-task tests prove self_observation.freeform is declared as a string, is preserved by the normalizer, and carries exactly G011_PLAN_RECORD_V1 followed by the exact JSON record.",
+          "No-task tests reject the nested self_observation.plan_record property and prove it is never used as a fallback, replacement schema, or third carrier.",
+          "No-task tests prove malformed prefix, malformed JSON, extra fields, invalid lifecycle, and unknown references produce the frozen unknown or rejection status without guidance.",
+          "The new authoring instruction is frozen as exact rendered text, is task-agnostic, contains no task or answer content, and is explicitly recorded as a new unverified experiment policy rather than a prototype-established overlay.",
+          "The actual configured self-observation tool name, provider acceptance of the freeform payload location, and any prompt or tool-description change are proven source-grounded and protocol-permitted in a no-task fixture; failure blocks launch.",
+          "The existing carrier and any observation or sidecar output pass a dedicated no-leak review for tasks, answers, hints, validators, expected outputs, messages, tool arguments or results, raw traces, task identifiers, plan or step identifiers, reference identifiers, credentials, and task content.",
+          "The G11 record payload is suppressed from the existing observation log and removed from base-dispatch arguments when G11 is enabled; ordinary observations remain unchanged.",
+          "The validator derives structural statuses in memory and never adds status fields to the record; unknown is never imputed as resolved or supported.",
+          "Enabled-versus-disabled tests show identical control flow, dispatch, results, and scoring outside the intended bounded guidance channel.",
+          "The fixed guidance template is task-agnostic, structural-only, and contains no tool, query, source, answer, hint, validator, or task-specific instruction.",
+          "The newly selected pre-registered guidance cap of three is tested and enforced: at most one message per model turn, at most three per task, at most three extra model turns, at most three extra tool dispatches, and zero mechanism-initiated tool calls; the prototype default of eight is not used.",
+          "The 180-second remaining-time guard and the no-extension rule are tested; the mechanism never extends or resets the 1200-second wall limit.",
+          "The safe fallback returns to unmodified G7 behavior and does not substitute the G10 checklist, G8-G9 audits, a semantic verifier, a new tool, or replacement record fields.",
+          "The exact frozen protocol is bound: 56 tasks, full database description without hints, 1200 seconds per task, strict pass over all 56, timeouts and other terminal failures counted as failures, and unknown verdicts preserved.",
+          "Exactly one formal run is permitted only after this implementation passes admission and separate authorization; no second arm, sham run, probe run, candidate promotion, or evaluation is authorized by this contract.",
+          "The report is excluded as evaluation research evidence because the run-permission token only allowed verification of the message-delivery step after message-input filtering; this is a research-evidence acceptance failure, not an implementation success.",
+          "The previous revision's candidate hashes may be inspected for admission, but the 66 and 110 test results do not ratify implementation and do not replace the carrier, no-leak, cap, protocol, and authorization checks."
+        ],
+        "behavioral_effect": {
+          "action": "Inject at most one fixed task-agnostic structural guidance message per eligible model turn through the existing bounded call_llm path. Do not dispatch tools, block tools, synthesize tool results, force an answer, inspect answer text, alter scoring, or assert semantic status.",
+          "authoring_cost_boundary": "The fixed authoring instruction is assembled once through the existing system-prompt path, creates no additional model turn, and is reported separately from guidance messages; no new tool or tool-description change is allowed.",
+          "caps": {
+            "disable_guidance_at_or_below_remaining_seconds": 180,
+            "max_extra_model_turns_attributable_to_guidance": 3,
+            "max_extra_tool_dispatches_attributable_to_guidance": 3,
+            "max_guidance_messages_per_model_turn": 1,
+            "max_guidance_messages_per_task": 3,
+            "max_mechanism_initiated_tool_calls": 0,
+            "per_task_wall_timeout_seconds": 1200,
+            "prelaunch_cap_test_required": true,
+            "selected_guidance_cap_status": "newly selected pre-registered experiment policy, not a preserved prototype limit",
+            "tested_prototype_default_guidance_cap": 8,
+            "wall_timeout_extension_allowed": false
+          },
+          "prediction_policy": "No strict improvement, timeout reduction, directional score effect, semantic improvement, or causal benefit is predicted.",
+          "trigger": "A guidance message is eligible only when the validator derives a non-resolved structural state from the latest schema-valid and lifecycle-valid record and all message, tool-dispatch, and deadline caps permit it.",
+          "unknown_policy": "Unknown is preserved and is never converted to resolved, supported, correct, or failure. A guidance message never makes unknown evidence appear resolved."
+        },
+        "code_parent": {
+          "candidate_tree_sha256": "572b8c92f4aaa3834e36a7899d667123eb548d0a6f1675a243cc07a9974244ac",
+          "generation": 7
+        },
+        "fixed_protocol": {
+          "answer_hint_validator_or_heldout_access": false,
+          "description_mode": "full_db_description_no_hints",
+          "exact56": true,
+          "formal_runs": 1,
+          "frozen_task_count": 56,
+          "hints": false,
+          "other_terminal_failures": "failures_in_fixed_denominator",
+          "per_task_wall_timeout_seconds": 1200,
+          "primary_metric": "completed_and_strict_true_over_all_56",
+          "probe_run": false,
+          "second_arm": false,
+          "sham_run": false,
+          "strict_scoring": "strict_pass_over_all_56",
+          "strict_verdict_unknown": "preserved_as_unknown_not_reclassified",
+          "task_specific_logic": false,
+          "timeouts": "failures_in_fixed_denominator"
+        },
+        "measurement_plan": {
+          "behavioral_measurements": [
+            "Guidance messages delivered, trigger status families, record revisions after guidance, structural unresolved-to-resolved transitions, and post-guidance model turns and tool dispatches by structural class.",
+            "Whether any guidance binds at all; zero binding means the mechanism is untested.",
+            "Whether the new authoring instruction produces any schema-valid record; absence is an empirical outcome and does not authorize a fallback substitution.",
+            "Changes in the fixed outcome partition are reported descriptively without a predicted direction."
+          ],
+          "design": "One pre-registered formal 56-task no-hint run after the future implementation passes admission; one G7-derived code parent; no second arm and no causal comparison.",
+          "interpretation_rules": [
+            "No strict improvement is predicted and no causal score claim is allowed.",
+            "Synthetic test success cannot be promoted to benchmark Evidence.",
+            "A structurally resolved reference is not semantic support, correctness, relevance, or coverage.",
+            "Completed strict-verdict unknowns remain unknown; timeouts and other terminal failures remain failures.",
+            "If no guidance binds, the mechanism is untested rather than a hypothesis failure.",
+            "The G7 reference partition and the G0-G10 history are descriptive only; G10 is not evidence for this ledger.",
+            "The authoring instruction and guidance cap of three are new experiment policies, not prototype-established facts, and their real-model effects remain unknown."
+          ],
+          "parent_reference": "G7 reference partition is 32 strict pass, 17 known strict fail, 3 completed strict-verdict unknown, and 4 timeout or other terminal failure. It is descriptive only and is not reused as a denominator.",
+          "primary_partition": [
+            "Strict pass over the fixed 56.",
+            "Known strict fail over the fixed 56.",
+            "Completed strict-verdict unknown preserved as unknown.",
+            "Timeout or other terminal failure counted as failure in the fixed denominator."
+          ],
+          "record_measurements": [
+            "Records present, schema-valid, and lifecycle-valid by observed cohort.",
+            "Revision and supersession validity, active-head validity, duplicate and stale counts, step counts, reference counts, and unknown counts.",
+            "Model-authored versus verified-fact separation violations, including any self-observation or authoring call treated as evidence.",
+            "Structural resolved and unresolved counts reported separately from any semantic interpretation."
+          ],
+          "run_before": "All schema bindings, carrier prefix and parser rules, frozen enums, limits, lifecycle rules, authoring instruction text, guidance template, guidance cap of three, extra-turn and extra-tool-dispatch caps, deadline guard, fallback behavior, cohort rules, and measurements are fixed before implementation or formal execution. No post-run strict verdict, task identifier, answer, hint, or validator defines a rule.",
+          "safety_measurements": [
+            "Prohibited content persistence count must be zero.",
+            "Mechanism-initiated tool call count must be zero.",
+            "Guidance message, extra model turn, and extra tool dispatch caps must be respected.",
+            "Deadline-guard suppressions, cap-suppression counts, authoring-prompt count, and carrier-redaction counts are reported.",
+            "No wall-timeout extension, scoring mutation, protocol deviation, extra formal run, semantic overclaim, or substitution of another audit mechanism.",
+            "Carrier, authoring instruction, and sidecar no-leak reviews must pass before launch."
+          ],
+          "structural_measurements": [
+            "Per-reference unique prior provenance, pre-boundary availability, truncation, failure, ambiguity, staleness, unavailability, and unknown counts.",
+            "Observed cohort denominators and structural coverage numerators, denominators, and rates.",
+            "No semantic support, correctness, relevance, or coverage claim is emitted."
+          ]
+        },
+        "mechanism_contract": {
+          "mechanism_id": "mech_g011_structural_plan_evidence_ledger",
+          "new_authoring_policy": {
+            "admission_requirement": "The future Implementation Meta must freeze the exact rendered authoring text, prove its source grounding and protocol permission, and pass no-task schema, no-leak, cap, and inertness tests. Existing implementation tests do not waive this requirement.",
+            "content_boundary": "The instruction is task-agnostic and contains no task content, answer, hint, validator, claim, free text, semantic status, confidence, tool argument, or tool result.",
+            "existing_candidate_prompt_file": "candidate/prompts/dab/g011_plan_evidence_authoring_policy.txt",
+            "existing_candidate_prompt_file_sha256": "111eb0726c7a9c795ace1ef96267d085294b6d2e8257d984117763427e50b277",
+            "existing_candidate_rendered_sha256": "5c9a4ead247dda6d624c82ebec0512760ca17e8b1062f36a3caa6249b380bffa",
+            "injection_path": "existing prompt_builder.init_messages system-prompt path",
+            "new_tool_added": false,
+            "only_substitutions": [
+              "schema identifier g011_plan_record_v1",
+              "initial revision 1",
+              "initial supersedes null"
+            ],
+            "status": "new_unverified_experiment_policy_not_prototype_established",
+            "task_agnostic": true,
+            "tool_description_changed": false
+          },
+          "prototype_binding": {
+            "authority": "bounded synthetic interface research only, not formal benchmark Evidence",
+            "bounded_findings_path": "experiments/research_graph_baseline_20261016/g011_solution_loop_interface_investigation_001/scoped_source/BOUNDED_FINDINGS.md",
+            "bounded_findings_sha256": "445f578014d1677117665287491a871cf2cd4202541bcfab81ab98d710ae1ff8",
+            "independent_verification_path": "experiments/research_graph_baseline_20261016/g011_solution_loop_interface_investigation_001/independent_verification.json",
+            "independent_verification_sha256": "2d102dc3c100896029a2d78ac925f70ef3c2866ee03dfc604644c1588da390ff",
+            "manifest_path": "experiments/research_graph_baseline_20261016/g011_solution_loop_interface_investigation_001/scoped_source/exploratory_implementation_manifest.json",
+            "manifest_sha256": "3fac0dbe10a18c16ef3fc226bbdc1235903397ccffda8be5043d041be3912b44"
+          },
+          "record_interface": {
+            "exact_tested_schema": {
+              "additional_record_or_step_fields_forbidden": true,
+              "record_fields": [
+                "schema",
+                "plan_id",
+                "revision",
+                "supersedes",
+                "steps"
+              ],
+              "step_fields": [
+                "step_id",
+                "refs"
+              ],
+              "supersedes_when_non_null": [
+                "plan_id",
+                "revision"
+              ]
+            },
+            "frozen_action_codes": [
+              "proceed",
+              "acquire_evidence",
+              "revise_plan",
+              "preserve_unknown"
+            ],
+            "frozen_record_statuses": [
+              "accepted",
+              "no_op",
+              "malformed",
+              "stale",
+              "reordered",
+              "duplicate",
+              "ambiguous",
+              "unknown"
+            ],
+            "frozen_ref_statuses": [
+              "unique",
+              "absent",
+              "duplicate",
+              "pre_entry",
+              "late",
+              "stale",
+              "truncated",
+              "failed",
+              "reordered",
+              "ambiguous",
+              "invalid",
+              "unknown"
+            ],
+            "initial_revision": 1,
+            "initial_supersedes": null,
+            "lifecycle": "The schema field must equal g011_plan_record_v1. Revision begins at 1; supersedes is null initially and later references exactly the prior active head through the frozen plan_id/revision linkage. Revision increments, supersession linkage, active-head uniqueness, acceptance/no_op rules, terminal lifecycle, and unknown fallbacks must be loaded verbatim from the hash-bound prototype manifest. No relaxed limit, invented transition, replacement field, or extra record field is permitted. Step identifiers must be unique under the frozen token grammar. The record is accepted only after schema and lifecycle validation.",
+            "limits": {
+              "max_refs_per_step": 32,
+              "max_steps": 16,
+              "max_total_refs": 128
+            },
+            "model_authored_plan_state": {
+              "fields": [
+                "plan_id",
+                "revision",
+                "supersedes",
+                "steps",
+                "step_id",
+                "refs"
+              ],
+              "schema_field_status": "must equal the frozen schema identifier and is not model-discretionary plan content",
+              "self_observation_exclusion": "the configured self-observation call, record-authoring path, terminal return_answer, and any model self-assertion are non-evidence and must not resolve a ledger reference",
+              "trust_status": "all model-supplied values are untrusted until structural validation; model authorship is never treated as evidence of correctness or semantic support"
+            },
+            "schema_identifier": "g011_plan_record_v1",
+            "semantic_boundary": [
+              "The mechanism never reads or judges answer text, task content, messages, tool arguments or results, validators, hints, or held-out content.",
+              "A structurally unique or resolved reference is not semantic support, correctness, relevance, or coverage. Semantic status remains unknown.",
+              "No record field or guidance message may assert support, contradiction, relevance, correctness, confidence, or truth.",
+              "No free-text claim extraction and no general semantic verifier are introduced or required.",
+              "No benchmark benefit, strict improvement, or causal effect is inferred from structural validity or structural guidance."
+            ],
+            "transformation": "none; the exact tested schema is used unchanged",
+            "unknown_policy": "Unknown remains unknown and is never imputed as resolved, supported, correct, failed, or positive. Missing, malformed, ambiguous, stale, truncated, unavailable, non-unique, or incomplete evidence produces the frozen unknown status. If the record is absent or invalid, no structural state is asserted and no guidance is emitted.",
+            "verified_structural_facts": {
+              "checks": [
+                "exact schema validity and absence of extra fields",
+                "frozen token grammar and field or record limits",
+                "revision monotonicity, supersession chain, active-head uniqueness, and terminal lifecycle",
+                "step identifier uniqueness",
+                "each ref resolves to exactly one prior same-task ordinary tool dispatch",
+                "the referenced dispatch was available before the record boundary",
+                "runtime metadata classifies truncation, failure, ambiguity, staleness, unavailability, and unknown status",
+                "self-observation, record-authoring, and return_answer calls are excluded as non-evidence"
+              ],
+              "derived_in_memory_only": true,
+              "not_checked": [
+                "semantic support",
+                "semantic contradiction",
+                "task relevance",
+                "claim coverage",
+                "answer correctness",
+                "plan quality",
+                "confidence",
+                "truth"
+              ],
+              "resolved_meaning": "exactly one prior same-task observation is structurally available, provenance-checked, non-failed, non-truncated, lifecycle-valid, and available at the record boundary; this is not semantic support"
+            }
+          }
+        },
+        "runtime_channel": {
+          "actual_tool_name": "record_self_observation by default, with the actual configured name supplied through the existing self-observation tool-name option; admission must verify the configured name and mark that call non-evidence",
+          "behavioral_consumer": "the existing bounded call_llm guidance path; no new tool, no scoring change, and no semantic check",
+          "carrier": "self_observation.freeform string in the existing record_self_observation tool call",
+          "carrier_prefix": "G011_PLAN_RECORD_V1",
+          "carrier_source": "Reviewed source establishes self_observation.freeform as a declared string preserved by the existing normalizer; the carrier need not create a new tool primitive.",
+          "guidance_injection": "at most one fixed task-agnostic user-role notice per eligible model turn through the existing bounded call_llm path; it never contains identifiers, task content, answers, hints, arguments, results, or semantic status",
+          "guidance_template": "Structural check only: the latest plan and evidence record has one or more references that are missing, ambiguous, stale, truncated, failed, unavailable, or unknown, or its lifecycle is unresolved. This is not semantic support or evidence of correctness. Within the fixed task budget, acquire missing evidence, revise the plan, or preserve unknown. Do not treat this note as evidence and do not infer support, relevance, or correctness.",
+          "guidance_template_sha256": "344163771b7de18613097a12b347a0615d4aac97c3a009dec12f867bfcaf13b8",
+          "nested_plan_record": "explicitly rejected; the undeclared nested self_observation.plan_record property is dropped by the existing normalizer and is not provider-safe, is not a fallback, and is not a third carrier",
+          "payload_format": "The exact prefix G011_PLAN_RECORD_V1 followed by exactly one JSON serialization of the five-field record. The remainder after the exact prefix must parse as exactly one JSON object; no nested plan_record is used or accepted.",
+          "payload_location": "self_observation.freeform",
+          "redaction_and_no_leak": [
+            "The G11 record payload is suppressed from the existing observation log when G11 is enabled; ordinary non-record observations remain unchanged.",
+            "The G11 record sidecar is removed from base-dispatch arguments when G11 is enabled, as established by the bounded implementation source review.",
+            "The G11 sidecar and evidence extractor may persist or emit only anonymous structural allow-list fields, booleans, aggregate counts, and frozen status enums; they never persist raw plan IDs, step IDs, reference IDs, record text, tasks, answers, hints, validators, messages, tool arguments or results, raw traces, task identifiers, credentials, or task content.",
+            "The extractor reads only the G11 sidecar and summary, never the upstream model-call trace, task files, answer files, validator files, conversation logs, tool-argument files, tool-result files, or credential material.",
+            "The model-authored record remains in the assistant tool-call context as model context; this boundary must be confirmed by a future formal no-leak review, and the record is never exported to Research Meta or the Evidence layer.",
+            "Any no-leak failure blocks admission and launch; no generic audit, alternate schema, or replacement carrier may be substituted."
+          ],
+          "response_boundary": "The caller-supplied response or turn boundary must be validated against the real provider boundary in a no-task fixture and may not be replaced by a guessed boundary.",
+          "validator_inputs": [
+            "the prefixed freeform record",
+            "runtime provenance metadata for prior dispatch ordinals and status",
+            "runtime turn and record boundary metadata",
+            "completeness, truncation, failure, and availability metadata",
+            "anonymous task-local ordinals"
+          ],
+          "validator_outputs": "only the frozen structural statuses, action codes, and aggregate counts in memory; no raw references, raw identifiers, record text, content, tool arguments, results, messages, traces, or task identifiers are persisted to the Evidence layer",
+          "wrapper_inertness": "enabled-versus-disabled no-task tests must prove identical control flow, dispatch, results, and scoring outside the intended guidance channel; real-DAB inertness remains unverified until admission and the formal run"
+        },
+        "safe_fallback": {
+          "authoring_not_observed": "Continue under the unmodified task policy without forcing a record or inferring structural status.",
+          "cap_or_deadline_reached": "Suppress further guidance for the task and continue under the fixed protocol without extending the 1200-second wall limit.",
+          "carrier_unavailable": "Use unmodified G7 behavior and emit no ledger authoring or guidance state.",
+          "forbidden_fallbacks": [
+            "G10 checklist substitution",
+            "G8 or G9 audit substitution",
+            "general semantic verifier",
+            "new tool or record channel",
+            "nested self_observation.plan_record",
+            "replacement record fields",
+            "deadline extension",
+            "scoring change"
+          ],
+          "invalid_or_incompatible_record": "Preserve unknown for that record, skip guidance, and do not substitute another schema, record field, or generic audit.",
+          "validator_error": "Bypass the ledger path and use unmodified G7 behavior for that task.",
+          "zero_guidance_binding": "Report the mechanism as untested rather than failed or confirmed."
+        }
+      },
+      "id": "experiment:g011",
+      "kind": "experiment",
+      "mechanism_id": "mech_g011_structural_plan_evidence_ledger",
+      "statement": "One pre-registered formal 56-task no-hint run after the future implementation passes admission; one G7-derived code parent; no second arm and no causal comparison."
+    },
+    {
+      "artifact_refs": {
+        "extractor_sha256": "6d4f1f9ab16004296c6eac31707acf8860c8b37b91c1db71ded1d997afc40cea",
+        "input_manifest_sha256": "ce3f8c4f92f06416224b87744c52eb2c28efc61c5dfafb059c7828471e5d0b9f",
+        "launch_claim_sha256": "e70f6ce7b76554a1092aefa89e2a4a9c769733995dccbd1d100098fccf635174",
+        "launch_manifest_sha256": "58bf43915b723adadcdabb89c9e5d31b1a35e9b54f9cbcfcc0696a748644bd0f",
+        "parent_graph_sha256": "2426502a697c988c77edc134bba0a4dd9612543733d19ce9d7bb3107083f3b3a",
+        "pre_execution_sha256": "c6244346c29e85317f2409c05a9665d58801584266a5730f07df8c049a6912b4",
+        "preflight_incident_sha256": "50cc1455d3f12ba9278326dfefaadfc6d3631c16258e602aca3f7300b3db23c0",
+        "preflight_sha256": "5b3ce05e07cee508ee6b5b85640a6d677977186fb84f0a155062c429eb7a07ed",
+        "progress_sha256": "62c2a9d64a323bb23514cfc8ce33b8ccd88e55625a7c5242256748d8f0e81bb3",
+        "specialized_evidence_sha256": "58ad93d6e25dd4e9e5ab0a0364a75b0a28142a927d6fcc744238b932ffd5d129",
+        "summary_sha256": "5949b6ed83eefbc9eabc897b02f3e522c56c2738ab84a215972c6193ea8f6588"
+      },
+      "completed_count": 53,
+      "ended_count": 56,
+      "frozen_task_count": 56,
+      "id": "evidence:g011",
+      "kind": "evidence",
+      "known_strict_fail_count": 15,
+      "limits": [
+        "No model-authored G11 record and no guidance binding were observed; the behavioral mechanism is untested in this run.",
+        "All 53 completed tasks have a valid zero-record G11 summary; timeout tasks remain failures in the fixed 56.",
+        "Structural validation cannot establish semantic support, task relevance, plan quality, answer correctness, coverage, or truth.",
+        "Three completed strict verdicts remain unknown and are not reclassified.",
+        "This is one unpaired run; score differences from other generations are descriptive, not causal."
+      ],
+      "other_terminal_failure_count": 0,
+      "query_wall_timeout_sec": 1200,
+      "score_policy": "completed_and_strict_true_over_all_56;timeout_is_failure",
+      "specialized_cohort_coverage": {
+        "known_strict_fail": {
+          "denominator": 15,
+          "guidance_task_count": 0,
+          "record_task_count": 0
+        },
+        "strict_pass": {
+          "denominator": 35,
+          "guidance_task_count": 0,
+          "record_task_count": 0
+        },
+        "strict_verdict_unknown": {
+          "denominator": 3,
+          "guidance_task_count": 0,
+          "record_task_count": 0
+        },
+        "timeout_failure": {
+          "denominator": 3,
+          "guidance_task_count": 0,
+          "record_task_count": 0
+        }
+      },
+      "specialized_signal_kind": "model_authored_structural_plan_evidence_ledger",
+      "specialized_status": "untested",
+      "statement": "G11 structural plan/evidence ledger on one valid frozen no-hint 56-task run; no model-authored plan record or guidance binding was observed.",
+      "strict_pass_count": 35,
+      "strict_pass_rate_all": 0.625,
+      "strict_verdict_missing_completed_count": 3,
+      "timeout_failure_count": 3
+    }
+  ],
+  "pre_execution_sha256": "c6244346c29e85317f2409c05a9665d58801584266a5730f07df8c049a6912b4",
+  "schema_version": "dab_research_graph_generation_v1",
+  "status": "four_nodes_complete"
+}

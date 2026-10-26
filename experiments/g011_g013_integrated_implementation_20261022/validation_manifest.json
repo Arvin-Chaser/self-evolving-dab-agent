@@ -1,0 +1,79 @@
+{
+  "schema_version": "g011_g013_integrated_validation_manifest_v1",
+  "status": "valid_provider_free_local_contract",
+  "validated_date": "2026-10-22",
+  "git_target": {
+    "expected_branch": "repair/patents-feedback-analyzer-v4",
+    "observed_branch": "repair/patents-feedback-analyzer-v4",
+    "expected_head": "2ec626da9bdfb9982bc2f1358b7047f1041a8373",
+    "observed_head": "2ec626da9bdfb9982bc2f1358b7047f1041a8373",
+    "matches": true,
+    "dirty_worktree_preserved": true
+  },
+  "json_validation": {
+    "implementation_contract": true,
+    "meta_intent_draft": true,
+    "evidence_manifest": true,
+    "implementation_manifest": true,
+    "validation_manifest": true
+  },
+  "parent_hash_validation": {
+    "implementation_contract": {"expected": "a346f79c0035c6d7a591918cca37d2044fbb7a95e693bafcda01054e790312f8", "observed": "a346f79c0035c6d7a591918cca37d2044fbb7a95e693bafcda01054e790312f8", "matches": true},
+    "evidence_manifest": {"expected": "2734f865f1516bb34d7d0e2e6a472337f54a0097d2586e21379eb3e9394de8ed", "observed": "2734f865f1516bb34d7d0e2e6a472337f54a0097d2586e21379eb3e9394de8ed", "matches": true},
+    "meta_intent_draft": {"expected": "434da42dd62e7d7d2254eabb09e8c289ff239fd62ccfde123b9b6fafd7e81144", "observed": "434da42dd62e7d7d2254eabb09e8c289ff239fd62ccfde123b9b6fafd7e81144", "matches": true},
+    "manifest_sources_checked": 17,
+    "manifest_source_mismatches": 0
+  },
+  "file_hashes": {
+    "experiments/g011_g013_integrated_agent.py": "3a1e7cfc0db71a527d8f347b484468daade25ffc73c48567a9afdeb7a7e2f8ab",
+    "experiments/run_dab_tool_agent_g011_g013_integrated.py": "bedb1aa93b3c3c0eba539168009f317c18226aa1b2d7de30be847bb186cde9af",
+    "prompts/dab/dab_tool_agent_policy_g011_g013_integrated.txt": "869cfa801d785f07b5af1a853c68b0dd8d5ace8c7168f55182ce600780bb0dfb",
+    "tests/test_g011_g013_integrated_agent.py": "06c8eaed37f32ccd7ddf37de0e47fd06f031cb0086261d46ed6aa1d6ab2005e7",
+    "experiments/run_dab_tool_agent.py": "a37143b9809ff11cc11544e067c55d2d91fd5676b11a4f6e5e807c1e3f54e64b",
+    "experiments/analyze_dab_tool_agent_trace.py": "7098732c74b00c063d1d63c9c77436a18822d5e2e9f18009324f977cdaed3e4c",
+    "experiments/build_dab_tool_agent_evidence_pack.py": "8f00fc5a7850b2943773ab9ba74d21eb5c133ff3366c51a423d5f3b111c9ce85",
+    "experiments/g011_g013_integrated_implementation_20261022/focused_test_output.txt": "d3f4f2c6129b9fd153a2e22f7d8d5d274214486ef8f5a9af91d55c6d73ac2c35",
+    "experiments/g011_g013_integrated_implementation_20261022/TEST_REPORT.md": "99d117161d2c37c6998149d85b38cb54a030c47bc3ec44bd5dffaab3e309ba4f",
+    "experiments/g011_g013_integrated_implementation_20261022/implementation_manifest.json": "993d3fe1f62948291554959eb16ac7b329050a4ca53afd48335d1290542f0223"
+  },
+  "contract_coverage": {
+    "required_ids": ["T01", "T02", "T03", "T04", "T05", "T06", "T07", "T08", "T09", "T10", "T11", "T12", "T13", "T14"],
+    "mapped_ids": ["T01", "T02", "T03", "T04", "T05", "T06", "T07", "T08", "T09", "T10", "T11", "T12", "T13", "T14"],
+    "missing_ids": [],
+    "focused_test_failures": 0,
+    "focused_test_passes": 25,
+    "current_mainline_regression_failures": 0,
+    "current_mainline_regression_passes": 20,
+    "historical_snapshot_fixture_failures_are_candidate_failures": false
+  },
+  "no_credentials_mode": {
+    "credential_values_read": false,
+    "credential_environment_names_read": false,
+    "network_access": false,
+    "provider_access": false,
+    "database_access": false,
+    "benchmark_access": false,
+    "model_calls": false,
+    "automatic_retries": 0
+  },
+  "privacy_and_protocol": {
+    "carrier_redaction_tested": true,
+    "telemetry_allowlist_tested": true,
+    "analyzer_and_evidence_pack_serialization_tested": true,
+    "privacy_sentinel_rejection_tested": true,
+    "disabled_inertness_tested": true,
+    "mechanism_initiated_tool_calls": 0,
+    "forced_answers": 0,
+    "timeout_extension": false,
+    "scoring_or_evaluator_change": false,
+    "g0132_modified": false
+  },
+  "claim_boundary": {
+    "local_implementation_complete": true,
+    "formal_completion_claimed": false,
+    "admission_claimed": false,
+    "score_improvement_claimed": false,
+    "causal_benefit_claimed": false,
+    "real_model_adoption_known": false
+  }
+}

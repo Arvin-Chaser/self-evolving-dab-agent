@@ -1,0 +1,92 @@
+{
+  "schema_version": "g011_g013_synthesis_validation_manifest_v1",
+  "validated_at_date": "2026-10-22",
+  "validation_scope": "Deterministic local validation only; no model, provider, database, benchmark, server, or remote call.",
+  "git_target": {
+    "branch": "repair/patents-feedback-analyzer-v4",
+    "head": "2ec626da9bdfb9982bc2f1358b7047f1041a8373",
+    "head_matches_requested_target": true,
+    "preexisting_worktree_dirty": true,
+    "changes_created_by_this_task": [
+      "experiments/g011_g013_synthesis_20261022/"
+    ],
+    "commit_created": false
+  },
+  "artifact_hashes": [
+    {
+      "path": "experiments/g011_g013_synthesis_20261022/evidence_manifest.json",
+      "sha256": "2734f865f1516bb34d7d0e2e6a472337f54a0097d2586e21379eb3e9394de8ed"
+    },
+    {
+      "path": "experiments/g011_g013_synthesis_20261022/MECHANISM_SYNTHESIS.md",
+      "sha256": "4c3779321f5ba0bdeae536cc94cca1ef8d6fb576f61f55377047170003582c7a"
+    },
+    {
+      "path": "experiments/g011_g013_synthesis_20261022/meta_intent_draft.json",
+      "sha256": "434da42dd62e7d7d2254eabb09e8c289ff239fd62ccfde123b9b6fafd7e81144"
+    },
+    {
+      "path": "experiments/g011_g013_synthesis_20261022/implementation_contract.json",
+      "sha256": "a346f79c0035c6d7a591918cca37d2044fbb7a95e693bafcda01054e790312f8"
+    }
+  ],
+  "self_hash_policy": "validation_manifest.json excludes its own hash to avoid recursive self-reference; compute its transport hash after validation.",
+  "checks": [
+    {
+      "id": "V01",
+      "check": "Parse every JSON artifact with PowerShell ConvertFrom-Json.",
+      "status": "passed",
+      "count": 4
+    },
+    {
+      "id": "V02",
+      "check": "Recompute SHA-256 for every evidence_manifest source and compare exactly.",
+      "status": "passed",
+      "count": 17
+    },
+    {
+      "id": "V03",
+      "check": "Require unique evidence claim IDs and resolve every Cxx reference from synthesis, intent, and contract.",
+      "status": "passed",
+      "declared_claim_count": 15,
+      "referenced_claim_count": 15
+    },
+    {
+      "id": "V04",
+      "check": "Require G11, G12, and G13 keys in implementation_contract.generation_mapping.",
+      "status": "passed",
+      "count": 3
+    },
+    {
+      "id": "V05",
+      "check": "Require local tests, small_scale_gate, frozen_56_promotion_gate, runtime_invariants, fail_closed_rules, budgets, and telemetry sections.",
+      "status": "passed",
+      "count": 7
+    },
+    {
+      "id": "V06",
+      "check": "Require meta draft to declare controller authorship and false Research Meta, Graph-target, implementation, and evaluation authorization flags.",
+      "status": "passed"
+    },
+    {
+      "id": "V07",
+      "check": "Scan generated artifacts for credential-value patterns and private-key headers.",
+      "status": "passed"
+    },
+    {
+      "id": "V08",
+      "check": "Confirm Git branch and HEAD and that the target directory is the only task-created Git path.",
+      "status": "passed"
+    }
+  ],
+  "trace_sampling": {
+    "task_trajectories_read": 0,
+    "raw_logs_read": 0,
+    "aggregate_or_manifest_sources_only": true
+  },
+  "known_non_validation": [
+    "No Research Meta schema validation was claimed because the controller-authored draft intentionally lacks packet-bound neutral selection sections.",
+    "No implementation, local implementation test suite, provider probe, small panel, or frozen 56-task evaluation was run.",
+    "No claim is made that the integrated mechanism reaches 40/56."
+  ]
+}

@@ -1,0 +1,159 @@
+{
+  "binding": {
+    "admission_sha256": "c3205fb07022a778cff9a76c0f2e8f1b3c21c6fa0378c444a029993b8b7233bb",
+    "agent_sha256": "31d1b3fdbb21f6313b5e8f0a1ca2eacd6096ac2922cfe5abacec5218cdd1a66a",
+    "batch_sha256": "576a7d718bbe54d94ce6b7c32b92530394f55b39865d718a376320a5b11d51f7",
+    "candidate_tree_sha256": "87eaf0f67c9bb237d8a7d6083441fe66abe903418721d589e32d2c9c403e1208",
+    "description_mode": "full_db_description_no_hints",
+    "g1_graph_sha256": "c8d35afeb677d018c76711737df8c30b468e1574c18d7450702188a857196b9b",
+    "parent_tree_sha256": "8c96392f656d38454272257b7ba78583fc46f22ca1fa3863b9a066a9a20a387d",
+    "policy_sha256": "d6e022a462960e961087e618087dcd1d884bab49389acae64c463583d8643797",
+    "query_count": 56,
+    "query_timeout_sec": 1200,
+    "registry_sha256": "7aba9897753c6a3394f1a6d0b27df35a39ac05ca099b815a1e2b9c6d931218ff",
+    "research_result_sha256": "56d5a3b376a335cca3f4289ee955addaa5ae017a6d7c3b14915bfe9b2b5411e3",
+    "runner_sha256": "7e8cd381690bee6551f6ee2047a1abdf1b1993433fa03edfdd36ce3804573549",
+    "stage_sha256": "ce017cf6820b6dc9b329d30824ecee4305dbf3e695dbb298676c5264d70f8b00",
+    "timeout_scoring": "timeout_failure_in_fixed_56_denominator"
+  },
+  "edges": [
+    {
+      "relation": "motivated_by",
+      "source": "problem:g002",
+      "target": "evidence:g001"
+    },
+    {
+      "relation": "explains",
+      "source": "hypothesis:g002",
+      "target": "problem:g002"
+    },
+    {
+      "relation": "tests",
+      "source": "experiment:g002",
+      "target": "hypothesis:g002"
+    },
+    {
+      "relation": "observes",
+      "source": "evidence:g002",
+      "target": "experiment:g002"
+    }
+  ],
+  "evidence_sha256": "00e22c394ea30814c5bf1997fcbcf3a9d9419d1e3a6f4567a185add25b4725bb",
+  "generation": 2,
+  "nodes": [
+    {
+      "evidence_fact_ids": [
+        "pre_event_failures",
+        "fatal_cause_unknown",
+        "fatal_not_reserve",
+        "fixed_outcomes",
+        "terminal_coverage",
+        "unpaired_variation"
+      ],
+      "id": "problem:g002",
+      "kind": "problem",
+      "non_goals": [
+        "No change to the frozen 56 tasks, no-hint protocol, 1200 s wall limit, tool set, prompt/policy text, or strict all-56 scoring with timeouts counted as failures",
+        "No second arm, sham run, probe run, or repeated score-tuning run; the only extra observable is the in-run instrument-inertness guard",
+        "No reading, classification, or pattern-matching of raw FatalError message text, since the frozen records contain no safe allowlisted subtype; localization must be positional only",
+        "No answer, validator, held-out data, or raw-trace inspection, and no claim that any answer content is the lever",
+        "No attempt to explain or repair the four early-log-end timeout intervals, the six-to-zero timeout transition, or the reserve's causal status, none of which this instrumentation addresses",
+        "No claim that localization implies improvement, and no claim that the two aborts originate in the code parent rather than in harness-level termination"
+      ],
+      "scope": "Structural, answer-blind observation of the per-task lifecycle boundary for tasks that abort before their first logged event, inside the unchanged frozen 56-task no-hint evaluation with a 1200 s per-task wall limit and strict pass over all 56 tasks with timeouts as failures.",
+      "statement": "Under the unchanged protocol (frozen 56 no-hint tasks, 1200 s per-task wall limit, timeout counted as failure, strict pass over all 56), the G1 child removed the recorded timeout bucket (6 -> 0) but did not improve strict success: strict passes fell from 33 to 30 and two failures appeared that have zero recorded LLM requests, zero LLM responses, zero tool calls and no completed-event span, with no reserve trigger and an outer error class of FatalError for which the allowlisted message-pattern classifier finds no subtype. These two failures are the only bucket whose recorded failure mode differs from G0, and no current card explains them: the reserve trigger path was not recorded as binding on them, and no agent action was logged at all. Because both runs are single and unpaired, the G0->G1 outcome shift is descriptive and is not a treatment effect, and the missing root cause is not itself a reason to abandon the line; the bounded question it leaves is where in the per-task lifecycle execution stops for these two tasks."
+    },
+    {
+      "evidence_fact_ids": [
+        "pre_event_failures",
+        "fatal_cause_unknown",
+        "fatal_not_reserve",
+        "event_span_limit",
+        "fixed_outcomes"
+      ],
+      "falsification_condition": "Falsified or void if any of the following holds in the child run: (a) an abort with zero logged events records a highest-reached stage at or beyond the stage at which the first logged event is emitted, so the structural record contradicts the event record and the instrument has no localization value; (b) the recorded stages for such aborts cannot be ordered consistently by the structural fields, so no mechanism reach is established; (c) no pre-event abort occurs at all, in which case the mechanism is untested rather than confirmed, exactly as a reserve trigger binding on zero tasks is untested even if the partition moves; or (d) the guard fails: if tasks that reach the first logged event normally show newly introduced stage records, systematically shifted completed-event spans or call counts, or any change in trigger-binding counts that cannot be plausibly attributed to a single unpaired run, the instrumentation is not inert and no localization inference is drawn.",
+      "id": "hypothesis:g002",
+      "kind": "hypothesis",
+      "possible_counterexample": "The abort may originate outside the code parent entirely, such as harness-level process teardown, resource exhaustion, or a container kill; a stage marker would then show a boot-stage abort that no agent-side change can affect, so localization would identify a harness condition rather than a policy-addressable mechanism. A second counterexample is event buffering, where trace records are written only at completion, in which case zero recorded events may reflect lost writes rather than the true lifecycle position and the stage marker could disagree with the real order. A third is non-reproducibility: the two aborts may not recur in one 56-task run, leaving the instrument exercised on no failure and the question still open.",
+      "prediction": "In the single formal child run over the identical frozen 56 no-hint tasks with the identical 1200 s per-task limit and strict scoring, expected (exploratory, not guaranteed): (1) any task that aborts with zero logged events records a highest-reached lifecycle stage strictly below the first-logged-event stage, and the stage ordering is consistent across such aborts, so the bucket is localized rather than described only as 'before the first logged event'; (2) tasks that behave as in the parent show stage records that are a consistent prefix of the recorded event sequence, with no systematic change in outcome partition, completed-event spans, call counts, or trigger-binding counts, which is the instrument-inertness expectation rather than an assumed property; (3) the outcome is still reported as strict passes over all 56 tasks with timeouts counted as failures, and is not expected to rise from instrumentation alone.",
+      "statement": "In the frozen zero-start code parent, the two G1 failures aborted before any LLM request, response or tool call was logged while the harness recorded an outer FatalError with no allowlisted subtype. If such an abort occurs at a per-task lifecycle stage that precedes the first logged event, then persisting which lifecycle stages were reached, and in which order, for every task will place the highest-reached stage for future aborts strictly below the stage at which the first logged event is emitted, and will do so in a consistent order across occurrences. This is a localization question about mechanism reach, not a claim that any outcome improves, and it requires neither the failure text nor any answer content."
+    },
+    {
+      "candidate_source_tree_sha256": "87eaf0f67c9bb237d8a7d6083441fe66abe903418721d589e32d2c9c403e1208",
+      "code_parent": "g001_deadline_reserve",
+      "evaluation_run_id": "baseline_g002_lifecycle_nohint_56_v1",
+      "evidence_fact_ids": [
+        "pre_event_failures",
+        "fatal_cause_unknown",
+        "fatal_not_reserve",
+        "event_span_limit",
+        "missing_terminal_meaning"
+      ],
+      "expected_behavior": "For tasks that behave as in the parent, the stage record is a consistent prefix of the recorded event sequence and the outcome partition matches the parent, so instrumentation is inert. For a task that aborts before its first logged event, the stage record terminates at a stage below the first-logged-event stage while the outer error class remains FatalError, converting 'zero events' into a positional localization. Verdicts remain whatever the unchanged strict evaluation assigns, no improvement is expected or claimed from instrumentation alone, and the result is still reported as strict passes over all 56 tasks with timeouts counted as failures.",
+      "frozen_evaluation": "Exactly one formal candidate evaluation: a single child run of the same frozen set of 56 no-hint tasks, the same single 1200 s per-task wall limit, the same harness and evidence-integrity binding, and the same strict pass criterion applied over all 56 tasks with timeouts still counted as failures. No task is added, removed, re-scored, or reinterpreted; no partial-log content overrides a timeout verdict; no held-out data or prior graphs are consulted; no control arm, sham run, or probe run is added. The child's partition is compared against the parent's recorded partition of 30 strict pass / 21 known strict fail / 3 unknown verdict / 2 other terminal failure / 0 timeout, together with terminal-coverage, completed-event-span, call-count and trigger-binding observables; because this is one unpaired run over small counts, any difference is reported as a small-count observation and not as an established causal effect.",
+      "id": "experiment:g002",
+      "implementation_scope": "Bounded and non-searching: one per-task lifecycle stage recorder at the harness boundary, plus one persisted per-task field carrying the ordered stage list and last reached stage; no new tool, no new task, no second arm, no prompt or policy sentence, no change to timing, dispatch, retries, error handling, or scoring, and no message-text classification. One implementation detail must be confirmed before coding: the code parent must expose a per-task record created before the agent's first LLM call (the same runner boundary at which experiment:g001 already added a hook); if the only available record is written after the first logged event, the recorder must be placed at the outermost per-task entry point, which still distinguishes 'no per-task record' from 'per-task record whose stage prefix stops below the first event'. Determinism caveat accepted: a single unpaired run cannot separate instrumentation effects from run-to-run variance, the guard is coarse, and stopping earlier in a stage list costs no strict passes by construction.",
+      "intervention": "One bounded, answer-blind change to the g001_deadline_reserve code parent at the per-task harness boundary: emit and persist an ordered lifecycle stage record per task (task record created, agent constructed, prompt assembled, first-event boundary reached, completed, terminal record written) plus the already-recorded outer error class, and mark the last stage reached before the task ends. Nothing else changes: policy and prompt text, tools, timing limit, task set, and scoring stay exactly as in the parent, and the existing 120 s reserve and its per-task binding log are untouched. FatalError message text is never read or classified, because the frozen records contain no safe allowlisted subtype; the classification is purely positional.",
+      "kind": "experiment",
+      "negative_control": "An in-run instrument-inertness guard, not a second arm and not a second run. (A) Inertness: tasks that reach the first logged event must show a consistent stage-prefix ordering with no newly introduced calls and no systematic shift in completed-event spans, call counts, or the parent's trigger-binding counts. (B) Locality: a localization claim may come only from tasks whose stage record terminates below the first-logged-event stage; an abort that reached the event boundary cannot be attributed to the instrument's pre-event coverage. (C) Validity: if no pre-event abort occurs, the mechanism is untested regardless of how the outcome partition moves. (D) Scope: if the harness itself fails before creating any per-task record, only the outer error class is reported and the instrument's scope is void. The guard is a within-run conditioning check on small counts and cannot by itself establish a causal benefit."
+    },
+    {
+      "artifact_refs": {
+        "launch_manifest_sha256": "2703ea7411a4e61bf926b212afb55b52877bc5079de5538f4ed0c1e37d334f0f",
+        "pre_execution_sha256": "1d372418872fe674ab7a03139d203fecd49cbf0f2320e95531996ed017ec4a2a",
+        "progress_sha256": "838dc0ac910384a5f979652f24f5e0c3f9d2f7d97f860a096906697d2f4d290e",
+        "summary_sha256": "d18d1650670d5ed362c3a0920053e60f9243adbb3cafb4e3375ad11cf50ddd02",
+        "trace_manifest_sha256": "bd8083f263254fff2e4e8cfa68bc577220928fecd0809ed88c1a781df02003f1"
+      },
+      "completed_count": 54,
+      "ended_count": 56,
+      "final_answer_nonempty_count": 53,
+      "frozen_task_count": 56,
+      "id": "evidence:g002",
+      "kind": "evidence",
+      "last_progress_by_status": {
+        "completed:normalized": 54,
+        "timeout:first_llm_call_returned": 2
+      },
+      "lifecycle_record_count": 56,
+      "lifecycle_stage_counts": {
+        "agent_constructed": 56,
+        "agent_run_ended": 54,
+        "agent_run_started": 56,
+        "child_entered": 56,
+        "child_process_exited": 56,
+        "child_spawn_requested": 56,
+        "dependencies_ready": 56,
+        "first_llm_call_entered": 56,
+        "first_llm_call_returned": 56,
+        "inputs_validated": 56,
+        "normalized": 54,
+        "task_claimed": 56,
+        "task_summary_written": 56,
+        "wall_timeout": 2
+      },
+      "limits": [
+        "A single unpaired run cannot establish a causal benefit over G1.",
+        "No pre-event terminal failure means the localization hypothesis is untested in this run.",
+        "Lifecycle stage coverage does not prove instrumentation inertness or answer quality.",
+        "Missing strict verdicts remain unknown without shrinking the fixed denominator."
+      ],
+      "other_terminal_failure_count": 0,
+      "query_wall_timeout_sec": 1200,
+      "reserve_trigger_counts": {
+        "record_missing": 2,
+        "unbound": 54
+      },
+      "score_policy": "completed_and_strict_true_over_all_56;timeout_is_failure",
+      "statement": "G2 lifecycle-stage instrumentation on the frozen no-hint 56; 1200-second timeouts count as failures.",
+      "strict_pass_count": 30,
+      "strict_pass_rate_all": 0.535714,
+      "strict_verdict_known_count": 51,
+      "strict_verdict_missing_completed_count": 3,
+      "timeout_failure_count": 2
+    }
+  ],
+  "pre_execution_sha256": "1d372418872fe674ab7a03139d203fecd49cbf0f2320e95531996ed017ec4a2a",
+  "schema_version": "dab_research_graph_generation_v1",
+  "status": "four_nodes_complete"
+}

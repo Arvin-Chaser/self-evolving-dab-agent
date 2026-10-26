@@ -1,0 +1,67 @@
+{
+  "schema_version": "research_graph_opportunity_registry_v1",
+  "status": "research_memory_not_graph_evidence",
+  "scope": "G0-G10 new-line research only; no task content or official answer material",
+  "axes": [
+    {
+      "axis_id": "task_planning",
+      "archived_idea": "A task-obligation and evidence-progress ledger was proposed in a G3 research attempt.",
+      "engineering_blocker": "The reviewed G2 parent had no structured key linking a tool event to a request-derived obligation. A result digest could show novelty but not task relevance.",
+      "source_path": "experiments/research_graph_baseline_20261016/g003_measurement_engineering_gate_001.md",
+      "source_sha256": "a7edb8203970c7014a162c7d7ddcdd1b2e8654fc3f9603017b152d9d61ad2e03",
+      "unresolved_question": "Can a future runtime mechanism form and update task-level subgoals using the agent's legitimate task and tool context without exporting that content to Research Meta?",
+      "next_no_task_check": "Inspect the current parent interface and exercise synthetic task, tool-result, and subgoal-binding cases; a passing check would establish interface feasibility, not benchmark benefit.",
+      "evidence_status": "unrun_idea_with_verified_historical_blocker"
+    },
+    {
+      "axis_id": "data_grounding",
+      "archived_idea": null,
+      "engineering_blocker": null,
+      "source_path": null,
+      "source_sha256": null,
+      "unresolved_question": "Which agent-visible schema or source signals could support a bounded grounding mechanism, and how could its operation be measured without sharing task or query contents with Meta?",
+      "next_no_task_check": "Map the existing task-description and database-tool interfaces with synthetic schemas; do not infer answer correctness from structural coverage.",
+      "evidence_status": "open_interface_question_not_negative_evidence"
+    },
+    {
+      "axis_id": "tool_execution",
+      "archived_idea": "A G7 attempt proposed safely cancelling an in-flight query_db call.",
+      "engineering_blocker": "The scoped query_db backends exposed no uniform cancellation handle or timeout parameter to the dispatch hook; the candidate was blocked before formal evaluation.",
+      "source_path": "experiments/research_graph_baseline_20261016/g007_candidate_001/scoped_source/BLOCKED.md",
+      "source_sha256": "4e9eb6f02cf3f70205fdbc726fbafd2119818996532c749f04a4da1ab7911f43",
+      "unresolved_question": "Does a safe backend-specific deadline interface exist without changing unrelated query behavior or leaking task content?",
+      "next_no_task_check": "Use synthetic backend calls to examine timeout and result-write contracts before proposing any runtime intervention.",
+      "evidence_status": "unrun_idea_with_verified_historical_blocker"
+    },
+    {
+      "axis_id": "state_evidence",
+      "archived_idea": "The G3 obligation-progress idea also raised a cross-turn state question.",
+      "engineering_blocker": "The old trace contained calls and result previews but no reliable obligation-to-evidence binding key.",
+      "source_path": "experiments/research_graph_baseline_20261016/g003_measurement_engineering_gate_001.md",
+      "source_sha256": "a7edb8203970c7014a162c7d7ddcdd1b2e8654fc3f9603017b152d9d61ad2e03",
+      "unresolved_question": "What explicit state could the runtime agent maintain to distinguish unresolved subgoals from mere repeated calls?",
+      "next_no_task_check": "Probe synthetic state updates and failure fallback without relying on raw call counts as a progress label.",
+      "evidence_status": "unrun_idea_with_verified_historical_blocker"
+    },
+    {
+      "axis_id": "verification_answer",
+      "archived_idea": null,
+      "engineering_blocker": null,
+      "source_path": null,
+      "source_sha256": null,
+      "unresolved_question": "Do structural answer gates affect semantic verification, or only add model turns? The completed Graphs do not answer this.",
+      "next_no_task_check": "Distinguish structural gate coverage from answer-quality evidence in any future mechanism specification.",
+      "evidence_status": "open_mechanism_question_not_negative_evidence"
+    },
+    {
+      "axis_id": "budget_recovery",
+      "archived_idea": null,
+      "engineering_blocker": null,
+      "source_path": null,
+      "source_sha256": null,
+      "unresolved_question": "Can a recovery policy avoid converting timeouts into other terminal failures? Existing unpaired runs do not establish this.",
+      "next_no_task_check": "Verify the exact timeout and terminal-write interface with synthetic boundary cases before any formal experiment.",
+      "evidence_status": "open_mechanism_question_not_negative_evidence"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "claim_boundaries": {
+    "benchmark_benefit_claim_allowed": false,
+    "causal_claim_allowed": false,
+    "semantic_support_claim_allowed": false,
+    "strict_outcome_is_descriptive_only": true,
+    "zero_binding_means_untested": true
+  },
+  "documentation_correction": {
+    "guidance_suppressed_no_state_count": 0,
+    "note": "The 1,381 value counts recorded LLM calls; it is not a no-active-state suppression count. The specialized extractor's formal_run_performed=false and evaluation_run=false are mechanism-only no-claim fields; formal completion is established by the terminal receipt and Evidence draft together.",
+    "recorded_llm_call_count": 1381
+  },
+  "evidence_status": "independently_validated",
+  "formal_run_status": "completed",
+  "generation": 12,
+  "graph_closure_eligible": true,
+  "mechanism_counts": {
+    "accepted_record": 0,
+    "consistent_action": 0,
+    "contradicted_action": 0,
+    "directive": 0,
+    "record_attempt": 0,
+    "visible_ref": 0
+  },
+  "mechanism_status": "untested",
+  "privacy_status": "passed",
+  "schema_version": "g012_independent_research_review_v1",
+  "source_hashes": {
+    "closure_draft": "82249dda01bd2e477cf11ca0fd82718ad55cd991283b60030bfcfc399a283dba",
+    "deterministic_verification": "df441b931c2a2441b9547b493aba6604339da2c3a96318c67691831622240524",
+    "evidence_draft": "8eba8f42a75cb9b94f59c2ad14f4a3f5de2e2222dcdd22c9b33640d08e980495",
+    "launch_claim": "11bf6ab4c23519a6cfa0c9c618f8655feb3c3a28441d5f0c9fd343d09d5b2838",
+    "launch_manifest": "f63ada35052b8d08ca6186ab2658ca3483f78f9b8c400b529dad9a883f5ce93c",
+    "outcome": "5dd03f24c67fc5f03c75224a6504c12938ad60b9cc6a9ffef0e4f69250fb82c8",
+    "pre_execution": "e7f6d802bc5c633168d3d90fde34e8bd54f13e2cee6b4d1961f94ea7b9d75848",
+    "preflight": "3a1c864714a4205f60d567a66e312caccd5236723110436747150ac296b2eeae",
+    "privacy": "31f30c96f5750baa05394d0714e9bd1a26a643d60d923a22e6769519fe44ec8e",
+    "specialized": "beb7969dc1e33b547e343537ff7d07a83f4a99e953774cef3582b3a9f889b76a",
+    "terminal_receipt": "86ac90a7b925daf58a7f9453619cad258b0df54c4ba4f1ffb3d064a6821a8fb1"
+  },
+  "status": "passed_with_documentation_correction",
+  "verified_counts": {
+    "completed": 51,
+    "completed_strict_verdict_unknown": 3,
+    "ended": 56,
+    "known_strict_fail": 18,
+    "other_terminal_failure": 0,
+    "strict_pass": 30,
+    "timeout_failure": 5
+  }
+}

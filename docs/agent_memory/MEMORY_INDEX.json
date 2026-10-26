@@ -1,0 +1,76 @@
+{
+  "schema_version": "1.0",
+  "purpose": "Route agents to the smallest authoritative research-memory slice without preloading cold history.",
+  "startup": {
+    "required": [
+      "docs/agent_memory/CURRENT_STATE_BRIEF.md"
+    ],
+    "optional_router": "docs/agent_memory/MEMORY_INDEX.json",
+    "maximum_required_file_bytes": 8192,
+    "full_cold_preload_forbidden": true
+  },
+  "canonical_ownership": {
+    "hot_current_boundary": "docs/agent_memory/CURRENT_STATE_BRIEF.md",
+    "detailed_current_state": "docs/agent_memory/CURRENT_STATE.md",
+    "safe_next_actions": "docs/agent_memory/HANDOFF.md",
+    "architecture_and_terms": "docs/agent_memory/PROJECT_OVERVIEW.md",
+    "decisions_and_corrected_beliefs": "docs/agent_memory/DECISIONS.md",
+    "experiment_history": "docs/agent_memory/EXPERIMENTS.md",
+    "environment_and_operations": "docs/agent_memory/ENVIRONMENT.md",
+    "historical_session_provenance": "docs/agent_memory/HISTORY_INDEX.md",
+    "context_cost_incident": "docs/agent_memory/CONTEXT_COST_AUDIT_20261021.md",
+    "memory_governance": "docs/agent_memory/MEMORY_POLICY.md"
+  },
+  "routes": [
+    {
+      "when": "ordinary orientation or status",
+      "read": ["docs/agent_memory/CURRENT_STATE_BRIEF.md"],
+      "mode": "full"
+    },
+    {
+      "when": "changing research direction, interpreting results, or selecting evidence",
+      "read": ["docs/agent_memory/DECISIONS.md", "docs/agent_memory/EXPERIMENTS.md"],
+      "mode": "search_by_generation_decision_or_artifact_id"
+    },
+    {
+      "when": "provider, server, database, benchmark, or formal-run work",
+      "read": ["docs/agent_memory/ENVIRONMENT.md", "docs/agent_memory/HANDOFF.md"],
+      "mode": "targeted_sections_then_live_preflight"
+    },
+    {
+      "when": "architecture or terminology is unclear",
+      "read": ["docs/agent_memory/PROJECT_OVERVIEW.md"],
+      "mode": "targeted_sections"
+    },
+    {
+      "when": "old Codex session provenance is required",
+      "read": ["docs/agent_memory/HISTORY_INDEX.md"],
+      "mode": "index_first_never_raw_session_by_default"
+    },
+    {
+      "when": "editing memory structure or Agent orchestration rules",
+      "read": [
+        "docs/agent_memory/MEMORY_POLICY.md",
+        "docs/agent_memory/CONTEXT_COST_AUDIT_20261021.md"
+      ],
+      "mode": "full"
+    }
+  ],
+  "cold_records": [
+    "docs/agent_memory/CURRENT_STATE.md",
+    "docs/agent_memory/HANDOFF.md",
+    "docs/agent_memory/PROJECT_OVERVIEW.md",
+    "docs/agent_memory/DECISIONS.md",
+    "docs/agent_memory/EXPERIMENTS.md",
+    "docs/agent_memory/ENVIRONMENT.md",
+    "docs/agent_memory/HISTORY_INDEX.md",
+    "docs/agent_memory/CONTEXT_COST_AUDIT_20261021.md",
+    "docs/CODEX_HANDOFF.md"
+  ],
+  "machine_memory": {
+    "current_path": "experiments/research_graph_baseline_20261016/research_graph_memory_v19.json",
+    "sha256": "6415bd199798b4c54100afdb81874bd2eca5049a8e24a8aca4ed6694f3f74504",
+    "read_mode": "query_metadata_or_named_nodes_only",
+    "never_treat_as_execution_authorization": true
+  }
+}

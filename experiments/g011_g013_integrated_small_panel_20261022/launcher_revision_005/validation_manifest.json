@@ -1,0 +1,38 @@
+{
+  "schema_version": "g011_g013_integrated_panel_launcher_validation_v5",
+  "created_date": "2026-10-22",
+  "status": "provider_free_local_tests_passed_awaiting_independent_review",
+  "suite": {
+    "command": "python -m pytest -q tests/test_g011_g013_integrated_agent.py tests/test_g013_intent_first_agent.py tests/test_g0131_convergent_agent.py tests/test_g0132_task_workspace.py tests/test_run_multi_query_dynamic_workers.py tests/test_g011_g013_integrated_panel_launcher.py",
+    "exit_code": 0,
+    "passed": 68,
+    "failed": 0,
+    "duration_seconds": 4.32
+  },
+  "focused_launcher_suite": {
+    "command": "python -m pytest -q tests/test_run_multi_query_dynamic_workers.py tests/test_g011_g013_integrated_panel_launcher.py",
+    "exit_code": 0,
+    "passed": 16,
+    "failed": 0,
+    "duration_seconds": 1.25
+  },
+  "F04_negative_tests": [
+    "A dotted module whose lexical source path differs from the hash-bound runner is rejected before invoking the selected Python.",
+    "A selected Python whose find_spec origin differs from the hash-bound runner is rejected before child dispatch."
+  ],
+  "positive_checks": [
+    "The exact selected Python resolves the integrated dotted module to the reviewed hash-bound file.",
+    "The integrated module help path exits zero.",
+    "F01-F03 provider-free tests remain green."
+  ],
+  "forbidden_execution_checks": {
+    "provider_call": false,
+    "database_call": false,
+    "benchmark_task": false,
+    "remote_staging": false,
+    "prepare_only_panel_run": false,
+    "six_question_panel_run": false,
+    "frozen_56_run": false
+  },
+  "next_gate": "Fresh independent revision-005 review before remote staging or prepare-only gate."
+}

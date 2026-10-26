@@ -1,0 +1,57 @@
+# Python and local environments
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+
+# Credentials and provider/runtime configuration
+configs/
+*.pem
+*.key
+*.p12
+*.pfx
+.sandbox-secrets/
+
+# External data, benchmark checkouts, and database state
+external/
+benchmarks/DataAgentBench/
+DataAgentBench/
+dab_corpus/
+*.db
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.duckdb
+
+# Raw traces and generated runtime output
+logs/
+output/
+archive/
+candidates/
+trajectories/
+reports/
+query_workspaces/
+*.jsonl
+*.log
+*.stdout
+*.stderr
+*.tar
+*.tar.gz
+*.tgz
+
+# Scratch, copied workspaces, and machine-local state
+.codex/
+.agents/
+tmp/
+audit_tmp/
+.g*_tmp/
+/g[0-9]*/
+/g[0-9]*r*/
+*_preflight.tar*
+tools/local_bin/
+
+# OS/editor files
+.DS_Store
+.vscode/
+*.Zone.Identifier

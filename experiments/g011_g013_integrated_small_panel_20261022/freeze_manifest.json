@@ -1,0 +1,79 @@
+{
+  "schema_version": "g011_g013_integrated_small_panel_freeze_manifest_v1",
+  "created_date": "2026-10-22",
+  "status": "selection_and_protocol_frozen_not_executed",
+  "panel_id": "g011_g013_integrated_small_panel_v1_20261022",
+  "git_target": {
+    "branch": "repair/patents-feedback-analyzer-v4",
+    "head": "2ec626da9bdfb9982bc2f1358b7047f1041a8373",
+    "dirty_worktree_preserved": true,
+    "commit_created": false
+  },
+  "parent_evidence": {
+    "implementation_contract_sha256": "a346f79c0035c6d7a591918cca37d2044fbb7a95e693bafcda01054e790312f8",
+    "repair_manifest_sha256": "7e919fc80c8bbdcbd93653cf8d80026bab42929b7e91e01f215cde46ccafe5c4",
+    "repair_validation_sha256": "98d45828b534ece2dd6d50e387fb00fd1c108a5fe158ad384ccec40d97459e58",
+    "independent_review_002_sha256": "ff901bc92c30702f59f0e76c533500be3f4a30bb663097e0abed3bef647a657d",
+    "independent_review_002_validation_sha256": "36a26e2a45bfc0c06e02bb54c0e89a75804b97e5d1bf719ad8c564c77407e527",
+    "g013_parent_task_manifest_sha256": "576a7d718bbe54d94ce6b7c32b92530394f55b39865d718a376320a5b11d51f7",
+    "g013_formal_summary_sha256": "1e05433f487322b642316548b93d168c6a7ad6c405e796da88cf8cc426b3478c",
+    "g013_outcome_partition_sha256": "c4bdcb7f23682d286b15e5003ff6ba9dc74413564220e04157954c1cab5f29f3"
+  },
+  "frozen_artifacts": {
+    "anonymous_outcome_index_map": {
+      "path": "experiments/g011_g013_integrated_small_panel_20261022/anonymous_outcome_index_map.json",
+      "sha256": "4c04756335b4df51eea7171d63058680c96a5053addfab0c00c7c5a0f594994a"
+    },
+    "anonymous_task_manifest": {
+      "path": "experiments/g011_g013_integrated_small_panel_20261022/anonymous_task_manifest.json",
+      "sha256": "af8ceffdb56bdd33e9dbe57edda9d4d741521cbea00eb5a17a8f1c4adb8d3aa9"
+    },
+    "operational_batch": {
+      "path": "experiments/g011_g013_integrated_small_panel_20261022/operational_batch.json",
+      "sha256": "7f00732f7811c441f5127f78f7b931d8fb3635218637bf9b88fe59b9aee30978",
+      "contains_task_identifiers": true,
+      "research_export_allowed": false
+    },
+    "protocol": {
+      "path": "experiments/g011_g013_integrated_small_panel_20261022/protocol.json",
+      "sha256": "4d941b9d1ffb736cc967cbb0fbba2e1205df77d8ca673a268e83cb110ac01035"
+    }
+  },
+  "selection_summary": {
+    "seed_sha256": "6a45ab11d91311f92d1e715765cce8be206e299ece5ebc6353e5ea06ddea82fc",
+    "selected_manifest_indices_zero_based": [18, 21, 27, 37, 38, 41],
+    "selected_manifest_ordinals_one_based": [19, 22, 28, 38, 39, 42],
+    "cohort_counts": {
+      "known_strict_fail": 3,
+      "strict_verdict_unknown": 1,
+      "timeout_failure": 1,
+      "strict_pass": 1
+    },
+    "task_text_or_answer_used_for_selection": false
+  },
+  "verification": {
+    "remote_read_only_mapping": true,
+    "remote_batch_hash_matched": true,
+    "remote_summary_hash_matched": true,
+    "manifest_rows_unique_and_complete": true,
+    "reference_outcome_counts_matched_g013_evidence": true,
+    "operational_batch_resolves_exact_selected_indices": true,
+    "json_parse_checks_passed": true
+  },
+  "execution_boundary": {
+    "panel_executed": false,
+    "prepare_only_executed": false,
+    "launch_claim_created": false,
+    "provider_calls": 0,
+    "database_calls": 0,
+    "benchmark_tasks": 0,
+    "meta_calls": 0,
+    "graph_mutations": 0,
+    "formal_56_task_run": false
+  },
+  "next_required_gate": {
+    "action": "implement or stage an isolated reviewed batch launch path, then run provider-free prepare-only verification",
+    "reason": "The generic multi-query runner does not currently pass integrated mode to its child runner.",
+    "panel_result_claimed": false
+  }
+}

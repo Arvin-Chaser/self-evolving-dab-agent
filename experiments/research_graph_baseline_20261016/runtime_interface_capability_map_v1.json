@@ -1,0 +1,51 @@
+{
+  "schema_version": "research_graph_runtime_interface_capability_map_v1",
+  "status": "source_verified_capabilities_not_launch_approval",
+  "code_parent_generation": 9,
+  "code_parent_tree_sha256": "206c4f5186a66d72b851aa888eb75d975d5ce2085970a322881997b119f16d0d",
+  "sources": [
+    {
+      "path": "experiments/research_graph_baseline_20261016/g009_candidate_001/repo/external/DataAgentBench_official/common_scaffold/DataAgent.py",
+      "sha256": "ea64b4e2b54ca32545c006d9d2aa77ad3d788ecf337b50c898b268631b24f80a"
+    },
+    {
+      "path": "experiments/research_graph_baseline_20261016/g009_candidate_001/repo/experiments/run_dab_tool_agent.py",
+      "sha256": "9322c6091225cc4a4123c04d048bc8494a2606e3a15cc44117593cdc170eb3e4"
+    }
+  ],
+  "capabilities": [
+    {
+      "name": "agent_visible_task_and_database_description",
+      "source": "DataAgent.__init__ initializes self.messages from the task request and supplied database description.",
+      "verified_exists": true,
+      "research_meta_visibility": "prohibited_raw_content",
+      "runtime_behavior_use": "potentially_permitted_subject_to_separate_no_leak_review",
+      "unknown": "No verified structured task decomposition or obligation IDs are exposed."
+    },
+    {
+      "name": "registered_tool_dispatch_and_results",
+      "source": "DataAgent._handle_tool_call dispatches registered tools and appends a tool response to self.messages; success is local to the base method.",
+      "verified_exists": true,
+      "research_meta_visibility": "prohibited_raw_arguments_and_results",
+      "runtime_behavior_use": "potentially_permitted_subject_to_separate_no_leak_review",
+      "unknown": "The current hook has no general tool-success or task-relevance signal."
+    },
+    {
+      "name": "model_response_and_terminal_boundary",
+      "source": "DataAgent.handle_reponse processes model tool calls; the G9 parent wraps the terminal path and distinguishes later model responses.",
+      "verified_exists": true,
+      "research_meta_visibility": "structural_anonymous_fields_only",
+      "runtime_behavior_use": "verified_for_G9_gate_only",
+      "unknown": "A verified answer gate does not establish semantic answer checking."
+    },
+    {
+      "name": "structured_obligation_evidence_binding",
+      "source": "No obligation-to-tool-event key was found in the G2 engineering review; the G9 parent has not been verified to add one.",
+      "verified_exists": false,
+      "research_meta_visibility": "none",
+      "runtime_behavior_use": "requires_interface_investigation",
+      "unknown": "A safe synthetic binding design and its failure behavior remain to be established."
+    }
+  ],
+  "boundary_rule": "The Research Meta may reason about source-verified capabilities, not read raw task content. A later runtime agent may use its own legal task, schema, and tool context only after an independent no-leak and protocol review."
+}

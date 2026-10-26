@@ -1,0 +1,59 @@
+{
+  "schema_version": "g011_g013_integrated_panel_launcher_independent_validation_v1",
+  "validated_at_utc": "2026-10-22T00:01:48.9012956Z",
+  "revision": "launcher_revision_005",
+  "status": "accepted_provider_free_validation_passed",
+  "git": {
+    "head": "2ec626da9bdfb9982bc2f1358b7047f1041a8373",
+    "branch": "repair/patents-feedback-analyzer-v4",
+    "dirty_worktree_preserved": true
+  },
+  "hash_gate": {
+    "passed": true,
+    "checked_manifest_binding_count": 12,
+    "selected_python_module_origin_samefile": true,
+    "post_test_source_hashes_unchanged": true
+  },
+  "suite": {
+    "command": "python -m pytest -q tests/test_g011_g013_integrated_agent.py tests/test_g013_intent_first_agent.py tests/test_g0131_convergent_agent.py tests/test_g0132_task_workspace.py tests/test_run_multi_query_dynamic_workers.py tests/test_g011_g013_integrated_panel_launcher.py",
+    "exit_code": 0,
+    "passed": 68,
+    "failed": 0,
+    "duration_seconds": 4.30
+  },
+  "focused_launcher_suite": {
+    "command": "python -m pytest -q tests/test_run_multi_query_dynamic_workers.py tests/test_g011_g013_integrated_panel_launcher.py",
+    "exit_code": 0,
+    "passed": 16,
+    "failed": 0,
+    "duration_seconds": 1.26
+  },
+  "direct_smokes": [
+    {
+      "command": "python experiments/run_g011_g013_integrated_small_panel.py --help",
+      "exit_code": 0
+    },
+    {
+      "command": "python -m experiments.run_dab_tool_agent_g011_g013_integrated --help",
+      "exit_code": 0
+    }
+  ],
+  "source_hashes": {
+    "experiments/run_multi_query_baseline.py": "fa2b2dcf1d68dcf07d93353ea4bbf2026d979ecef77a6b907b8581108b85d331",
+    "experiments/run_g011_g013_integrated_small_panel.py": "6d414ff7abe7325e8b34f5fbc9369f9cca816410bf78e616c92087f035a1edcd",
+    "tests/test_run_multi_query_dynamic_workers.py": "f81887f81c9a8e1c0e1c1d1b3191bcb891f922c173c4d959318b9d3e6796eda7",
+    "tests/test_g011_g013_integrated_panel_launcher.py": "e16bd48239d7eff9025d6f86b602c17e5cc28af4f6f7b664335627acc47c3f68"
+  },
+  "forbidden_execution_checks": {
+    "provider_or_network_run": false,
+    "ssh_run": false,
+    "database_run": false,
+    "benchmark_run": false,
+    "remote_staging": false,
+    "six_question_panel_run": false,
+    "prepare_only_panel_run": false,
+    "frozen_56_run": false
+  },
+  "review_verdict": "accepted",
+  "blocking_findings": []
+}

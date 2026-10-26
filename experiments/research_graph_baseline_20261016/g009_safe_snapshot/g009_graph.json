@@ -1,0 +1,251 @@
+{
+  "binding": {
+    "admission_sha256": "06f7b2b8abc8eb3107177d54fa6663b7cfb0b947c7ed9b4e865654db1be72b12",
+    "batch_sha256": "576a7d718bbe54d94ce6b7c32b92530394f55b39865d718a376320a5b11d51f7",
+    "candidate_tree_sha256": "206c4f5186a66d72b851aa888eb75d975d5ce2085970a322881997b119f16d0d",
+    "description_mode": "full_db_description_no_hints",
+    "generation": 9,
+    "implementation_manifest_sha256": "adee49868b4493eff6f5ad5ec0050a38eada5254a56f03ff669adab3f57e4725",
+    "parent_graph_sha256": "c769fd157db33e7fe2432285d4e15718307f5c7b91dde91ebcf83b19fbca83e8",
+    "parent_tree_sha256": "adeefdde02075bc4ea458f6a74ad1c418dd096e92acd1b262ccb25537bcf4105",
+    "policy_sha256": "d6e022a462960e961087e618087dcd1d884bab49389acae64c463583d8643797",
+    "query_count": 56,
+    "query_timeout_sec": 1200,
+    "registry_sha256": "7aba9897753c6a3394f1a6d0b27df35a39ac05ca099b815a1e2b9c6d931218ff",
+    "research_result_sha256": "919b07ed74339d84e338da7ac30a3942196775d542da587b413fcf6702d15581",
+    "timeout_scoring": "failure_in_fixed_56_denominator"
+  },
+  "edges": [
+    {
+      "relation": "refines",
+      "source": "hypothesis:g009",
+      "target": "hypothesis:g008"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "problem:g009",
+      "target": "evidence:g008"
+    },
+    {
+      "relation": "explains",
+      "source": "hypothesis:g009",
+      "target": "problem:g009"
+    },
+    {
+      "relation": "tests",
+      "source": "experiment:g009",
+      "target": "hypothesis:g009"
+    },
+    {
+      "relation": "observes",
+      "source": "evidence:g009",
+      "target": "experiment:g009"
+    }
+  ],
+  "evidence_sha256": "ea71d0414338e4b8e6a03028e509c86406923f35859feebbf8b61a866dec5178",
+  "generation": 9,
+  "nodes": [
+    {
+      "fact_ids": [
+        "g007_outcome_partition",
+        "g007_evidence_scope",
+        "g008_outcome_partition",
+        "g008_evidence_scope"
+      ],
+      "id": "problem:g009",
+      "kind": "problem",
+      "statement": "G8 supports structural audit exposure across every non-timeout cohort, but it does not show semantic audit quality and explicitly notes that a later return_answer in the same model response can precede model-visible audit feedback. G7 leaves 17 known strict fails, 3 completed strict-verdict unknowns, and 4 timeout/other terminal failures over the fixed 56. The bounded problem is whether a task-agnostic audit whose feedback is guaranteed to precede a later model turn can preserve or improve strict success without increasing timeout or other terminal failures under the exact frozen protocol."
+    },
+    {
+      "fact_ids": [
+        "g007_outcome_partition",
+        "g007_evidence_scope",
+        "g008_outcome_partition",
+        "g008_evidence_scope"
+      ],
+      "falsification_condition": "Mechanism is contradicted if any non-timeout task is audit-negative, any return_answer is dispatched or evaluated before the audit is requested, any return_answer sharing the first proposal's model-response boundary is dispatched, any first return_answer is evaluated before audit, prohibited content is persisted, or behavior changes outside the return_answer audit path. With mechanism supported, the directional association is contradicted if strict pass is at most 31 or timeout plus other terminal failure is at least 5. A strict pass of exactly 32 with an unchanged queue is inconclusive rather than confirmatory.",
+      "id": "hypothesis:g009",
+      "kind": "hypothesis",
+      "possible_counterexample": "The model-response boundary may not be exposed at the hook; forcing a later turn may cause timeouts or other terminal failures; the model may ignore the generic audit instruction; the same-response ordering caveat may not have affected any failing task; and G8's descriptive advantage may be run variance.",
+      "prediction": "Under the fixed 56-task, no-hint, 1200-second, strict/56 protocol, mechanism is expected to be supported if each non-timeout cohort has audit-positive coverage at least 0.8, no audit-negative task exists, and no same-response return_answer dispatches before the audit is model-visible. With mechanism supported, the descriptive directional association is expected if strict pass is at least 33 and timeout plus other terminal failure is at most 4. Completed strict-verdict unknowns remain unknown and are never reclassified.",
+      "statement": "In a child of the verified G8 code parent, intercepting the first return_answer proposal, suppressing any return_answer that shares its model-response boundary, injecting one generic task-agnostic audit instruction, and dispatching only a terminal return_answer from a later model response will make audit exposure structurally effective rather than merely present. This is a mechanism and descriptive-outcome hypothesis, not a claim that semantic verification improved or that any unpaired score change is causal."
+    },
+    {
+      "candidate_source_tree_sha256": "206c4f5186a66d72b851aa888eb75d975d5ce2085970a322881997b119f16d0d",
+      "code_parent": "g008_generic_preterminal_verification_audit",
+      "code_parent_generation": 8,
+      "code_parent_tree_sha256": "adeefdde02075bc4ea458f6a74ad1c418dd096e92acd1b262ccb25537bcf4105",
+      "evaluation_run_id": "g009_verification_turn_gate_nohint_56_v1",
+      "expected_behavior": "The agent and evaluator otherwise behave as in G8. No strict-pass gain is assumed. The run records whether audit feedback was exposed before the terminal answer, the fixed outcome partition, and audit coverage by observed cohort. Missing, ambiguous, or non-terminal cases remain unknown.",
+      "fixed_protocol": {
+        "description_mode": "full_db_description_no_hints",
+        "formal_runs": 1,
+        "frozen_task_count": 56,
+        "hints": false,
+        "other_terminal_failures": "failures_in_fixed_denominator",
+        "per_task_wall_timeout_seconds": 1200,
+        "primary_metric": "completed_and_strict_true_over_all_56",
+        "probe_run": false,
+        "second_arm": false,
+        "sham_run": false,
+        "strict_scoring": "strict_pass_over_all_56",
+        "strict_verdict_unknown": "preserved_as_unknown_not_reclassified",
+        "task_specific_logic": false,
+        "timeouts": "failures_in_fixed_denominator"
+      },
+      "id": "experiment:g009",
+      "implementation_scope": "A new child of the verified G8 tree. Reuse the existing pre-exec return_answer interception, but add only a per-task model-response boundary identifier and a same-response suppression rule. Read only tool_name, hook-local step ordinal, anonymous task index, and the model-response boundary identifier. Do not read return_answer arguments, messages, tool results, answers, hints, validators, raw traces, or task content. Do not change the task set, 1200-second limit, tool set, dispatch outside return_answer gating, result storage, error handling, or scoring.",
+      "interface_status": "unverified: G8 verifies a basic pre-exec interception and generic injection run, but a stable model-response boundary and same-response return_answer suppression are not verified. Prelaunch source and hook tests must prove both while reading no answer content; otherwise no formal run is launched.",
+      "intervention": "On the first pre-exec return_answer proposal for a task, set audit_requested and do not dispatch it. Inject one generic, task-agnostic instruction to re-check the proposed answer against tool observations already in the model context and repair or return it. Suppress any further return_answer proposal that shares the first proposal's model-response boundary identifier. Dispatch and allow evaluation only of the first return_answer from a later model response. If the model-response boundary cannot be observed or the same-response suppression cannot be implemented without reading answer content, do not launch.",
+      "intervention_class": "behavioral_pre_terminal_audit",
+      "kind": "experiment",
+      "measurement_plan": {
+        "cohort_aggregation": "Report task counts and rates separately for strict pass, known strict fail, completed strict-verdict unknown, and timeout plus other terminal failure, always using the fixed 56 as the outcome denominator. For each cohort report audit-positive, audit-negative, and audit-unknown counts and the coverage numerator, denominator, and rate. Never pool cohorts to hide missing coverage. Completed strict-verdict unknown tasks remain a separate unknown queue.",
+        "contradicted_conditions": "Mechanism is contradicted if any audit-negative task exists, a first return_answer is dispatched or evaluated before audit, a same-response return_answer dispatches, prohibited content is persisted, or behavior changes outside the intended return_answer path. With mechanism supported, the directional association is contradicted if strict pass is at most 31 or timeout plus other terminal failure is at least 5.",
+        "coverage_denominator": "The overall outcome denominator is the fixed 56. After the frozen evaluator runs, each cohort denominator is the observed number of tasks in strict pass, known strict fail, completed strict-verdict unknown, or timeout plus other terminal failure. G7 and G8 reference counts are not reused as denominators. Non-timeout coverage is audit-positive tasks divided by that observed non-timeout cohort denominator; timeout and other terminal failure tasks are reported separately with no coverage-rate threshold.",
+        "coverage_threshold": 0.8,
+        "hooks": [
+          "DataAgentWithSelfObservation._handle_tool_call pre-exec: intercept the first return_answer, set audit_requested, inject one generic audit instruction, and suppress return_answer proposals sharing the same model_response_boundary_id",
+          "DataAgentWithSelfObservation._handle_tool_call pre-exec: allow the first return_answer from a later model_response_boundary_id to dispatch and terminate"
+        ],
+        "inconclusive_conditions": "The result is inconclusive if any non-timeout cohort has audit-positive coverage below 0.8, no audit request is observed, the response-boundary interface is unavailable, strict pass is exactly 32 with an unchanged queue, or too many timeout or unknown tasks prevent cohort assessment. Completed strict-verdict unknowns are reported separately and are not reclassified; timeouts and other terminal failures remain failures.",
+        "no_answer_no_hint_boundary": "The hook may read only tool_name, hook-local ordinal, anonymous task index, and model-response boundary identifier during execution. It may persist only anonymous_task_index, hook_local_step_ordinal, model_response_boundary_id, audit_requested, injection_delivered, later_terminal_return_answer_seen, coverage_status, and sidecar_terminal_status. It must not persist, log, expose, or use benchmark answers, hints, validators, expected outputs, task IDs, raw traces, messages, tool results, raw argument payloads, raw tool names, credentials, network content, digest strings, or task content. The audit instruction is generic and task-agnostic. Cohort labels and strict verdicts are joined only after the run from the frozen evaluator and are never read by the agent or hook during execution.",
+        "per_task_negative_rule": "A task is audit-negative if any return_answer is dispatched or evaluated before audit_requested, a return_answer sharing the first proposal's model_response_boundary_id is dispatched or evaluated, the audit request occurs after terminal, injection is attempted but fails while a terminal answer is still dispatched, prohibited content is persisted, or behavior changes outside the return_answer audit path. Audit-negative takes precedence over audit-positive and audit-unknown.",
+        "per_task_positive_rule": "A task is audit-positive when a first pre-exec return_answer proposal is observed, audit_requested is set exactly once, the generic audit instruction is delivered into model-visible context, a terminal return_answer is dispatched or evaluated at a strictly greater hook ordinal and a later model_response_boundary_id than the first proposal, no prohibited content is persisted, and no behavior outside the return_answer audit path changes. Audit-positive is mechanism exposure, not correctness.",
+        "per_task_unknown_rule": "A task is audit-unknown if no terminal return_answer is observed, including timeout or other terminal failure before a terminal answer; the sidecar record is missing; the model-response boundary is ambiguous; the hook injection state cannot be observed; or trace completeness metadata is insufficient. Unknown is never imputed as audit-positive, audit-negative, strict pass, or strict fail.",
+        "reference_not_used_as_denominator": true,
+        "run_before": "All rules, cohort labels, coverage denominator, thresholds, outcome comparisons, and unknown fallbacks are fixed before child implementation or formal execution. No post-run strict verdict, task ID, answer, hint, or validator defines a rule. This selection call performs no evaluation.",
+        "sources": [
+          "live_tool_dispatch.tool_name",
+          "hook_local_step_ordinal",
+          "anonymous_task_index",
+          "model_response_boundary_id",
+          "postrun_trace.completeness_metadata",
+          "frozen_evaluator.cohort_label"
+        ],
+        "supported_conditions": "Mechanism is supported if every observed non-timeout cohort has audit-positive coverage at least 0.8 and no audit-negative task exists. The descriptive directional association is supported if mechanism is supported, strict pass is at least 33, timeout plus other terminal failure is at most 4, and no protocol violation occurs. This is not a causal claim.",
+        "unit": "per_task"
+      },
+      "negative_control": "Prelaunch enabled-versus-disabled hook tests must show that the only behavioral difference is the intended first-return_answer interception, generic audit injection, same-response suppression, and later-turn terminal allowance, with identical dispatch elsewhere, results, timing limit, and scoring. If the audit binds on zero tasks, the mechanism is untested regardless of queue movement. Any prohibited-content persistence, agent-visible read, or behavior change outside the return_answer path invalidates the experiment.",
+      "no_answer_no_hint_boundary": "No task content, answers, hints, validators, expected outputs, raw traces, messages, tool results, raw arguments, credentials, old research lines, or network access may be read or persisted. The only injected instruction is generic and contains no task-specific hint. The system preserves exact 56 tasks, full database description without hints, 1200 seconds per task, strict pass over all 56, unknown verdicts as unknown, and timeouts or other terminal failures as failures."
+    },
+    {
+      "artifact_refs": {
+        "extractor_sha256": "20c953086342ad79e5199c66ac2d478691b4c0e26d80b27b90e451d20597fc15",
+        "input_manifest_sha256": "2ec98552fb63fb771668ce7456cf59c0c3828fc76e56147298a53619e1aeed53",
+        "launch_manifest_sha256": "b5079128c80b4123510dd04c0b5b92f623197dbcc29b1b3077e4bb03377c6769",
+        "parent_graph_sha256": "c769fd157db33e7fe2432285d4e15718307f5c7b91dde91ebcf83b19fbca83e8",
+        "pre_execution_sha256": "c0a091d0cbf2133e6d7ed4af8cf104c917cde2fbda2455bdc8cdc0fd685bcd0f",
+        "preflight_sha256": "1ed18492b7c2b231e846f77e1eda6cdbfbe76bc639018ff0a514ff840263dde4",
+        "progress_sha256": "af9087f4f495c285f7d898bbaf63c3bc1768855e84a85a4df333133c93a3996f",
+        "specialized_evidence_sha256": "7d10131dcfefdf44ed34e5adae5699794c9f3f52c86ab0372fbd8abb55135259",
+        "summary_sha256": "75ef51e506da3695e1a0209286c83b86957daecd99d7d05e5bed05a98e6e2b76"
+      },
+      "completed_count": 54,
+      "ended_count": 56,
+      "frozen_task_count": 56,
+      "id": "evidence:g009",
+      "kind": "evidence",
+      "limits": [
+        "Later-turn audit exposure is structural; semantic verification quality is not observed.",
+        "Forcing a later model turn can consume deadline or iteration budget.",
+        "Timeouts are failures in fixed 56; unavailable records remain unknown.",
+        "Three completed strict verdicts remain unknown and are not reclassified.",
+        "This is one unpaired run; score differences from earlier generations are descriptive only."
+      ],
+      "other_terminal_failure_count": 0,
+      "query_wall_timeout_sec": 1200,
+      "score_policy": "completed_and_strict_true_over_all_56;timeout_is_failure",
+      "specialized_cohort_coverage": {
+        "known_strict_fail": {
+          "denominator": 16,
+          "guard_passed": true,
+          "negative_task_count": 0,
+          "numerator": 16,
+          "positive_task_count": 16,
+          "rate": 1.0,
+          "status": "supported",
+          "threshold": 0.8,
+          "unknown_task_count": 0
+        },
+        "strict_pass": {
+          "denominator": 35,
+          "guard_passed": true,
+          "negative_task_count": 0,
+          "numerator": 35,
+          "positive_task_count": 35,
+          "rate": 1.0,
+          "status": "supported",
+          "threshold": 0.8,
+          "unknown_task_count": 0
+        },
+        "strict_verdict_unknown": {
+          "denominator": 3,
+          "guard_passed": true,
+          "negative_task_count": 0,
+          "numerator": 3,
+          "positive_task_count": 3,
+          "rate": 1.0,
+          "status": "supported",
+          "threshold": 0.8,
+          "unknown_task_count": 0
+        },
+        "timeout_or_other_terminal_failure": {
+          "denominator": 2,
+          "guard_passed": null,
+          "negative_task_count": 0,
+          "numerator": 0,
+          "positive_task_count": 0,
+          "rate": 0.0,
+          "status": "not_guarded",
+          "threshold": null,
+          "unknown_task_count": 2
+        }
+      },
+      "specialized_components": {
+        "directional_outcome": {
+          "causal_claim_allowed": false,
+          "g7_reference": {
+            "known_strict_fail": 17,
+            "strict_pass": 32,
+            "strict_verdict_unknown": 3,
+            "timeout_or_other_terminal_failure": 4
+          },
+          "g8_reference": {
+            "known_strict_fail": 15,
+            "strict_pass": 35,
+            "strict_verdict_unknown": 3,
+            "timeout_or_other_terminal_failure": 3
+          },
+          "known_strict_fail": 16,
+          "reasons": [
+            "descriptive_association"
+          ],
+          "status": "supported",
+          "strict_pass": 35,
+          "strict_verdict_unknown": 3,
+          "timeout_or_other_terminal_failure": 2
+        },
+        "mechanism": {
+          "any_negative_task": false,
+          "behavior_change_detected": false,
+          "coverage_threshold": 0.8,
+          "non_timeout_cohorts_present": true,
+          "prohibited_content_persisted": false,
+          "scoring_change_detected": false,
+          "status": "supported"
+        }
+      },
+      "specialized_signal_kind": "later_model_turn_verification_gate",
+      "specialized_status": "supported",
+      "statement": "G9 later-model-turn verification gate on the frozen no-hint 56.",
+      "strict_pass_count": 35,
+      "strict_pass_rate_all": 0.625,
+      "strict_verdict_missing_completed_count": 3,
+      "timeout_failure_count": 2
+    }
+  ],
+  "pre_execution_sha256": "c0a091d0cbf2133e6d7ed4af8cf104c917cde2fbda2455bdc8cdc0fd685bcd0f",
+  "schema_version": "dab_research_graph_generation_v1",
+  "status": "four_nodes_complete"
+}

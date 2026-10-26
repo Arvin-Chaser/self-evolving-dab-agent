@@ -1,0 +1,36 @@
+{
+  "evidence_sha256": "8dfdcaa180e2641475e5c481f98f612f788eea6f8bd82070f87bd85b4f83bcb7",
+  "formal_generations": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13
+  ],
+  "generation": 13,
+  "graph_sha256": "a231eff12aad1d850b79b89e791bd1c8bd8d43d4941ff28c684cc8a4ff2b32b6",
+  "incubation_edge_count": 46,
+  "incubation_node_count": 27,
+  "memory_sha256": "176d91bca69138088353be80735c9ce8c93d36bf8b661ca57d10cd3bf88cd648",
+  "next_generation_started": false,
+  "previous_memory_sha256": "fc206dac718781d9e3d9eb0dc79e2f6593e98d5e25cb9be3448124c8e15fe54e",
+  "privacy_status": "passed",
+  "promotion_edge": {
+    "relation": "promoted_to",
+    "source": "research_target:g013:003",
+    "target": "experiment:g013"
+  },
+  "recovery_attempt_count": 1,
+  "review_sha256": "3e6249178e8a5aedcd88023468e8da8c361402d40d9207284cdd0202d4fb72c7",
+  "schema_version": "g013_graph_closure_receipt_v1",
+  "status": "four_nodes_complete_and_memory_appended"
+}

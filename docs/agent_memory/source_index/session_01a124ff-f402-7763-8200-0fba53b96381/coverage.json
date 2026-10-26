@@ -1,0 +1,109 @@
+{
+  "schema_version": "codex_session_memory_extraction_v1",
+  "generated_at_utc": "2026-10-20T12:35:57.016440+00:00",
+  "source": {
+    "session_id": "01a124ff-f402-7763-8200-0fba53b96381",
+    "path": "C:\\Users\\34934\\.codex\\sessions\\2026\\10\\10\\rollout-2026-10-10T16-48-36-01a124ff-f402-7763-8200-0fba53b96381.jsonl",
+    "size_at_start": 345029482,
+    "size_at_end": 345029482,
+    "mtime_at_start_ns": 1792498080288680100,
+    "mtime_at_end_ns": 1792498080288680100,
+    "bytes_read": 345029482,
+    "sha256_of_bytes_read": "ad7974724fd849b09028919e38301372b80e8230658baab4a720428e6b148f44",
+    "stable_during_read": true,
+    "opened_read_only": true
+  },
+  "coverage": {
+    "physical_line_count": 90375,
+    "parse_error_count": 0,
+    "parse_errors_capped": [],
+    "first_timestamp": "2026-10-10T08:48:38.823Z",
+    "last_timestamp": "2026-10-20T12:08:00.288Z",
+    "turn_count": 864,
+    "important_event_count": 35439,
+    "unique_content_fingerprints": 30297,
+    "encoding_replacement_char_count": 640,
+    "encoding_damaged_record_count": 88
+  },
+  "record_types": {
+    "session_meta": 1,
+    "event_msg": 39547,
+    "response_item": 37247,
+    "world_state": 319,
+    "turn_context": 942,
+    "token_usage_record": 12225,
+    "compacted": 94
+  },
+  "payload_types": {
+    "session_meta:-": 1,
+    "event_msg:task_started": 864,
+    "response_item:message": 3403,
+    "world_state:-": 319,
+    "turn_context:-": 942,
+    "event_msg:item_completed:UserMessage": 783,
+    "event_msg:item_completed:Reasoning": 10909,
+    "response_item:reasoning": 11026,
+    "event_msg:item_completed:AgentMessage": 1957,
+    "response_item:custom_tool_call": 11097,
+    "token_usage_record:-": 12225,
+    "event_msg:item_completed:CommandExecution": 8721,
+    "response_item:custom_tool_call_output": 11090,
+    "event_msg:token_count": 12554,
+    "event_msg:task_complete": 788,
+    "event_msg:thread_settings_applied": 1058,
+    "event_msg:item_completed:McpToolCall": 328,
+    "compacted:-": 94,
+    "event_msg:item_completed:ContextCompaction": 94,
+    "response_item:function_call": 316,
+    "response_item:function_call_output": 315,
+    "event_msg:item_completed:FileChange": 1365,
+    "event_msg:item_completed:Extension": 71,
+    "event_msg:turn_aborted": 51,
+    "event_msg:item_completed:ImageView": 4
+  },
+  "roles": {
+    "developer": 399,
+    "user": 952,
+    "assistant": 2052
+  },
+  "tool_names": {
+    "exec": 11097,
+    "CommandExecution": 8721,
+    "McpToolCall": 328,
+    "wait": 241,
+    "FileChange": 1365,
+    "sleep": 72,
+    "js": 3
+  },
+  "themes": {
+    "architecture": 869,
+    "evolution_graph": 7896,
+    "observer_feedback": 3438,
+    "prompt_policy": 2995,
+    "tests_manifests": 9067,
+    "git_code": 16275,
+    "environment_remote": 6033,
+    "failure_blocker": 7119,
+    "decision_correction": 2290,
+    "experiment_eval": 5499,
+    "next_state": 1429,
+    "security": 1494
+  },
+  "redactions": {
+    "credential_assignment": 170,
+    "aws_access_key": 2,
+    "openai_style_key": 10
+  },
+  "outputs": {
+    "events": "events.jsonl",
+    "turns": "turns.jsonl",
+    "coverage_chunks": "coverage_chunks.jsonl"
+  },
+  "claim_boundary": {
+    "raw_session_copied": false,
+    "encrypted_reasoning_copied": false,
+    "known_credentials_copied": false,
+    "excerpts_are_complete_transcripts": false,
+    "tool_outputs_are_bounded_and_deduplicated": true
+  }
+}

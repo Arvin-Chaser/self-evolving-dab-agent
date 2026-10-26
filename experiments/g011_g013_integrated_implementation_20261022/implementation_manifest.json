@@ -1,0 +1,101 @@
+{
+  "schema_version": "g011_g013_integrated_implementation_manifest_v1",
+  "status": "implemented_provider_free_local_contract_passed",
+  "created_date": "2026-10-22",
+  "candidate_identity": {
+    "mechanism_id": "mech_revisioned_requirement_evidence_control_loop",
+    "authorship": "controller_authored",
+    "research_meta_output": false,
+    "research_graph_target": false,
+    "admitted": false,
+    "formal_evidence": false,
+    "benchmark_evaluated": false
+  },
+  "git_target": {
+    "branch": "repair/patents-feedback-analyzer-v4",
+    "head": "2ec626da9bdfb9982bc2f1358b7047f1041a8373",
+    "dirty_worktree_preserved": true,
+    "commit_created": false
+  },
+  "parent_hashes": {
+    "implementation_contract_sha256": "a346f79c0035c6d7a591918cca37d2044fbb7a95e693bafcda01054e790312f8",
+    "evidence_manifest_sha256": "2734f865f1516bb34d7d0e2e6a472337f54a0097d2586e21379eb3e9394de8ed",
+    "meta_intent_draft_sha256": "434da42dd62e7d7d2254eabb09e8c289ff239fd62ccfde123b9b6fafd7e81144",
+    "evidence_source_hashes_checked": 17,
+    "evidence_source_hash_mismatches": []
+  },
+  "implementation": {
+    "carrier_count": 1,
+    "parser_count": 1,
+    "active_state_store_count": 1,
+    "controller_count": 1,
+    "model_facing_view_paths": 1,
+    "carrier_schema": "revisioned_requirement_evidence_state_v1",
+    "carrier_prefix": "REVISIONED_REQUIREMENT_EVIDENCE_STATE_V1",
+    "max_views_per_task": 3,
+    "deadline_guard_seconds": 180,
+    "mechanism_initiated_tool_calls": 0,
+    "forced_answers": 0,
+    "automatic_provider_retries": 0,
+    "parallel_g0132_mode_rejected": true,
+    "disabled_mode_patch_applied": false,
+    "raw_carrier_log_redaction": true,
+    "aggregate_telemetry_only": true
+  },
+  "changed_files": [
+    {"path": "experiments/g011_g013_integrated_agent.py", "sha256": "3a1e7cfc0db71a527d8f347b484468daade25ffc73c48567a9afdeb7a7e2f8ab", "preexisting_dirty": false},
+    {"path": "experiments/run_dab_tool_agent_g011_g013_integrated.py", "sha256": "bedb1aa93b3c3c0eba539168009f317c18226aa1b2d7de30be847bb186cde9af", "preexisting_dirty": false},
+    {"path": "prompts/dab/dab_tool_agent_policy_g011_g013_integrated.txt", "sha256": "869cfa801d785f07b5af1a853c68b0dd8d5ace8c7168f55182ce600780bb0dfb", "preexisting_dirty": false},
+    {"path": "tests/test_g011_g013_integrated_agent.py", "sha256": "06c8eaed37f32ccd7ddf37de0e47fd06f031cb0086261d46ed6aa1d6ab2005e7", "preexisting_dirty": false},
+    {"path": "experiments/run_dab_tool_agent.py", "sha256": "a37143b9809ff11cc11544e067c55d2d91fd5676b11a4f6e5e807c1e3f54e64b", "preexisting_dirty": true},
+    {"path": "experiments/analyze_dab_tool_agent_trace.py", "sha256": "7098732c74b00c063d1d63c9c77436a18822d5e2e9f18009324f977cdaed3e4c", "preexisting_dirty": true},
+    {"path": "experiments/build_dab_tool_agent_evidence_pack.py", "sha256": "8f00fc5a7850b2943773ab9ba74d21eb5c133ff3366c51a423d5f3b111c9ce85", "preexisting_dirty": true}
+  ],
+  "artifacts": [
+    {"path": "experiments/g011_g013_integrated_implementation_20261022/focused_test_output.txt", "sha256": "d3f4f2c6129b9fd153a2e22f7d8d5d274214486ef8f5a9af91d55c6d73ac2c35"},
+    {"path": "experiments/g011_g013_integrated_implementation_20261022/TEST_REPORT.md", "sha256_recorded_in": "validation_manifest.json"},
+    {"path": "experiments/g011_g013_integrated_implementation_20261022/implementation_manifest.json", "sha256_recorded_in": "validation_manifest.json"},
+    {"path": "experiments/g011_g013_integrated_implementation_20261022/validation_manifest.json", "sha256_recorded_in": "final_handoff_due_to_self_reference"}
+  ],
+  "test_commands": [
+    {"command": "python -m pytest -q tests/test_g011_g013_integrated_agent.py", "exit_code": 0, "result": "25 passed"},
+    {"command": "python -m pytest -q tests/test_g011_g013_integrated_agent.py tests/test_g013_intent_first_agent.py tests/test_g0131_convergent_agent.py tests/test_g0132_task_workspace.py tests/test_run_multi_query_dynamic_workers.py", "exit_code": 0, "result": "45 passed"},
+    {"command": "python -m py_compile experiments/g011_g013_integrated_agent.py experiments/run_dab_tool_agent.py experiments/run_dab_tool_agent_g011_g013_integrated.py experiments/analyze_dab_tool_agent_trace.py experiments/build_dab_tool_agent_evidence_pack.py", "exit_code": 0, "result": "passed"},
+    {"command": "archived G11/G12/G13 combined structural suite", "exit_code": 1, "result": "collection stopped before candidate code: copied snapshot package roots unavailable"},
+    {"command": "archived G12 context structural suite", "exit_code": 1, "result": "snapshot omits required reference/prior/generated fixture artifacts; no retry"}
+  ],
+  "contract_mapping": {
+    "T01": ["test_t01_exact_schema_grammar_enums_limits_and_single_carrier", "test_t01_total_reference_cap_and_duplicate_tokens"],
+    "T02": ["test_t02_revision_supersession_active_head_and_prior_head_preservation"],
+    "T03": ["test_t03_t04_visible_provenance_and_structural_transitions", "test_t03_duplicate_non_evidence_and_pre_boundary_rules"],
+    "T04": ["test_t03_t04_visible_provenance_and_structural_transitions", "test_t04_uncovered_stale_and_unknown_preservation", "test_t09_provider_shaped_fail_closed_fixtures"],
+    "T05": ["test_t05_deterministic_action_precedence_and_structural_plan_actions"],
+    "T06": ["test_t06_t07_bounded_view_caps_deadline_unchanged_and_no_forced_action", "test_t09_provider_shaped_fail_closed_fixtures"],
+    "T07": ["test_t06_t07_bounded_view_caps_deadline_unchanged_and_no_forced_action"],
+    "T08": ["test_t08_install_disabled_is_inert_and_enabled_adds_only_view_channel", "test_launcher_only_selects_candidate_and_preserves_frozen_runtime_defaults"],
+    "T09": ["test_t09_provider_shaped_fail_closed_fixtures"],
+    "T10": ["test_t10_t11_privacy_safe_aggregate_telemetry_and_zero_activation", "test_t10_telemetry_serializes_through_analyzer_and_evidence_pack"],
+    "T11": ["test_t10_t11_privacy_safe_aggregate_telemetry_and_zero_activation", "test_t10_telemetry_serializes_through_analyzer_and_evidence_pack"],
+    "T12": ["test_t12_end_to_end_author_view_later_action_revise_finalize"],
+    "T13": ["Unified T01-T12 replacements", "20 current-mainline G13/G13.1/G13.2/batch-runner regression tests"],
+    "T14": ["provider-free focused suite", "bounded static external-access scan", "ASCII scan"]
+  },
+  "known_unknowns": [
+    "Real-model carrier authorship and adoption are unknown.",
+    "Provider boundary acceptance and action sensitivity are unknown.",
+    "Strict score, timeout behavior, and any causal benefit are unknown.",
+    "The archived G11/G12/G13 copied test contexts are incomplete in this checkout; T13 uses explicit unified invariant mapping plus current-mainline regressions.",
+    "No small-scale or frozen-56 gate is authorized or executed."
+  ],
+  "prohibited_activity": {
+    "network_calls": 0,
+    "provider_calls": 0,
+    "database_calls": 0,
+    "benchmark_tasks": 0,
+    "research_or_implementation_meta_calls": 0,
+    "graph_mutations": 0,
+    "g0132_files_modified": 0,
+    "commits": 0,
+    "pushes": 0
+  }
+}

@@ -1,0 +1,311 @@
+{
+  "schema_version": "g011_g013_integrated_implementation_contract_v1",
+  "status": "controller_authored_draft_not_authorized_for_implementation_or_evaluation",
+  "mechanism_id": "mech_revisioned_requirement_evidence_control_loop",
+  "evidence_claim_ids": ["C01", "C03", "C05", "C07", "C08", "C10", "C11", "C12", "C13", "C14"],
+  "objective": {
+    "engineering_target": "At least 40 strict passes out of the frozen 56-task protocol after local and small-scale gates.",
+    "guaranteed": false,
+    "causal_claim_allowed": false,
+    "first_order_goal": "Make the combined mechanism reachable and measurable without violating privacy, protocol, or runtime budgets."
+  },
+  "generation_mapping": {
+    "G11": {
+      "source_mechanism": "mech_g011_structural_plan_evidence_ledger",
+      "retained_runtime_role": "Own work-state revision, supersession, active-head lifecycle, step identity, observation-reference provenance, and unknown preservation.",
+      "transition_mapping": ["CAPTURE -> VALIDATE", "UPDATE -> VALIDATE", "VALIDATE -> FAIL_CLOSED"],
+      "telemetry": ["carrier_attempts", "accepted_state_revisions", "rejected_state_revisions", "active_head_count", "supersession_fault_counts"]
+    },
+    "G12": {
+      "source_mechanism": "uncertainty_typed_evidence_state_and_gap_action",
+      "retained_runtime_role": "Classify uncertainty/fault/freshness and deterministically select one bounded structural action.",
+      "transition_mapping": ["ASSESS -> SELECT", "SELECT -> PRESENT", "PRESENT -> MODEL_ACTS"],
+      "telemetry": ["selected_action_counts", "view_delivery_counts", "later_action_class_counts", "consistent_action_counts", "contradictory_action_counts", "unknown_action_counts"]
+    },
+    "G13": {
+      "source_mechanism": "mech_requirement_observation_coverage",
+      "retained_runtime_role": "Represent active requirement rows, bind opaque visible observations, and update structural coverage, freshness, and fault states.",
+      "transition_mapping": ["VALIDATE -> OBSERVE", "OBSERVE -> ASSESS", "MODEL_ACTS -> UPDATE"],
+      "telemetry": ["active_requirement_rows", "coverage_state_counts", "freshness_state_counts", "fault_state_counts", "exact_opaque_binding_counts"]
+    }
+  },
+  "unified_carrier": {
+    "name": "revisioned_requirement_evidence_state_v1",
+    "transport": "Exactly one model-authored string payload through the existing configured self-observation tool-call boundary.",
+    "parallel_carriers_allowed": false,
+    "fields": {
+      "schema": "constant revisioned_requirement_evidence_state_v1",
+      "state_id": "opaque task-local token",
+      "revision": "integer >= 1",
+      "supersedes": "null for revision 1, otherwise exact prior state_id and revision",
+      "plan_steps": "ordered array of opaque step tokens",
+      "requirement_rows": "ordered array of {row_id, step_id, observation_refs}",
+      "declared_next_action": "optional enum only; never trusted as runtime-selected action"
+    },
+    "limits": {
+      "max_plan_steps": 16,
+      "max_requirement_rows": 32,
+      "max_observation_refs_per_row": 16,
+      "max_total_observation_refs": 128,
+      "additional_fields_allowed": false
+    },
+    "legacy_behavior": "Reject nested, mixed, G11-only, G12-only, or G13-only carriers in integrated mode; preserve unknown and continue base behavior."
+  },
+  "state_model": {
+    "coverage_states": ["uncovered", "observed", "ambiguous", "failed", "unavailable", "unknown"],
+    "freshness_states": ["current", "stale", "unknown"],
+    "fault_states": ["none", "missing", "malformed", "truncated", "duplicate", "invalid_reference", "non_visible_reference", "instrumentation_loss", "provider_rejected", "boundary_mismatch", "revision_invalid", "unknown"],
+    "action_states": ["acquire_evidence", "refresh_observation", "revise_requirement_row", "revise_plan", "preserve_unknown", "proceed"],
+    "semantic_status": "always_unknown"
+  },
+  "runtime_transitions": [
+    {
+      "from": "INIT",
+      "event": "task_started",
+      "to": "CAPTURE",
+      "effect": "Install one task-agnostic authoring contract without adding a model turn."
+    },
+    {
+      "from": "CAPTURE",
+      "event": "carrier_seen",
+      "to": "VALIDATE",
+      "effect": "Parse exactly one payload; do not persist raw IDs or content to research exports."
+    },
+    {
+      "from": "CAPTURE",
+      "event": "no_carrier",
+      "to": "BASE_BEHAVIOR",
+      "effect": "Emit no state or view; record activation miss only."
+    },
+    {
+      "from": "VALIDATE",
+      "event": "valid_revision_and_refs",
+      "to": "OBSERVE",
+      "effect": "Activate the revision and derive only structural provenance."
+    },
+    {
+      "from": "VALIDATE",
+      "event": "invalid_or_incomplete",
+      "to": "FAIL_CLOSED",
+      "effect": "Preserve unknown, suppress the view, and continue base behavior."
+    },
+    {
+      "from": "OBSERVE",
+      "event": "accepted_or_later_visible_observation",
+      "to": "ASSESS",
+      "effect": "Update coverage, freshness, availability, and fault states deterministically."
+    },
+    {
+      "from": "ASSESS",
+      "event": "state_computed",
+      "to": "SELECT",
+      "effect": "Apply the frozen action precedence and choose at most one structural action."
+    },
+    {
+      "from": "SELECT",
+      "event": "non_proceed_and_budget_eligible",
+      "to": "PRESENT",
+      "effect": "Render one allowlisted structural view with opaque target token."
+    },
+    {
+      "from": "SELECT",
+      "event": "proceed_or_suppressed",
+      "to": "MODEL_ACTS",
+      "effect": "Emit no view and do not alter model choice."
+    },
+    {
+      "from": "PRESENT",
+      "event": "view_delivered",
+      "to": "MODEL_ACTS",
+      "effect": "Wait for the model's ordinary next action; initiate no tool call."
+    },
+    {
+      "from": "MODEL_ACTS",
+      "event": "ordinary_action_or_revision",
+      "to": "UPDATE",
+      "effect": "Classify the structural action and attach later visible observations."
+    },
+    {
+      "from": "UPDATE",
+      "event": "eligible_to_continue",
+      "to": "ASSESS",
+      "effect": "Recompute state without semantic promotion."
+    },
+    {
+      "from": "UPDATE",
+      "event": "terminal_or_budget_exhausted",
+      "to": "FINALIZE",
+      "effect": "Export aggregate telemetry only."
+    }
+  ],
+  "action_precedence": [
+    {"priority": 1, "condition": "instrumentation_loss, boundary_mismatch, malformed, truncated, or unknown provenance", "action": "preserve_unknown"},
+    {"priority": 2, "condition": "valid binding is stale", "action": "refresh_observation"},
+    {"priority": 3, "condition": "active requirement is uncovered, failed, or unavailable with valid provenance", "action": "acquire_evidence"},
+    {"priority": 4, "condition": "row lifecycle or step mapping is invalid but carrier revision is otherwise valid", "action": "revise_requirement_row"},
+    {"priority": 5, "condition": "active-head plan lifecycle needs structural revision", "action": "revise_plan"},
+    {"priority": 6, "condition": "all active rows are structurally observed and current", "action": "proceed"}
+  ],
+  "runtime_invariants": [
+    {"id": "I01", "rule": "Exactly one carrier schema, parser, active state store, controller, and model-facing view path exist in integrated mode."},
+    {"id": "I02", "rule": "Only model-authored carriers can create or revise active state; runtime synthesis of rows, refs, or revisions is forbidden."},
+    {"id": "I03", "rule": "An observation ref is valid only when it names exactly one genuinely model-visible prior same-task ordinary observation."},
+    {"id": "I04", "rule": "Structural unique/observed/resolved never means semantic support, relevance, completeness, correctness, confidence, or truth."},
+    {"id": "I05", "rule": "Unknown remains unknown on missing, malformed, ambiguous, truncated, stale, failed, unavailable, rejected, or instrumentation-loss input."},
+    {"id": "I06", "rule": "The mechanism never initiates a tool call, forces a dispatch, blocks the model's ordinary tool choice, or forces a final answer."},
+    {"id": "I07", "rule": "No scoring, evaluator, task set, hint mode, model, provider, database, or 1200-second wall limit is changed."},
+    {"id": "I08", "rule": "No raw task, answer, hint, validator, message, tool argument/result, trace, identifier, opaque token, or credential is persisted in research exports."},
+    {"id": "I09", "rule": "Disabled mode is observationally equivalent to the selected parent outside absent mechanism telemetry."},
+    {"id": "I10", "rule": "A zero-record or zero-view run is reported as untested; strict score alone never supports or refutes the mechanism."},
+    {"id": "I11", "rule": "Cohorts and denominators are reported separately; strict-verdict unknowns stay unknown and timeouts stay failures."},
+    {"id": "I12", "rule": "No automatic retry follows authentication, quota, provider, schema, privacy, or invariant failure."}
+  ],
+  "fail_closed_rules": [
+    {"trigger": "carrier absent", "result": "no state, no view, base behavior, activation_miss telemetry"},
+    {"trigger": "carrier invalid, duplicate, mixed, malformed, or oversized", "result": "reject, preserve unknown, no view, base behavior"},
+    {"trigger": "revision or supersession fault", "result": "keep prior valid head if any, mark revision_invalid, no view from rejected revision"},
+    {"trigger": "reference non-visible, ambiguous, truncated, failed, or unavailable", "result": "do not resolve row; preserve structural state and select only the fixed fail-closed action if eligible"},
+    {"trigger": "instrumentation or response-boundary loss", "result": "preserve unknown, suppress content-bearing action, continue base behavior"},
+    {"trigger": "privacy or prohibited-content hit", "result": "invalidate candidate or run immediately; do not export affected artifact"},
+    {"trigger": "cap reached or remaining time <= 180 seconds", "result": "suppress all further views; never extend or reset deadline"},
+    {"trigger": "provider/auth/quota/schema error", "result": "stop the authorized attempt; no automatic retry or alternate carrier"},
+    {"trigger": "any invariant violation", "result": "no-go; formal promotion forbidden"}
+  ],
+  "budgets": {
+    "per_task_wall_timeout_seconds": 1200,
+    "deadline_guard_seconds": 180,
+    "max_views_per_eligible_turn": 1,
+    "max_views_per_task": 3,
+    "max_extra_model_turns_attributable_to_mechanism": 3,
+    "max_extra_tool_dispatches_attributable_to_mechanism": 3,
+    "max_mechanism_initiated_tool_calls": 0,
+    "max_forced_answers": 0,
+    "max_automatic_provider_retries": 0,
+    "wall_timeout_extension_allowed": false
+  },
+  "telemetry": {
+    "export_mode": "aggregate_only",
+    "required_task_level_internal_counters": [
+      "carrier_attempt_count",
+      "accepted_revision_count",
+      "rejection_reason_counts",
+      "active_row_count",
+      "coverage_state_counts",
+      "freshness_state_counts",
+      "fault_state_counts",
+      "selected_action_counts",
+      "view_delivery_count",
+      "cap_and_deadline_suppression_counts",
+      "later_action_class_counts",
+      "mechanism_initiated_tool_call_count",
+      "forced_answer_count",
+      "privacy_hit_count"
+    ],
+    "required_aggregate_endpoints": [
+      "real_model_authorship",
+      "structural_binding",
+      "coverage_state_behavior",
+      "view_delivery",
+      "behavioral_action_choice",
+      "strict_outcome",
+      "protocol_integrity"
+    ],
+    "required_partitions": ["strict_pass", "known_strict_fail", "completed_strict_verdict_unknown", "timeout_failure", "other_terminal_failure"],
+    "prohibited_fields": ["task_id", "task_text", "answer", "hint", "validator", "message", "tool_arguments", "tool_results", "raw_trace", "raw_state_id", "raw_step_id", "raw_row_id", "raw_observation_ref", "credential"]
+  },
+  "implementation_surface": {
+    "strategy": "One new candidate-side integrated state/controller module plus minimal adapters at existing self-observation creation, provider response, model-facing message, analyzer, and evidence-pack boundaries.",
+    "prompt_strategy": "One concise task-agnostic authoring contract; do not concatenate G11, G12, and G13 prompts.",
+    "activity_tree_changes_authorized": false,
+    "unrelated_refactor_allowed": false,
+    "legacy_import_allowed": false
+  },
+  "local_tests": [
+    {"id": "T01", "test": "Exact unified schema, limits, enums, token grammar, and additional-field rejection."},
+    {"id": "T02", "test": "Revision 1, monotonic revisions, exact supersession, active-head uniqueness, duplicate and stale revision rejection."},
+    {"id": "T03", "test": "Opaque reference visibility, uniqueness, same-task, pre-boundary, truncation, failure, and non-evidence exclusion."},
+    {"id": "T04", "test": "Every coverage/freshness/fault transition and unknown-preservation path."},
+    {"id": "T05", "test": "Deterministic action precedence for every pairwise and multi-row conflict."},
+    {"id": "T06", "test": "No view for absent/invalid state, proceed, unchanged state, cap, deadline, or unknown boundary."},
+    {"id": "T07", "test": "At most one view per turn, three per task, three attributable extra turns/dispatches, and zero initiated calls."},
+    {"id": "T08", "test": "Enabled/disabled inertness for control flow, dispatch, results, scoring, timeout, and final answer outside the view channel."},
+    {"id": "T09", "test": "Provider-shaped response fixtures for accepted, missing, malformed, truncated, rejected, and boundary-mismatch carriers without a live provider."},
+    {"id": "T10", "test": "Prohibited-content sentinels across logs, sidecars, summaries, normalized traces, analyzer output, and evidence packs."},
+    {"id": "T11", "test": "Aggregate endpoints, cohort denominators, zero-activation untested status, and no pooled rates."},
+    {"id": "T12", "test": "End-to-end fixture: author -> validate -> observe -> assess -> present -> later action -> revise -> finalize."},
+    {"id": "T13", "test": "All inherited relevant G11, G12, and G13 structural tests pass or are explicitly mapped to a replaced unified invariant."},
+    {"id": "T14", "test": "No credential names or values, network access, database access, model calls, or benchmark execution in local tests."}
+  ],
+  "small_scale_gate": {
+    "authorization_required": true,
+    "panel_size": 6,
+    "selection": "Before candidate execution, bind six anonymous frozen-manifest indices selected without task text: three from G13 known_strict_fail, one completed_strict_verdict_unknown, one timeout_failure, and one strict_pass guardrail. Freeze selection and reference outcomes before launch.",
+    "protocol": "Base/no-hint, same model/provider/database and evaluator as the frozen protocol, 1200 seconds per task, one worker unless an authorized preflight requires otherwise, no automatic SDK retry, one candidate attempt only.",
+    "go_metrics": {
+      "protocol_or_privacy_violations": 0,
+      "invariant_violations": 0,
+      "completed_tasks": 6,
+      "valid_authored_state_tasks_min": 4,
+      "correct_structural_binding_rate": 1.0,
+      "view_bearing_tasks_min": 2,
+      "later_action_measurable_tasks_min": 2,
+      "structurally_contradictory_later_actions_max": 0,
+      "mechanism_initiated_tool_calls": 0,
+      "forced_answers": 0,
+      "strict_pass_guardrail_regressions_max": 0,
+      "strict_recoveries_over_frozen_reference_min": 1,
+      "new_timeout_failures_max": 0
+    },
+    "no_go_if": [
+      "Any privacy, protocol, invariant, scoring, timeout, forced-action, or carrier-integrity violation occurs.",
+      "Valid authored state appears in fewer than four tasks.",
+      "Fewer than two tasks deliver a view with a later measurable action.",
+      "Any sufficient-budget later action is structurally contradictory.",
+      "The prior strict-pass guardrail regresses or no prior non-pass task becomes strict pass.",
+      "Authentication, quota, provider, schema, database, or benchmark infrastructure fails; do not retry automatically."
+    ],
+    "interpretation": "Passing is an engineering activation gate only. It is not benchmark benefit or causal evidence."
+  },
+  "frozen_56_promotion_gate": {
+    "authorization_required": true,
+    "preconditions": [
+      "All local tests pass in an isolated candidate tree.",
+      "Independent source, privacy, and contract review passes.",
+      "The small-scale gate passes exactly as predeclared.",
+      "Candidate tree, task manifest, protocol, model/provider, evaluator, database boundary, telemetry schema, and launch manifest hashes are frozen before launch.",
+      "A fresh bounded environment and credential-name-only preflight passes without exposing values."
+    ],
+    "protocol": {
+      "task_count": 56,
+      "description_mode": "base_no_hint",
+      "per_task_wall_timeout_seconds": 1200,
+      "primary_metric": "strict_pass_over_all_56",
+      "timeouts_are_failures": true,
+      "completed_strict_verdict_unknowns_remain_unknown": true,
+      "formal_runs": 1,
+      "second_arm": false,
+      "automatic_retry": false
+    },
+    "promotion_metrics": {
+      "strict_pass_min": 40,
+      "protocol_or_privacy_violations": 0,
+      "invariant_violations": 0,
+      "mechanism_initiated_tool_calls": 0,
+      "forced_answers": 0,
+      "wall_timeout_extensions": 0,
+      "valid_authored_state_task_rate_min": 0.75,
+      "correct_structural_binding_rate": 1.0,
+      "view_delivery_rate_when_eligible_min": 0.9,
+      "action_measurement_coverage_when_view_delivered_min": 0.8,
+      "structurally_contradictory_action_count": 0
+    },
+    "interpretation": "At least 40/56 is the promotion threshold, not a promised result. A passing single unpaired run remains descriptive and cannot establish causal benefit."
+  },
+  "stop_conditions": [
+    "Stop before implementation if source hashes or the selected parent boundary cannot be frozen.",
+    "Stop before any external run if a local test, privacy scan, or independent review fails.",
+    "Stop the attempt on the first authentication, quota, provider, schema, database, privacy, or invariant failure; do not retry automatically.",
+    "Stop after the small-scale gate and require a new explicit authorization for the frozen 56-task run.",
+    "Stop after one authorized 56-task run and report descriptive results without repair rerun or hidden arm."
+  ]
+}

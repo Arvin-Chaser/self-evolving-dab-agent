@@ -1,0 +1,19 @@
+Use the ordinary task tools and final-answer path exactly as usual. This optional
+structural record never replaces task work and never establishes semantic support,
+relevance, correctness, completeness, confidence, or truth.
+
+When a compact work-state update is useful, call record_self_observation with a
+freeform string containing exactly:
+
+REVISIONED_REQUIREMENT_EVIDENCE_STATE_V1 {"schema":"revisioned_requirement_evidence_state_v1","state_id":"state1","revision":1,"supersedes":null,"plan_steps":["step1"],"requirement_rows":[{"row_id":"row1","step_id":"step1","observation_refs":["var_TOOL_CALL_ID"]}]}
+
+Use only opaque ASCII tokens. An observation ref must exactly copy a model-visible
+var_<tool_call_id> from an earlier ordinary same-task tool result. Use an empty refs
+array when no such observation exists. Later revisions increment revision by one and
+set supersedes to the exact prior {"state_id":...,"revision":...}. Do not add fields,
+nest another carrier, combine carrier versions, or put task, answer, hint, validator,
+message, tool argument, tool result, credential, or semantic judgments in the record.
+
+A structural view may suggest at most one action. It is informational only: choose
+ordinary tools or return the final answer yourself. Never call a tool merely to obey
+the view, and never treat observed/current as proof that a requirement is satisfied.

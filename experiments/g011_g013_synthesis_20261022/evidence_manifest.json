@@ -1,0 +1,238 @@
+{
+  "schema_version": "g011_g013_synthesis_evidence_manifest_v1",
+  "created_date": "2026-10-22",
+  "scope": "Closed formal G11, G12, and G13 mechanism definitions, immutable Evidence and formal aggregate artifacts only.",
+  "exclusions": [
+    "G13.2 and all non-formal exploratory evaluations",
+    "G14 target selection and interface investigation",
+    "raw task content, answers, messages, tool arguments, tool results, stdout, stderr, and full traces",
+    "human diagnosis as formal mechanism evidence"
+  ],
+  "bounded_selection": {
+    "trace_rows_sampled": 0,
+    "rule": "Use only formal Evidence, formal contracts, outcome partitions, terminal receipts, independent reviews, and aggregate specialized evidence. No task trajectory was read.",
+    "cohort_handling": "Keep strict_pass, known_strict_fail, completed_strict_verdict_unknown, timeout_failure, and other_terminal_failure separate; never infer causality from cross-generation score differences."
+  },
+  "sources": [
+    {
+      "id": "g11_contract",
+      "path": "experiments/research_graph_baseline_20261016/g011_solution_loop_formal_implementation_001/context/research_contract_revision_004.json",
+      "sha256": "9a0d6943a4b262429b8270664b0ede8bc9effbae5a15d0c882d63691e236d193"
+    },
+    {
+      "id": "g11_evidence",
+      "path": "experiments/research_graph_baseline_20261016/g011_solution_loop_safe_snapshot/g011_solution_loop_evidence.json",
+      "sha256": "05794e42ae2e1513e7356cba6857fbca611d679f390c4b3feba2f5e8a3e59ae4"
+    },
+    {
+      "id": "g11_aggregate",
+      "path": "experiments/research_graph_baseline_20261016/g011_solution_loop_safe_snapshot/g011_solution_loop_specialized_evidence.json",
+      "sha256": "58ad93d6e25dd4e9e5ab0a0364a75b0a28142a927d6fcc744238b932ffd5d129"
+    },
+    {
+      "id": "g11_input_manifest",
+      "path": "experiments/research_graph_baseline_20261016/g011_solution_loop_safe_snapshot/g011_solution_loop_evidence_input_manifest.json",
+      "sha256": "ce3f8c4f92f06416224b87744c52eb2c28efc61c5dfafb059c7828471e5d0b9f"
+    },
+    {
+      "id": "g12_contract",
+      "path": "experiments/research_graph_baseline_20261016/g012_formal_implementation_002/context/research_contract.json",
+      "sha256": "67086825a82f1bd3bcc34297c85410ced236c965085c2ec94723bfc567c0b190"
+    },
+    {
+      "id": "g12_evidence",
+      "path": "experiments/research_graph_baseline_20261016/g012_safe_snapshot/g012_evidence.json",
+      "sha256": "5030d3901b764624053f0d5147257b2bb5ea24386e5231f4029e7fc547801bdd"
+    },
+    {
+      "id": "g12_aggregate",
+      "path": "experiments/research_graph_baseline_20261016/g012_formal_001/postrun/g012_specialized_evidence.json",
+      "sha256": "beb7969dc1e33b547e343537ff7d07a83f4a99e953774cef3582b3a9f889b76a"
+    },
+    {
+      "id": "g12_outcome",
+      "path": "experiments/research_graph_baseline_20261016/g012_formal_001/postrun/outcome_partition.json",
+      "sha256": "5dd03f24c67fc5f03c75224a6504c12938ad60b9cc6a9ffef0e4f69250fb82c8"
+    },
+    {
+      "id": "g12_terminal",
+      "path": "experiments/research_graph_baseline_20261016/g012_formal_001/postrun/terminal_receipt.json",
+      "sha256": "86ac90a7b925daf58a7f9453619cad258b0df54c4ba4f1ffb3d064a6821a8fb1"
+    },
+    {
+      "id": "g12_review",
+      "path": "experiments/research_graph_baseline_20261016/g012_safe_snapshot/g012_independent_review.json",
+      "sha256": "50362d00554887ee9c43ea0c44627b3686cc193c641d1d6911412a031b759764"
+    },
+    {
+      "id": "g13_contract",
+      "path": "experiments/research_graph_baseline_20261016/g013_formal_implementation_009/context/research_contract.json",
+      "sha256": "5c60ad036745f2219582d1e0a9e6ef10ce82920461537702df3ed691121d917c"
+    },
+    {
+      "id": "g13_evidence",
+      "path": "experiments/research_graph_baseline_20261016/g013_safe_snapshot/g013_evidence.json",
+      "sha256": "8dfdcaa180e2641475e5c481f98f612f788eea6f8bd82070f87bd85b4f83bcb7"
+    },
+    {
+      "id": "g13_aggregate",
+      "path": "experiments/research_graph_baseline_20261016/g013_formal_001/postrun/g013_specialized_evidence.json",
+      "sha256": "5961a68f3641380b717f07c09792c2d904ccf2827b7e56492e6ca60f12576afb"
+    },
+    {
+      "id": "g13_outcome",
+      "path": "experiments/research_graph_baseline_20261016/g013_formal_001/postrun/outcome_partition.json",
+      "sha256": "c4bdcb7f23682d286b15e5003ff6ba9dc74413564220e04157954c1cab5f29f3"
+    },
+    {
+      "id": "g13_terminal",
+      "path": "experiments/research_graph_baseline_20261016/g013_formal_001/postrun/terminal_receipt.json",
+      "sha256": "a9f7ad3152116cd8b117f7705980b289f785f26fe0146258669f54c19e141b62"
+    },
+    {
+      "id": "g13_review",
+      "path": "experiments/research_graph_baseline_20261016/g013_safe_snapshot/g013_independent_review.json",
+      "sha256": "3e6249178e8a5aedcd88023468e8da8c361402d40d9207284cdd0202d4fb72c7"
+    },
+    {
+      "id": "current_meta_validator",
+      "path": "experiments/research_graph_solution_loop_meta_packet.py",
+      "sha256": "449d233ddb2f1a1e77d72393d4c3c0f6721ad0f69938df4e0c99754a4756c1da"
+    }
+  ],
+  "claims": [
+    {
+      "id": "C01",
+      "status": "verified_fact",
+      "claim": "G11 formally defined a model-authored structural plan/evidence ledger with revision and supersession lifecycle, opaque evidence references, deterministic structural validation, and bounded guidance; structural resolution was explicitly non-semantic.",
+      "evidence": [
+        {"source_id": "g11_contract", "selector": "/research_target and /formal_spec/mechanism_contract"}
+      ]
+    },
+    {
+      "id": "C02",
+      "status": "verified_fact",
+      "claim": "G11 ended 56 tasks with 35 strict pass, 15 known strict fail, 3 completed strict-verdict unknown, and 3 timeout failures.",
+      "evidence": [
+        {"source_id": "g11_evidence", "selector": "/node/{ended_count,strict_pass_count,known_strict_fail_count,strict_verdict_missing_completed_count,timeout_failure_count}"}
+      ]
+    },
+    {
+      "id": "C03",
+      "status": "verified_fact",
+      "claim": "G11 observed zero records and zero guidance bindings; the mechanism endpoint was untested in every outcome cohort.",
+      "evidence": [
+        {"source_id": "g11_aggregate", "selector": "/{total_record_count,total_guidance_binding_count,overall_status,cohorts}"},
+        {"source_id": "g11_evidence", "selector": "/node/{specialized_status,specialized_cohort_coverage,limits}"}
+      ]
+    },
+    {
+      "id": "C04",
+      "status": "verified_fact",
+      "claim": "The G11 aggregate covered the frozen 56 anonymous task entries without reading task trajectories for this synthesis.",
+      "evidence": [
+        {"source_id": "g11_input_manifest", "selector": "/{frozen_task_count,entries[*].anonymous_task_index,entries[*].terminal_cohort}"}
+      ]
+    },
+    {
+      "id": "C05",
+      "status": "verified_fact",
+      "claim": "G12 formally defined uncertainty-typed structural evidence state, an active-record gap directive, freshness and fault categories, and bounded action classes acquire_evidence, revise_plan, preserve_unknown, or proceed.",
+      "evidence": [
+        {"source_id": "g12_contract", "selector": "/research_target and /formal_spec/experiment/mechanism"}
+      ]
+    },
+    {
+      "id": "C06",
+      "status": "verified_fact",
+      "claim": "G12 ended 56 tasks with 30 strict pass, 18 known strict fail, 3 completed strict-verdict unknown, and 5 timeout failures.",
+      "evidence": [
+        {"source_id": "g12_outcome", "selector": "/{ended,strict_pass,known_strict_fail,completed_strict_verdict_unknown,timeout_failures}"},
+        {"source_id": "g12_terminal", "selector": "/{formal_attempt_complete,strict_score,status}"}
+      ]
+    },
+    {
+      "id": "C07",
+      "status": "verified_fact",
+      "claim": "G12 observed zero model-authored record attempts, accepted records, visible references, directives, and post-directive actions; structural binding, adoption, and behavioral action choice remained untested.",
+      "evidence": [
+        {"source_id": "g12_aggregate", "selector": "/endpoints and /cohorts[*]/{record_attempt_count,accepted_record_count,adoption_visible_ref_count,directive_count,action_choice_status_counts}"},
+        {"source_id": "g12_evidence", "selector": "/node/{mechanism_endpoints,limits,specialized_status}"}
+      ]
+    },
+    {
+      "id": "C08",
+      "status": "verified_fact",
+      "claim": "G13 formally defined model-authored requirement rows linked to opaque visible-observation references, deterministic coverage/freshness/fault transitions, and one bounded structural next-action view.",
+      "evidence": [
+        {"source_id": "g13_contract", "selector": "/research_target and /formal_spec/{runtime_channel,behavioral_effect,measurement_plan}"}
+      ]
+    },
+    {
+      "id": "C09",
+      "status": "verified_fact",
+      "claim": "G13 ended 56 tasks with 31 strict pass, 18 known strict fail, 3 completed strict-verdict unknown, and 4 timeout failures.",
+      "evidence": [
+        {"source_id": "g13_outcome", "selector": "/{ended,strict_pass,known_strict_fail,completed_strict_verdict_unknown,timeout_failures}"},
+        {"source_id": "g13_terminal", "selector": "/{formal_attempt_complete,strict_score,status}"}
+      ]
+    },
+    {
+      "id": "C10",
+      "status": "verified_fact",
+      "claim": "G13 observed zero records, accepted rows, directives, or views; authorship, coverage-state behavior, and action endpoints remained untested.",
+      "evidence": [
+        {"source_id": "g13_aggregate", "selector": "/{records_seen,accepted_record_count,directive_delivered_count,view_count,endpoint_status}"},
+        {"source_id": "g13_evidence", "selector": "/node/{mechanism_endpoints,limits,specialized_status}"}
+      ]
+    },
+    {
+      "id": "C11",
+      "status": "verified_fact",
+      "claim": "All three formal contracts prohibit mechanism-initiated tool calls, forced answers, scoring mutation, timeout extension, semantic promotion, and causal interpretation of an unpaired strict score.",
+      "evidence": [
+        {"source_id": "g11_contract", "selector": "/formal_spec/{behavioral_effect,safe_fallback,measurement_plan}"},
+        {"source_id": "g12_contract", "selector": "/formal_spec/{experiment,measurement_plan,claim_boundaries}"},
+        {"source_id": "g13_contract", "selector": "/formal_spec/{behavioral_effect,privacy_and_fault_boundary,stop_conditions}"}
+      ]
+    },
+    {
+      "id": "C12",
+      "status": "verified_fact",
+      "claim": "The shared formal runtime budget is at most one view per eligible turn, at most three views per task, at most three attributable extra model turns and tool dispatches, zero mechanism-initiated tool calls, a 180-second deadline guard, and no extension of the 1200-second task limit.",
+      "evidence": [
+        {"source_id": "g11_contract", "selector": "/formal_spec/behavioral_effect/caps"},
+        {"source_id": "g12_contract", "selector": "/formal_spec/measurement_plan/budget_bounds"},
+        {"source_id": "g13_contract", "selector": "/formal_spec/runtime_channel/{action_cap,deadline_guard}"}
+      ]
+    },
+    {
+      "id": "C13",
+      "status": "bounded_inference",
+      "claim": "The three mechanisms are complementary as a proposed closed loop: G11 supplies revisioned work state, G13 supplies requirement-to-observation coverage, and G12 supplies uncertainty-aware bounded action selection. This integration has not been implemented or evaluated.",
+      "evidence": [
+        {"source_id": "g11_contract", "selector": "/formal_spec/mechanism_contract"},
+        {"source_id": "g12_contract", "selector": "/formal_spec/experiment/mechanism"},
+        {"source_id": "g13_contract", "selector": "/formal_spec/{runtime_channel,behavioral_effect}"}
+      ]
+    },
+    {
+      "id": "C14",
+      "status": "unknown",
+      "claim": "Whether the integrated loop improves strict score, reaches 40/56, reduces timeouts, or causes any semantic benefit is unknown.",
+      "evidence": [
+        {"source_id": "g11_evidence", "selector": "/node/limits"},
+        {"source_id": "g12_evidence", "selector": "/node/limits"},
+        {"source_id": "g13_evidence", "selector": "/node/limits"}
+      ]
+    },
+    {
+      "id": "C15",
+      "status": "verified_fact",
+      "claim": "The current solution-loop Meta target shape requires mechanism_id, state, lenses, problem, hypothesis, why_now, non-empty de-risk/no-task/interface lists, and a matching feasibility_after_selection object.",
+      "evidence": [
+        {"source_id": "current_meta_validator", "selector": "validate_solution_loop_result target and feasibility checks near lines 248-297"}
+      ]
+    }
+  ]
+}

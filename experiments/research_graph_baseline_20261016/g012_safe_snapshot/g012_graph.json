@@ -1,0 +1,306 @@
+{
+  "binding": {
+    "assembly_sha256": "0935519543136e3663ad957c4d0868274adf6813e3cb3889e7d55c64eba65f56",
+    "authoring_policy_sha256": "656dcae86ff0ba23e1c011a507208b43e1ea236e4d72169441c78a057a1b4308",
+    "candidate_tree_sha256": "47dbf42636bbaa234c5f58256a37821a2ac891d29b34fcce13fe350207e7e344",
+    "code_parent_generation": 11,
+    "dataset_directory_count": 17,
+    "description_mode": "full_db_description_no_hints",
+    "extractor_sha256": "ed114375f573eeeb2ffbefee21a25a599d45a44bd0d43fd83ff82baadaaeb8c8",
+    "formal_activation_flag": "--enable-g012-uncertainty-gap-action",
+    "generation": 12,
+    "implementation_manifest_sha256": "20d71e71ddfdae7f6a23001407d46c9a718ada6572f055e4ea3d60d258579516",
+    "mechanism_id": "mech_uncertainty_typed_evidence_state_and_gap_action",
+    "model": "deepseek-flash",
+    "parent_graph_sha256": "e0a8e0a032cfb1f91506cb3d8fa0b463955e6bc48b85b3566262c8a0ec8163a4",
+    "parent_tree_sha256": "7a08559bad85ac3de94bc897759cc0f41aeb3260816a3e0ff21989687fae24ac",
+    "policy_sha256": "d6e022a462960e961087e618087dcd1d884bab49389acae64c463583d8643797",
+    "primary_metric": "strict_pass_over_fixed_56",
+    "provider": "deepseek_official",
+    "query_count": 56,
+    "query_timeout_sec": 1200,
+    "registry_sha256": "7aba9897753c6a3394f1a6d0b27df35a39ac05ca099b815a1e2b9c6d931218ff",
+    "research_contract_sha256": "67086825a82f1bd3bcc34297c85410ced236c965085c2ec94723bfc567c0b190",
+    "runner_sha256": "b0ffc1d241252160f8428baed6793a93ada40462ccf1a19498eb6c183b45e87e",
+    "runtime_admission_sha256": "9aba8ba4edecc5419687728ab1c39d7b0d7c18255b2ccec6679fac605b7513a0",
+    "same_dataset_serialized": true,
+    "single_runner_sha256": "97fd070d2060cb2d0e3c33e3344f4c2df46d5496f8a7b511d3277d437e255e8e",
+    "source_admission_sha256": "f557bd2b739152ea8c8440666b7548c750d78de47f46cc71e6f39c88900b9bf4",
+    "task_manifest_sha256": "576a7d718bbe54d94ce6b7c32b92530394f55b39865d718a376320a5b11d51f7",
+    "task_selection_rule": "odd-numbered query IDs within each dataset",
+    "upstream_data_agent_sha256": "ea64b4e2b54ca32545c006d9d2aa77ad3d788ecf337b50c898b268631b24f80a",
+    "workers": 4
+  },
+  "edges": [
+    {
+      "relation": "motivated_by",
+      "source": "problem:g012",
+      "target": "evidence:g011"
+    },
+    {
+      "relation": "explains",
+      "source": "hypothesis:g012",
+      "target": "problem:g012"
+    },
+    {
+      "relation": "tests",
+      "source": "experiment:g012",
+      "target": "hypothesis:g012"
+    },
+    {
+      "relation": "derives_code_from",
+      "source": "experiment:g012",
+      "target": "experiment:g011"
+    },
+    {
+      "relation": "observes",
+      "source": "evidence:g012",
+      "target": "experiment:g012"
+    },
+    {
+      "relation": "tests",
+      "source": "evidence:g012",
+      "target": "hypothesis:g012"
+    }
+  ],
+  "evidence_sha256": "5030d3901b764624053f0d5147257b2bb5ea24386e5231f4029e7fc547801bdd",
+  "generation": 12,
+  "independent_review_sha256": "50362d00554887ee9c43ea0c44627b3686cc193c641d1d6911412a031b759764",
+  "nodes": [
+    {
+      "id": "problem:g012",
+      "kind": "problem",
+      "mechanism_id": "mech_uncertainty_typed_evidence_state_and_gap_action",
+      "non_goals": [
+        "No semantic support, contradiction, relevance, coverage, plan-quality, or answer-correctness verifier.",
+        "No independent semantic task-obligation derivation or omitted-obligation detection.",
+        "No terminal audit, checklist, or G8/G9-style answer gate substituted for this mechanism.",
+        "No raw task, answer, hint, validator, message, tool-argument, tool-result, trace, credential, or old-research-line inspection or export.",
+        "No second arm, sham run, probe run, task-specific logic, scoring change, or wall-timeout extension.",
+        "No claim that structural uniqueness or resolution is semantic support.",
+        "No claim of strict improvement or causal benefit from an unpaired run."
+      ],
+      "scope": "Model-authored structural plan/evidence obligations, deterministic structural validation, an active accepted state, a bounded structural directive at the existing call_llm boundary, and structural next-action measurement under the frozen DAB protocol.",
+      "statement": "Specify a falsifiable G12 experiment for the selected uncertainty-typed evidence state and gap-action mechanism that can be implemented on one frozen parent, admitted through no-task gates, and measured on the fixed 56 without semantic judging or raw-context export. The mechanism must make structural unresolved evidence actionable while preserving the distinction between structural binding, real-model adoption, behavioral action choice, semantic status, and strict outcome."
+    },
+    {
+      "falsification_condition": "The structural-binding claim is contradicted by a false acceptance or misbinding of an invalid or non-visible reference, a directive on an invalid or absent state, any promotion of unique or resolved to semantic status, prohibited-content persistence, an agent-visible read, or behavior change outside the intended channel. The action-choice claim is contradicted if a non-timeout directive-bearing task with an observable next turn and sufficient budget takes a structurally contradictory action. Zero valid records, zero directives, or no observable next turn makes the corresponding component untested, not confirmed and not a hypothesis failure.",
+      "id": "hypothesis:g012",
+      "kind": "hypothesis",
+      "mechanism_id": "mech_uncertainty_typed_evidence_state_and_gap_action",
+      "prediction": "At least one task may exhibit a valid model-authored record with a genuinely visible reference; at least one non-timeout task may receive a non-proceed structured directive and take a structurally consistent next action; all observed bindings must satisfy the structural, inertness, cap, deadline, and no-leak rules. Zero adoption or zero directive leaves the behavioral mechanism untested. No strict-pass increase, timeout reduction, semantic improvement, or causal effect is predicted.",
+      "statement": "If a real model authors a schema-valid, lifecycle-valid active plan/evidence record with genuinely visible references, then the G12 runtime can derive exactly one structural assessment and deliver one bounded structured directive at a later eligible call_llm boundary; if the derived action is non-proceed, the model can take at least one structurally directive-consistent next action under the caps, and this can be measured separately from strict outcome without semantic promotion or leakage."
+    },
+    {
+      "activation_flag": "--enable-g012-uncertainty-gap-action",
+      "binding": {
+        "assembly_sha256": "0935519543136e3663ad957c4d0868274adf6813e3cb3889e7d55c64eba65f56",
+        "authoring_policy_sha256": "656dcae86ff0ba23e1c011a507208b43e1ea236e4d72169441c78a057a1b4308",
+        "candidate_tree_sha256": "47dbf42636bbaa234c5f58256a37821a2ac891d29b34fcce13fe350207e7e344",
+        "code_parent_generation": 11,
+        "dataset_directory_count": 17,
+        "description_mode": "full_db_description_no_hints",
+        "extractor_sha256": "ed114375f573eeeb2ffbefee21a25a599d45a44bd0d43fd83ff82baadaaeb8c8",
+        "formal_activation_flag": "--enable-g012-uncertainty-gap-action",
+        "generation": 12,
+        "implementation_manifest_sha256": "20d71e71ddfdae7f6a23001407d46c9a718ada6572f055e4ea3d60d258579516",
+        "mechanism_id": "mech_uncertainty_typed_evidence_state_and_gap_action",
+        "model": "deepseek-flash",
+        "parent_graph_sha256": "e0a8e0a032cfb1f91506cb3d8fa0b463955e6bc48b85b3566262c8a0ec8163a4",
+        "parent_tree_sha256": "7a08559bad85ac3de94bc897759cc0f41aeb3260816a3e0ff21989687fae24ac",
+        "policy_sha256": "d6e022a462960e961087e618087dcd1d884bab49389acae64c463583d8643797",
+        "primary_metric": "strict_pass_over_fixed_56",
+        "provider": "deepseek_official",
+        "query_count": 56,
+        "query_timeout_sec": 1200,
+        "registry_sha256": "7aba9897753c6a3394f1a6d0b27df35a39ac05ca099b815a1e2b9c6d931218ff",
+        "research_contract_sha256": "67086825a82f1bd3bcc34297c85410ced236c965085c2ec94723bfc567c0b190",
+        "runner_sha256": "b0ffc1d241252160f8428baed6793a93ada40462ccf1a19498eb6c183b45e87e",
+        "runtime_admission_sha256": "9aba8ba4edecc5419687728ab1c39d7b0d7c18255b2ccec6679fac605b7513a0",
+        "same_dataset_serialized": true,
+        "single_runner_sha256": "97fd070d2060cb2d0e3c33e3344f4c2df46d5496f8a7b511d3277d437e255e8e",
+        "source_admission_sha256": "f557bd2b739152ea8c8440666b7548c750d78de47f46cc71e6f39c88900b9bf4",
+        "task_manifest_sha256": "576a7d718bbe54d94ce6b7c32b92530394f55b39865d718a376320a5b11d51f7",
+        "task_selection_rule": "odd-numbered query IDs within each dataset",
+        "upstream_data_agent_sha256": "ea64b4e2b54ca32545c006d9d2aa77ad3d788ecf337b50c898b268631b24f80a",
+        "workers": 4
+      },
+      "candidate_source_tree_sha256": "47dbf42636bbaa234c5f58256a37821a2ac891d29b34fcce13fe350207e7e344",
+      "evaluation_run_id": "g012_uncertainty_gap_action_nohint_56_v1",
+      "id": "experiment:g012",
+      "kind": "experiment",
+      "measurement_plan": {
+        "aggregation": "Report task counts, step counts where relevant, and rates separately for strict pass, known strict fail, completed strict-verdict unknown, and timeout or other terminal failure. Report structural binding, adoption, directive delivery, action consistency, action contradiction, instrumentation category, freshness, and cap or deadline suppression separately. Report model-authored refs and the runtime structural inventory separately; do not treat unreferenced observations as omitted obligations. Never pool cohorts to mask missing coverage. G0-G11 partitions and G7 or G11 references are descriptive only.",
+        "budget_bounds": {
+          "deadline_guard_seconds": 180,
+          "extra_model_turns_attributable_to_guidance": 3,
+          "extra_tool_dispatches_attributable_to_guidance": 3,
+          "forced_answer_allowed": false,
+          "forced_tool_dispatch_allowed": false,
+          "guidance_messages_per_model_turn": 1,
+          "guidance_messages_per_task": 3,
+          "mechanism_initiated_tool_calls": 0,
+          "per_task_wall_timeout_seconds": 1200,
+          "unknown_deadline_behavior": "fail_closed_suppress_guidance",
+          "wall_timeout_extension_allowed": false
+        },
+        "coverage": {
+          "action_choice_coverage": "Number of non-timeout directive-bearing tasks with a later actionable model turn divided by the number of non-timeout directive-bearing tasks.",
+          "adoption_coverage": "Number of tasks with at least one valid model-authored record with a visible reference divided by the fixed 56 and by each observed cohort.",
+          "cohort_denominators": "Observed strict pass, known strict fail, completed strict-verdict unknown, and timeout or other terminal failure counts after the frozen evaluator join; reference counts are never reused as denominators.",
+          "directive_coverage": "Number of non-proceed structural assessments with exactly one delivered structured directive divided by the number of non-proceed structural assessments.",
+          "generalization_guard": "A non-timeout cohort with coverage below 0.8 withholds cohort-level generalization for that component and is reported as low coverage. This is an Evidence limitation, not a launch veto and not evidence of signal absence. Timeout tasks are reported separately and are never forced into a non-timeout coverage rate.",
+          "overall_denominator": 56,
+          "strict_outcome_coverage": "All 56 tasks, including timeouts and other terminal failures in the fixed denominator.",
+          "structural_binding_coverage": "Number of tasks with an observed model-authored record and a correct structural binding divided by the number of tasks with an observed model-authored record; also report the number of tasks with an observed record divided by the fixed 56 and by each observed cohort."
+        },
+        "design": "One pre-registered formal 56-task no-hint run on the sole G11-derived child, with no second arm and no causal comparison. Structural binding, real-model adoption, behavioral action choice, and strict outcome are reported as separate endpoints. The G7 and G11 partitions are descriptive references only and are never reused as denominators or as support for this mechanism.",
+        "no_leak_rules": [
+          "The mechanism may read only the model-authored freeform record, structural tool-call provenance, hook ordinals, the response-boundary identifier, anonymous task index, existing deadline values, structural completeness metadata, and frozen evaluator cohort labels.",
+          "The mechanism must not read or persist raw task content, task identifiers, answers, expected outputs, hints, validators, messages, tool arguments, tool results, raw traces, raw plan, step, or ref identifiers, credentials, old research lines, or human diagnosis.",
+          "The model-facing directive may contain only the frozen structural fields and opaque structural target tokens. It may not contain task content, answer content, hints, validators, raw identifiers, tool arguments or results, or semantic status fields.",
+          "The record carrier is removed from base-dispatch arguments when G12 is enabled; sidecars and research extracts use only anonymous ordinals, booleans, enums, structural categories, freshness states, cap counts, and aggregate counts.",
+          "Structural unique or resolved must never be serialized, labeled, summarized, or reported as supported, correct, relevant, covered, or semantically verified.",
+          "The existing base DataAgent raw-context log surface must pass a dedicated data-flow and redaction audit before formal admission; the formal evidence extractor must export none of that raw context.",
+          "No network or external data source may be accessed by the sidecar, extractor, or Research Meta beyond the admitted model-provider and database paths required by the frozen protocol."
+        ],
+        "refutation_conditions": [
+          "Structural binding is refuted by false acceptance of any invalid or non-visible reference, any active or target misbinding, any promotion of unique or resolved to semantic support, any directive from an absent or invalid state, any prohibited-content persistence or export, any agent-visible read, or any behavior change outside the intended channel.",
+          "Behavioral action choice is refuted if a non-timeout directive-bearing task with an observable later turn and sufficient budget takes a structurally contradictory action. A directive-consistent action on another task does not erase that contradiction.",
+          "Protocol violation, scoring mutation, wall-timeout extension, a mechanism-initiated tool call, a forced answer, or an uncorrected no-leak failure invalidates the formal run and cannot count as support or refutation of the mechanism itself.",
+          "Strict outcome magnitude never refutes the mechanism. Timeout or strict-fail changes are descriptive only."
+        ],
+        "sources": {
+          "allowed_fields": [
+            "self_observation.freeform model-authored record",
+            "tool_name coarse class",
+            "hook_local_step_ordinal",
+            "model_response_boundary_id",
+            "anonymous_task_index",
+            "hook_local_monotonic_seconds",
+            "DAB_TASK_DEADLINE_MONOTONIC",
+            "DAB_TASK_SPAWN_REMAINING_SEC",
+            "fixed_protocol.per_task_wall_timeout_seconds",
+            "freshness provenance metadata",
+            "structural validator outputs"
+          ],
+          "execution_hooks": [
+            "existing record_self_observation tool-call creation boundary for the model-authored freeform record",
+            "DataAgentWithSelfObservation._handle_tool_call pre-exec ordinary-dispatch provenance using only tool_name, hook-local ordinal, model_response_boundary_id, and anonymous task index",
+            "existing call_llm message boundary for at most one structured user-role directive",
+            "existing deadline clock and fixed 1200-second protocol limit for cap and fail-closed decisions"
+          ],
+          "forbidden_sources": [
+            "raw tasks or task identifiers",
+            "answers or expected outputs",
+            "hints",
+            "validators",
+            "messages",
+            "tool arguments",
+            "tool results",
+            "raw traces",
+            "raw plan, step, or ref identifiers",
+            "credentials",
+            "old research lines",
+            "human diagnosis",
+            "network content beyond the admitted model-provider and database paths"
+          ],
+          "postrun_join": [
+            "postrun normalized structural ordinal and completeness metadata",
+            "frozen evaluator cohort label",
+            "strict pass, known strict fail, completed strict-verdict unknown, timeout failure, and other terminal failure labels"
+          ]
+        },
+        "strict_outcome_interpretation": "Report strict pass, known strict fail, completed strict-verdict unknown, timeout failure, and other terminal failure over the fixed 56. Completed strict-verdict unknowns remain unknown and are not reclassified. No causal comparison, expected direction, semantic interpretation, or score-based support claim is permitted.",
+        "support_conditions": [
+          "Structural binding is supported only if at least one model-authored record is observed, every observed record is correctly bound by the runtime, at least one assessment is structurally derived without semantic promotion, and no structural-binding negative condition occurs. If no model-authored record is observed, structural binding is untested.",
+          "Real-model adoption is supported only if at least one task has a valid model-authored record with a genuinely visible prior-tool-call reference. Adoption support is not semantic support, relevance, correctness, or benchmark benefit.",
+          "Behavioral action choice is supported only if at least one non-timeout directive-bearing task with a later actionable turn takes a structurally directive-consistent action and no non-timeout directive-bearing task with sufficient budget takes a contradictory action. If no directive or no actionable next turn occurs, action choice is untested.",
+          "Structural binding, adoption, and action support are separate and may occur independently; none implies strict success or semantic verification.",
+          "Strict outcome has no mechanism-support condition. A strict-pass or known-fail change alone neither supports nor refutes the hypothesis."
+        ],
+        "untested_conditions": [
+          "No valid model-authored record across the run leaves real-model adoption untested and does not refute the hypothesis.",
+          "No non-proceed record or no delivered directive leaves behavioral action choice untested.",
+          "No later actionable turn, timeout, deadline guard, cap exhaustion, or ambiguous response boundary leaves the action-choice measurement unknown for that task.",
+          "A structural category with no observed instance leaves that category's empirical behavior untested.",
+          "Zero guidance binding must be reported as untested, not as failure or confirmation."
+        ]
+      },
+      "mechanism_id": "mech_uncertainty_typed_evidence_state_and_gap_action",
+      "statement": "pre_registered_g012_uncertainty_typed_evidence_state_and_gap_action_single_56_run"
+    },
+    {
+      "artifact_refs": {
+        "closure_draft_sha256": "82249dda01bd2e477cf11ca0fd82718ad55cd991283b60030bfcfc399a283dba",
+        "deterministic_verification_sha256": "df441b931c2a2441b9547b493aba6604339da2c3a96318c67691831622240524",
+        "evidence_draft_sha256": "8eba8f42a75cb9b94f59c2ad14f4a3f5de2e2222dcdd22c9b33640d08e980495",
+        "independent_review_sha256": "50362d00554887ee9c43ea0c44627b3686cc193c641d1d6911412a031b759764",
+        "launch_claim_sha256": "11bf6ab4c23519a6cfa0c9c618f8655feb3c3a28441d5f0c9fd343d09d5b2838",
+        "launch_manifest_sha256": "f63ada35052b8d08ca6186ab2658ca3483f78f9b8c400b529dad9a883f5ce93c",
+        "outcome_sha256": "5dd03f24c67fc5f03c75224a6504c12938ad60b9cc6a9ffef0e4f69250fb82c8",
+        "pre_execution_sha256": "e7f6d802bc5c633168d3d90fde34e8bd54f13e2cee6b4d1961f94ea7b9d75848",
+        "preflight_sha256": "3a1c864714a4205f60d567a66e312caccd5236723110436747150ac296b2eeae",
+        "privacy_sha256": "31f30c96f5750baa05394d0714e9bd1a26a643d60d923a22e6769519fe44ec8e",
+        "specialized_sha256": "beb7969dc1e33b547e343537ff7d07a83f4a99e953774cef3582b3a9f889b76a",
+        "terminal_receipt_sha256": "86ac90a7b925daf58a7f9453619cad258b0df54c4ba4f1ffb3d064a6821a8fb1"
+      },
+      "completed_count": 51,
+      "ended_count": 56,
+      "frozen_task_count": 56,
+      "id": "evidence:g012",
+      "kind": "evidence",
+      "known_strict_fail_count": 18,
+      "limits": [
+        "No model-authored record attempt, accepted record, visible reference, directive, or post-directive action was observed; the mechanism is untested.",
+        "The 30/56 score is one unpaired descriptive outcome and is not a causal or benefit claim.",
+        "Structural validation does not establish semantic support, relevance, correctness, coverage, or truth.",
+        "Three completed strict verdicts remain unknown and are not reclassified.",
+        "The five runner wall timeouts remain failures in the fixed 56 denominator."
+      ],
+      "mechanism_endpoints": {
+        "behavioral_action_choice": {
+          "contradicted_task_count": 0,
+          "directive_count": 0,
+          "status": "untested",
+          "supported_task_count": 0
+        },
+        "real_model_adoption": {
+          "note": "Adoption is not semantic support, relevance, correctness, or benchmark benefit.",
+          "status": "untested",
+          "supported_task_count": 0,
+          "visible_ref_count": 0
+        },
+        "strict_outcome": {
+          "counts": {
+            "known_strict_fail": 18,
+            "other_terminal_failure": 0,
+            "strict_pass": 30,
+            "strict_verdict_unknown": 3,
+            "timeout_failure": 5
+          },
+          "denominator": 56,
+          "interpretation": "Descriptive only; strict outcome has no mechanism-support condition and completed strict-verdict unknown remains unknown."
+        },
+        "structural_binding": {
+          "contradicted_task_count": 0,
+          "status": "untested",
+          "supported_task_count": 0
+        }
+      },
+      "other_terminal_failure_count": 0,
+      "query_wall_timeout_sec": 1200,
+      "score_policy": "completed_and_strict_true_over_all_56;timeout_is_failure",
+      "specialized_signal_kind": "uncertainty_typed_evidence_state_and_gap_action",
+      "specialized_status": "untested",
+      "statement": "G12 completed one frozen 56-task formal run at 30/56 strict. No model-authored record, visible reference, directive, or post-directive action was observed, so all pre-registered mechanism endpoints remain untested.",
+      "strict_pass_count": 30,
+      "strict_pass_rate_all": 0.535714,
+      "strict_verdict_missing_completed_count": 3,
+      "timeout_failure_count": 5
+    }
+  ],
+  "pre_execution_sha256": "e7f6d802bc5c633168d3d90fde34e8bd54f13e2cee6b4d1961f94ea7b9d75848",
+  "schema_version": "dab_research_graph_generation_v1",
+  "status": "four_nodes_complete"
+}

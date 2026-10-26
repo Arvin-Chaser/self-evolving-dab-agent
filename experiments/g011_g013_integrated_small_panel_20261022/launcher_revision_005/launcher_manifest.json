@@ -1,0 +1,67 @@
+{
+  "schema_version": "g011_g013_integrated_panel_launcher_manifest_v5",
+  "created_date": "2026-10-22",
+  "status": "implemented_awaiting_independent_review",
+  "purpose": "Isolated batch path for the frozen six-task integrated G11-G13 engineering panel.",
+  "supersedes": {
+    "revision": "launcher_revision_004",
+    "review_verdict": "rejected",
+    "review_sha256": "7975b756f11b68f2ddde6cdd88952eb651974a556c3e4fb0c018a29f0db70d88",
+    "repair_scope": "F04 exact selected-Python module-origin binding"
+  },
+  "source_bindings": {
+    "experiments/run_multi_query_baseline.py": "fa2b2dcf1d68dcf07d93353ea4bbf2026d979ecef77a6b907b8581108b85d331",
+    "experiments/run_g011_g013_integrated_small_panel.py": "6d414ff7abe7325e8b34f5fbc9369f9cca816410bf78e616c92087f035a1edcd",
+    "tests/test_run_multi_query_dynamic_workers.py": "f81887f81c9a8e1c0e1c1d1b3191bcb891f922c173c4d959318b9d3e6796eda7",
+    "tests/test_g011_g013_integrated_panel_launcher.py": "e16bd48239d7eff9025d6f86b602c17e5cc28af4f6f7b664335627acc47c3f68"
+  },
+  "unchanged_candidate_bindings": {
+    "experiments/g011_g013_integrated_agent.py": "c16b09d13f30acb8aa6539d7993d1c9cf30f94f75f0b430371d1449fd60f79a7",
+    "experiments/run_dab_tool_agent.py": "a37143b9809ff11cc11544e067c55d2d91fd5676b11a4f6e5e807c1e3f54e64b",
+    "experiments/run_dab_tool_agent_g011_g013_integrated.py": "bedb1aa93b3c3c0eba539168009f317c18226aa1b2d7de30be847bb186cde9af",
+    "prompts/dab/dab_tool_agent_policy_g011_g013_integrated.txt": "869cfa801d785f07b5af1a853c68b0dd8d5ace8c7168f55182ce600780bb0dfb"
+  },
+  "frozen_panel_bindings": {
+    "protocol_sha256": "4d941b9d1ffb736cc967cbb0fbba2e1205df77d8ca673a268e83cb110ac01035",
+    "operational_batch_sha256": "7f00732f7811c441f5127f78f7b931d8fb3635218637bf9b88fe59b9aee30978",
+    "freeze_manifest_sha256": "c09f2577f587e654f9aabe5aa3dcc1c28a202962432f87336045c31ae3eff0c1",
+    "anonymous_task_manifest_sha256": "af8ceffdb56bdd33e9dbe57edda9d4d741521cbea00eb5a17a8f1c4adb8d3aa9"
+  },
+  "child_execution_binding": {
+    "hash_bound_path": "experiments/run_dab_tool_agent_g011_g013_integrated.py",
+    "hash_bound_sha256": "bedb1aa93b3c3c0eba539168009f317c18226aa1b2d7de30be847bb186cde9af",
+    "module": "experiments.run_dab_tool_agent_g011_g013_integrated",
+    "lexical_module_to_path_match_required": true,
+    "selected_python_find_spec_origin_samefile_required": true,
+    "binding_checked_before_any_child": true
+  },
+  "locked_execution_contract": {
+    "panel_rows": 6,
+    "description_mode": "base_no_hint",
+    "workers": 1,
+    "model_attempts_per_turn": 1,
+    "sdk_internal_retries": 0,
+    "model_request_timeout_seconds": 600,
+    "task_wall_timeout_seconds": 1200,
+    "postgres_statement_timeout_ms": 1080000,
+    "observer_during_batch": false,
+    "resume_supported": false,
+    "first_query_error_stops_before_later_dispatch": true,
+    "operational_only_no_research_export": true
+  },
+  "previous_review_repairs_preserved": {
+    "F01_runtime_provenance_and_pre_child_hash_gate": true,
+    "F02_first_error_stop": true,
+    "F03_operational_export_boundary": true,
+    "F04_selected_python_module_origin_binding": true
+  },
+  "execution_boundary": {
+    "provider_calls": 0,
+    "ssh_read_only_preflight_performed": true,
+    "remote_staging_performed": false,
+    "database_calls": 0,
+    "benchmark_tasks": 0,
+    "panel_executed": false,
+    "prepare_only_gate_executed": false
+  }
+}

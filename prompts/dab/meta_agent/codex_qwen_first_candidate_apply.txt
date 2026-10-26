@@ -1,0 +1,15 @@
+Act as the Code Editor for the diagnosis already completed in the previous two
+phases. Do not reread the full evidence and do not produce another plan.
+
+The established repair target is feedback-extractor coherence for the observed
+`no_years_found` runtime event. The current PATENTS adapter imports and calls
+`extract_zero_mapping_and_year_errors` from `common_trace_checks.py`, while
+source inspection found that definition missing. Make the smallest coherent
+feedback-layer repair that resolves the real import/call contract and surfaces
+the empty-year runtime failure without touching prompts, validators, evidence,
+legacy code, or benchmark data.
+
+Your first tool call must edit the relevant Python source. Then use the
+remaining calls only for Python syntax/import validation and one focused
+behavior check with a minimal `no_years_found` trace. Use at most five tool
+calls. Apply the edit in the workspace; do not merely print a patch.

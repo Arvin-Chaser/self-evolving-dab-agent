@@ -1,0 +1,100 @@
+{
+  "schema_version": "g011_g013_integrated_repair_manifest_v1",
+  "revision": "001",
+  "status": "f01_f04_repaired_provider_free_local_tests_passed_pending_independent_review",
+  "created_date": "2026-10-22",
+  "git_target": {
+    "branch": "repair/patents-feedback-analyzer-v4",
+    "head": "2ec626da9bdfb9982bc2f1358b7047f1041a8373",
+    "dirty_worktree_preserved": true,
+    "commit_created": false
+  },
+  "parent_hashes": {
+    "implementation_contract_sha256": "a346f79c0035c6d7a591918cca37d2044fbb7a95e693bafcda01054e790312f8",
+    "rejected_independent_review_sha256": "c753a9983ff7084908d95eb8b631b29558be855b88e5785113cc600db21280a4",
+    "candidate_implementation_manifest_sha256": "993d3fe1f62948291554959eb16ac7b329050a4ca53afd48335d1290542f0223",
+    "candidate_validation_manifest_sha256": "20d6606eb8dcdebb2c2f36439805d986ef5fe9b89a9911f1306b235d58034865"
+  },
+  "exact_diff": {
+    "path": "experiments/g011_g013_integrated_implementation_20261022/repair_001/repair.patch",
+    "sha256": "d6659b951f4785e5902655b341a2f47bfe536f6950832a3c35762350c81a6ffe",
+    "baseline_reconstruction_verified_against_parent_manifest": true,
+    "baseline_files": [
+      {
+        "path": "experiments/g011_g013_integrated_implementation_20261022/repair_001/pre_repair_g011_g013_integrated_agent.py",
+        "sha256": "3a1e7cfc0db71a527d8f347b484468daade25ffc73c48567a9afdeb7a7e2f8ab"
+      },
+      {
+        "path": "experiments/g011_g013_integrated_implementation_20261022/repair_001/pre_repair_test_g011_g013_integrated_agent.py",
+        "sha256": "06c8eaed37f32ccd7ddf37de0e47fd06f031cb0086261d46ed6aa1d6ab2005e7"
+      }
+    ]
+  },
+  "changed_files": [
+    {
+      "path": "experiments/g011_g013_integrated_agent.py",
+      "before_sha256": "3a1e7cfc0db71a527d8f347b484468daade25ffc73c48567a9afdeb7a7e2f8ab",
+      "after_sha256": "c16b09d13f30acb8aa6539d7993d1c9cf30f94f75f0b430371d1449fd60f79a7"
+    },
+    {
+      "path": "tests/test_g011_g013_integrated_agent.py",
+      "before_sha256": "06c8eaed37f32ccd7ddf37de0e47fd06f031cb0086261d46ed6aa1d6ab2005e7",
+      "after_sha256": "be0200e8021d9643cf8f8cb13ea2d174789387d4ea8998eb3cfb5311c9783e01"
+    }
+  ],
+  "unchanged_integrated_wiring_hashes": {
+    "experiments/run_dab_tool_agent.py": "a37143b9809ff11cc11544e067c55d2d91fd5676b11a4f6e5e807c1e3f54e64b",
+    "experiments/analyze_dab_tool_agent_trace.py": "7098732c74b00c063d1d63c9c77436a18822d5e2e9f18009324f977cdaed3e4c",
+    "experiments/build_dab_tool_agent_evidence_pack.py": "8f00fc5a7850b2943773ab9ba74d21eb5c133ff3366c51a423d5f3b111c9ce85"
+  },
+  "finding_repairs": {
+    "F01": {
+      "source_change": "Exact matches now require visible, ordinary, prior, same-task observations; ineligible same-ref observations fail as non_visible_reference.",
+      "tests": ["test_t03_t04_visible_provenance_and_structural_transitions", "test_t03_duplicate_non_evidence_and_pre_boundary_rules"]
+    },
+    "F02": {
+      "source_change": "Export validation now requires the exact recursive aggregate telemetry schema, allowlisted counter keys, bounded integer types, closed enums, exact nested objects, and pooled_rates_emitted=false.",
+      "tests": ["test_t10_strict_telemetry_schema_rejects_types_unknown_content_and_nonfinite", "test_t10_telemetry_serializes_through_analyzer_and_evidence_pack"]
+    },
+    "F03": {
+      "source_change": "Installed classes carry a configuration and stable attachment marker; same-config reinstall returns the original attachment and conflicting reinstall raises before mutation.",
+      "tests": ["test_t08_repeated_install_is_single_path_and_conflicts_fail_closed"]
+    },
+    "F04": {
+      "source_change": "Each successful enabled call_llm response is inspected once at the provider response boundary and records one activation miss only when neither configured carrier location is present.",
+      "tests": ["test_t11_runtime_activation_miss_once_per_enabled_response"]
+    }
+  },
+  "test_commands": [
+    {
+      "command": "python -m pytest -q tests/test_g011_g013_integrated_agent.py",
+      "exit_code": 0,
+      "result": "38 passed",
+      "output_path": "experiments/g011_g013_integrated_implementation_20261022/repair_001/focused_suite_output.txt",
+      "output_sha256": "2d7db4797383566f1ade6d25acb27ae724391ae77015549482f68b7ce1b6f4a6"
+    },
+    {
+      "command": "python -m pytest -q tests/test_g011_g013_integrated_agent.py tests/test_g013_intent_first_agent.py tests/test_g0131_convergent_agent.py tests/test_g0132_task_workspace.py tests/test_run_multi_query_dynamic_workers.py",
+      "exit_code": 0,
+      "result": "58 passed",
+      "output_path": "experiments/g011_g013_integrated_implementation_20261022/repair_001/current_mainline_regression_output.txt",
+      "output_sha256": "115550efce8b068b61f2dc701bc448a4e72beb82bb13485a75647123b89e7d27"
+    }
+  ],
+  "non_evaluation_boundary": {
+    "external_calls": 0,
+    "provider_calls": 0,
+    "database_calls": 0,
+    "benchmark_tasks": 0,
+    "meta_calls": 0,
+    "admission_claimed": false,
+    "formal_completion_claimed": false,
+    "score_claimed": false,
+    "causal_benefit_claimed": false
+  },
+  "unknowns": [
+    "Fresh independent source/privacy/contract review outcome is unknown.",
+    "Real-provider carrier shape, authorship, activation, and action sensitivity remain unknown.",
+    "Strict score, timeout behavior, and causal benefit remain unknown."
+  ]
+}

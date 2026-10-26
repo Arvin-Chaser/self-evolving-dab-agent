@@ -1,0 +1,10 @@
+Edit the current repository using a real Codex tool action.
+
+There is exactly one task: change `sample.py` from `VALUE = 1` to
+`VALUE = 2`.
+
+Your first tool action must modify `sample.py`. Do not inspect or read the file
+first. Do not print an apply_patch payload, JSON tool call, unified diff, or
+instructions as assistant text. The change must actually exist in the working
+tree after the first tool action. After editing, you may run one command that
+shows the file or git diff, then finish with a short status sentence.

@@ -1,0 +1,77 @@
+{
+  "schema_version": "g011_g013_integrated_panel_launcher_independent_review_v1",
+  "reviewed_at_utc": "2026-10-22T00:01:48.9012956Z",
+  "reviewer": "independent_codex_agent",
+  "revision": "launcher_revision_005",
+  "verdict": "accepted",
+  "review_scope": [
+    "source",
+    "selected_python_module_binding",
+    "privacy",
+    "execution_contract",
+    "runtime_provenance",
+    "provider_free_tests"
+  ],
+  "input_gate": {
+    "passed": true,
+    "launcher_manifest_sha256": "7e62db8483f7fb8bc2e4b4e02c6759a3ef2419c60e53305bacc5c3b59b2d4937",
+    "validation_manifest_sha256": "5d6be0bc089228df913d242b7cae5dba5a264d44e690cc483c99bcc2b367ee77",
+    "artifact_inventory_sha256": "47b385daf28b9231aa7945acbee21dc57c8a8a29e1fcfe8a01c9cf825e0ae4f3",
+    "all_manifest_source_candidate_and_panel_bindings_match": true
+  },
+  "severity_counts": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0
+  },
+  "findings": [],
+  "revision_004_F04_resolution": {
+    "status": "resolved",
+    "evidence": [
+      "The dotted module is lexically mapped under source_root and must resolve to the hash-bound runner path before the selected Python is invoked.",
+      "The exact selected Python runs find_spec(module) from source_root before registry loading, batch setup, or any child dispatch.",
+      "The probe must return exactly one origin and Path.samefile must match the hash-bound runner; all failures stop the launcher.",
+      "Child execution uses the same selected Python and validated dotted module, while execution_context records the runner path, SHA-256, module, and validated origin.",
+      "Negative tests cover both a syntactically valid wrong module mapping and a wrong selected-Python module origin."
+    ]
+  },
+  "previous_finding_regression_check": {
+    "F01_runtime_provenance_and_pre_child_hash_gate": "resolved_no_regression",
+    "F02_first_error_stop": "resolved_no_regression",
+    "F03_operational_export_boundary": "resolved_no_regression"
+  },
+  "confirmed_properties": {
+    "direct_dedicated_help_succeeds": true,
+    "direct_integrated_module_help_succeeds": true,
+    "selected_python_module_origin_samefile": true,
+    "fresh_children_use_integrated_module": true,
+    "one_model_attempt_per_turn": true,
+    "zero_sdk_internal_retries": true,
+    "base_no_hint_description": true,
+    "workers": 1,
+    "batch_observer_disabled": true,
+    "model_request_timeout_seconds": 600,
+    "task_wall_timeout_seconds": 1200,
+    "postgres_statement_timeout_ms": 1080000,
+    "sequential_fail_fast": true,
+    "content_blind_stop_receipt_and_nonzero_exit": true,
+    "operational_only_research_export_suppressed": true,
+    "generic_child_runner_default_remains_base": true,
+    "dedicated_resume_interface_absent": true,
+    "runtime_checks_skippable_only_for_prepare_only": true,
+    "credential_value_persisted_by_launcher": false,
+    "unchanged_candidate_hashes_match": true,
+    "candidate_behavior_changed": false
+  },
+  "execution_boundary": {
+    "provider_calls": 0,
+    "network_calls": 0,
+    "ssh_calls": 0,
+    "database_calls": 0,
+    "benchmark_tasks": 0,
+    "remote_staging": false,
+    "panel_executed": false,
+    "prepare_only_panel_executed": false
+  },
+  "disposition": "Accepted for the next explicitly authorized remote staging and provider-free six-row prepare-only verification only. This review is not benchmark evidence, admission, or authorization for a provider/database panel run."
+}

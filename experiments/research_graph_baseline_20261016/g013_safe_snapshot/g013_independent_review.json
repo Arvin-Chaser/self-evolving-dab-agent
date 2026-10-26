@@ -1,0 +1,64 @@
+{
+  "claim_boundaries": {
+    "benchmark_benefit_claim_allowed": false,
+    "causal_claim_allowed": false,
+    "semantic_support_claim_allowed": false,
+    "strict_outcome_is_descriptive_only": true,
+    "zero_record_or_directive_means_untested": true
+  },
+  "evidence_status": "independently_validated",
+  "formal_run_status": "completed",
+  "generation": 13,
+  "graph_closure_eligible": true,
+  "mechanism_counts": {
+    "accepted_record": 0,
+    "directive": 0,
+    "post_directive_action": 0,
+    "record_attempt": 0,
+    "view": 0
+  },
+  "mechanism_status": "untested",
+  "privacy_status": "passed",
+  "recovery_review": {
+    "formal_run_restarted": false,
+    "initial_failure_before_postrun": true,
+    "interpreter_path_verified": "/srv/text2sql/.venv/bin/python",
+    "interpreter_sha256": "3008abbb48c1e2b0fa3072ae72334b9b352e1346ea3a20d34126a455f0c7bc66",
+    "interpreter_sha_not_prebound": true,
+    "note": "The first finalizer failed before postrun creation because the frozen source root was absent from sys.path. The only recovery changed PYTHONPATH, not source or extractor semantics. The outer wrapper later misreported exit 1 after finalizer completion. The interpreter identity was verified but its SHA was not pre-bound.",
+    "original_finalizer_stderr_empty": true,
+    "original_finalizer_stdout_complete": true,
+    "recovery_attempt_count": 1,
+    "wrapper_exit_one_is_transport_capture_error": true
+  },
+  "schema_version": "g013_independent_research_review_v1",
+  "source_hashes": {
+    "admission": "2f1759d93ef77337e88a501b7b286b381fb4860ef421dfe94f32ef84741bae5e",
+    "admission_review": "8d499cd636b651dc30faf7b83b8bc0180a2d599f2650f6246898025233926341",
+    "closure_draft": "b146f7aeb62159b144aa2b1e1b26ccc631ae27eec349de3b1d640d81cffe4b69",
+    "contract": "5c60ad036745f2219582d1e0a9e6ef10ce82920461537702df3ed691121d917c",
+    "environment_attestation": "160d131451a9bf15249aaefe62b1bf1b105656a852c7f230db51eb4003786435",
+    "evidence_draft": "cca47010fe711b2de4aa4f190fcd4d415d47baa59d7016c396ad1c6c5a3797f5",
+    "failure_receipt": "8d5d777f11de27b0ccb02f911cd4f8e42cf66d3f40bec8926ce9cedec158ddda",
+    "implementation": "d8bd9714718343c51b30290e4ab1b8c8db5a077543a128f163cd48c34e36b5e1",
+    "outcome": "c4bdcb7f23682d286b15e5003ff6ba9dc74413564220e04157954c1cab5f29f3",
+    "previous_memory": "fc206dac718781d9e3d9eb0dc79e2f6593e98d5e25cb9be3448124c8e15fe54e",
+    "privacy": "0e18d16a35ee581e7cab5ed4b17185fe1bfde9c852846eb7f6000d1cf067f1b3",
+    "recovery_binding": "35056b5e8d8baddc8d3cee5c845117d357cdba31b1d38dc1daa2bd8062b895ec",
+    "recovery_execution": "5f8999d7c650124415400dabb5e0785714d812f0c83fe7e5abc335313b413607",
+    "recovery_preflight": "91deed93b40661183538006f252f7883153c5ec69aafdbaca250706560864b7c",
+    "source_review": "095d36fa7b32a4f0b4b9f6bb048dffacacb9274574b8d993ac4566dee4629880",
+    "specialized": "5961a68f3641380b717f07c09792c2d904ccf2827b7e56492e6ca60f12576afb",
+    "terminal_receipt": "a9f7ad3152116cd8b117f7705980b289f785f26fe0146258669f54c19e141b62"
+  },
+  "status": "passed_with_recovery_procedure_notes",
+  "verified_counts": {
+    "completed": 52,
+    "completed_strict_verdict_unknown": 3,
+    "ended": 56,
+    "known_strict_fail": 18,
+    "other_terminal_failure": 0,
+    "strict_pass": 31,
+    "timeout_failure": 4
+  }
+}

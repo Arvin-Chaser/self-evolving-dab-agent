@@ -1,0 +1,56 @@
+Act only as a constrained code editor. Do not inspect PATENTS evidence or logs.
+
+You are running inside an isolated candidate workspace. You may modify only:
+
+- `adapters/feedback/dab_patents_checks.py`
+- `adapters/feedback/common_trace_checks.py`
+
+Hard protocol:
+
+1. You already have enough source context below. Your first completed tool action
+   must be a real source edit to one of the allowed files.
+2. Do not run a read-only command as your first tool action. No `sed`, `grep`,
+   `git diff`, `python` read-only inspection, `ls`, or `cat` first.
+3. The first tool action may be a single bash command that runs an inline Python
+   script. That script may read the two allowed source files internally, verify
+   exact patterns, write the minimal patch, and then output `git diff`.
+4. If the exact safe patterns are not present, the first tool action must create
+   a clear no-op failure marker and exit nonzero; do not keep reading.
+5. Do not print tool JSON or apply_patch payloads as assistant text.
+6. Do not use whole-file replacement, broad refactoring, or `cat > file`.
+
+Patch goal:
+
+- Initialize `errors` once at the beginning of
+  `extract_patents_trace_errors` before any `errors.append`.
+- Add only the missing focused helper needed by the PATENTS adapter:
+  `extract_zero_mapping_and_year_errors`.
+- Preserve every existing generic helper, especially
+  `extract_operation_event_errors` and `extract_trace_based_errors`.
+- Keep total project diff at or below 80 changed lines.
+
+Recommended first tool action shape:
+
+```bash
+/bin/bash -lc 'python - <<'"'"'PY'"'"'
+from pathlib import Path
+dab = Path("adapters/feedback/dab_patents_checks.py")
+common = Path("adapters/feedback/common_trace_checks.py")
+# read, exact-pattern-check, minimal string edits, write back
+PY
+git diff -- adapters/feedback/dab_patents_checks.py adapters/feedback/common_trace_checks.py'
+```
+
+After the first edit succeeds, run only:
+
+- `python -m py_compile adapters/feedback/common_trace_checks.py adapters/feedback/dab_patents_checks.py`
+- a module import check
+- focused behavior tests for `no_years_found`, `parsed_patents=0`, and one
+  generic operation-event signal
+
+Do not run broad diagnostics. Do not modify control files.
+
+Minimal source context pack follows. Treat it as authoritative enough to edit
+first; do not spend your first tool action re-reading source.
+
+<<<CONTEXT_PACK>>>

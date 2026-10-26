@@ -1,0 +1,30 @@
+You are the Code Editor for `codex_qwen_patents_iter002_minimal_feedback_fix`.
+The diagnosis is complete from a real PATENTS evidence package. Do not run a
+new broad diagnosis and do not reuse or inspect the rejected iter001 patch.
+
+Clean-parent source facts:
+
+1. `extract_patents_trace_errors` in `adapters/feedback/dab_patents_checks.py`
+   calls `errors.append` before initializing `errors` in the
+   `patent_aggregation_summary` path.
+2. It imports and calls `extract_zero_mapping_and_year_errors` from
+   `adapters/feedback/common_trace_checks.py`, where that helper is missing.
+3. Existing generic helpers, especially `extract_operation_event_errors` and
+   `extract_trace_based_errors`, must remain intact.
+
+Make the smallest coherent repair. Modify at most these two project files:
+
+- `adapters/feedback/dab_patents_checks.py`
+- `adapters/feedback/common_trace_checks.py`
+
+Prefer initializing `errors` at the beginning of the PATENTS extractor and
+adding only the missing focused helper. Do not rewrite either file, refactor
+generic logic, or edit prompts, launchers, validators, evidence, logs,
+manifests, legacy code, or benchmark data. Never use `cat >` or whole-file
+replacement.
+
+Your first tool round must apply a minimal source patch. Then use remaining
+rounds only for `py_compile`, module imports, and one focused behavior check
+covering `no_years_found` and `parsed_patents=0`. If this cannot be done as a
+minimal patch, make no source changes and report `NO_OP_FAILED`. Use at most
+four tool rounds.

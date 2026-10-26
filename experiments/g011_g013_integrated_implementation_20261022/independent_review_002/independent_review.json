@@ -1,0 +1,235 @@
+{
+  "schema_version": "g011_g013_integrated_independent_review_v2",
+  "review_date": "2026-10-22",
+  "status": "accepted",
+  "verdict": "accepted",
+  "review_scope": "repair_001 independent source/privacy/contract review 002",
+  "authorization_boundary": {
+    "local_read_only_review": true,
+    "provider_free_tests": true,
+    "writes_limited_to_review_directory": true,
+    "provider_calls": 0,
+    "network_calls": 0,
+    "database_calls": 0,
+    "benchmark_tasks": 0,
+    "meta_calls": 0,
+    "patents_or_civic_tasks": 0,
+    "six_question_panel_runs": 0,
+    "frozen_56_runs": 0,
+    "commits": 0,
+    "pushes": 0,
+    "graph_mutations": 0
+  },
+  "claim_boundary": {
+    "source_privacy_contract_review": "accepted",
+    "repair_001_independently_verified": true,
+    "admitted": false,
+    "formal_evidence": false,
+    "benchmark_evaluated": false,
+    "score_claimed": false,
+    "causal_benefit_claimed": false
+  },
+  "git_target": {
+    "branch": "repair/patents-feedback-analyzer-v4",
+    "head": "2ec626da9bdfb9982bc2f1358b7047f1041a8373",
+    "matches_repair_manifest": true,
+    "dirty_worktree_preserved": true
+  },
+  "authoritative_input_hashes": [
+    {
+      "path": "experiments/g011_g013_synthesis_20261022/implementation_contract.json",
+      "expected_sha256": "a346f79c0035c6d7a591918cca37d2044fbb7a95e693bafcda01054e790312f8",
+      "observed_sha256": "a346f79c0035c6d7a591918cca37d2044fbb7a95e693bafcda01054e790312f8",
+      "match": true
+    },
+    {
+      "path": "experiments/g011_g013_integrated_implementation_20261022/independent_review/independent_review.json",
+      "expected_sha256": "c753a9983ff7084908d95eb8b631b29558be855b88e5785113cc600db21280a4",
+      "observed_sha256": "c753a9983ff7084908d95eb8b631b29558be855b88e5785113cc600db21280a4",
+      "match": true
+    },
+    {
+      "path": "experiments/g011_g013_integrated_implementation_20261022/repair_001/repair_manifest.json",
+      "expected_sha256": "7e919fc80c8bbdcbd93653cf8d80026bab42929b7e91e01f215cde46ccafe5c4",
+      "observed_sha256": "7e919fc80c8bbdcbd93653cf8d80026bab42929b7e91e01f215cde46ccafe5c4",
+      "match": true
+    },
+    {
+      "path": "experiments/g011_g013_integrated_implementation_20261022/repair_001/validation_manifest.json",
+      "expected_sha256": "98d45828b534ece2dd6d50e387fb00fd1c108a5fe158ad384ccec40d97459e58",
+      "observed_sha256": "98d45828b534ece2dd6d50e387fb00fd1c108a5fe158ad384ccec40d97459e58",
+      "match": true
+    },
+    {
+      "path": "experiments/g011_g013_integrated_agent.py",
+      "expected_sha256": "c16b09d13f30acb8aa6539d7993d1c9cf30f94f75f0b430371d1449fd60f79a7",
+      "observed_sha256": "c16b09d13f30acb8aa6539d7993d1c9cf30f94f75f0b430371d1449fd60f79a7",
+      "match": true
+    },
+    {
+      "path": "tests/test_g011_g013_integrated_agent.py",
+      "expected_sha256": "be0200e8021d9643cf8f8cb13ea2d174789387d4ea8998eb3cfb5311c9783e01",
+      "observed_sha256": "be0200e8021d9643cf8f8cb13ea2d174789387d4ea8998eb3cfb5311c9783e01",
+      "match": true
+    }
+  ],
+  "unchanged_wiring_hashes": [
+    {
+      "path": "experiments/run_dab_tool_agent.py",
+      "expected_sha256": "a37143b9809ff11cc11544e067c55d2d91fd5676b11a4f6e5e807c1e3f54e64b",
+      "observed_sha256": "a37143b9809ff11cc11544e067c55d2d91fd5676b11a4f6e5e807c1e3f54e64b",
+      "match": true
+    },
+    {
+      "path": "experiments/analyze_dab_tool_agent_trace.py",
+      "expected_sha256": "7098732c74b00c063d1d63c9c77436a18822d5e2e9f18009324f977cdaed3e4c",
+      "observed_sha256": "7098732c74b00c063d1d63c9c77436a18822d5e2e9f18009324f977cdaed3e4c",
+      "match": true
+    },
+    {
+      "path": "experiments/build_dab_tool_agent_evidence_pack.py",
+      "expected_sha256": "8f00fc5a7850b2943773ab9ba74d21eb5c133ff3366c51a423d5f3b111c9ce85",
+      "observed_sha256": "8f00fc5a7850b2943773ab9ba74d21eb5c133ff3366c51a423d5f3b111c9ce85",
+      "match": true
+    }
+  ],
+  "finding_rechecks": [
+    {
+      "id": "F01",
+      "prior_severity": "P1",
+      "status": "resolved_verified",
+      "judgment": "Exact provenance matches now require ref equality plus same-task, prior-boundary, ordinary, and visible eligibility. Ineligible same-ref records remain unknown and fail closed as non_visible_reference or boundary_mismatch.",
+      "source_evidence": [
+        "experiments/g011_g013_integrated_agent.py:332",
+        "experiments/g011_g013_integrated_agent.py:344"
+      ],
+      "test_evidence": [
+        "tests/test_g011_g013_integrated_agent.py:108",
+        "tests/test_g011_g013_integrated_agent.py:132"
+      ]
+    },
+    {
+      "id": "F02",
+      "prior_severity": "P1",
+      "status": "resolved_verified",
+      "judgment": "Telemetry export validation is a recursively closed allowlist: exact root and nested schemas, bounded integer counts, closed counter keys, closed endpoint enums, exact cohorts, and pooled_rates_emitted=false. Analyzer and evidence-pack boundaries validate before attachment.",
+      "source_evidence": [
+        "experiments/g011_g013_integrated_agent.py:506",
+        "experiments/analyze_dab_tool_agent_trace.py:498",
+        "experiments/build_dab_tool_agent_evidence_pack.py:70"
+      ],
+      "test_evidence": [
+        "tests/test_g011_g013_integrated_agent.py:259",
+        "tests/test_g011_g013_integrated_agent.py:280"
+      ]
+    },
+    {
+      "id": "F03",
+      "prior_severity": "P1",
+      "status": "resolved_verified",
+      "judgment": "The installed class carries a stable configuration and attachment marker. Same-configuration reinstall returns the same attachment without rewrapping; conflicting reinstall raises before mutation.",
+      "source_evidence": [
+        "experiments/g011_g013_integrated_agent.py:632",
+        "experiments/g011_g013_integrated_agent.py:643",
+        "experiments/g011_g013_integrated_agent.py:717"
+      ],
+      "test_evidence": [
+        "tests/test_g011_g013_integrated_agent.py:403"
+      ]
+    },
+    {
+      "id": "F04",
+      "prior_severity": "P2",
+      "status": "resolved_verified",
+      "judgment": "Each non-null enabled call_llm response is inspected once at the response boundary; exactly one activation miss is recorded only when neither configured carrier location is present. Carrier-bearing responses and disabled mode do not increment it.",
+      "source_evidence": [
+        "experiments/g011_g013_integrated_agent.py:609",
+        "experiments/g011_g013_integrated_agent.py:691"
+      ],
+      "test_evidence": [
+        "tests/test_g011_g013_integrated_agent.py:429"
+      ]
+    }
+  ],
+  "new_findings": [],
+  "privacy_verdict": {
+    "status": "pass",
+    "aggregate_only_schema_closed": true,
+    "raw_carrier_redaction_present": true,
+    "analyzer_boundary_fail_closed": true,
+    "evidence_pack_boundary_fail_closed": true,
+    "prohibited_content_export_found": false
+  },
+  "wiring_verdict": {
+    "status": "pass",
+    "runner_install_path": "experiments/run_dab_tool_agent.py:1076",
+    "runner_disabled_default": "experiments/run_dab_tool_agent.py:1766",
+    "runner_telemetry_copy_path": "experiments/run_dab_tool_agent.py:1483",
+    "runner_summary_path": "experiments/run_dab_tool_agent.py:1568",
+    "analyzer_validation_path": "experiments/analyze_dab_tool_agent_trace.py:498",
+    "evidence_pack_validation_path": "experiments/build_dab_tool_agent_evidence_pack.py:70",
+    "isolated_launcher_path": "experiments/run_dab_tool_agent_g011_g013_integrated.py:16"
+  },
+  "invariant_verdicts": {
+    "I01": "pass_single_schema_store_controller_view_path_and_idempotent_install",
+    "I02": "pass_runtime_state_changes_only_from_carrier_tool_boundaries",
+    "I03": "pass_exact_visible_prior_same_task_ordinary_provenance",
+    "I04": "pass_view_semantic_status_always_unknown",
+    "I05": "pass_unknown_preserved_for_fault_and_uncertain_inputs",
+    "I06": "pass_no_mechanism_tool_call_dispatch_or_forced_answer",
+    "I07": "pass_launcher_preserves_parent_scoring_task_model_timeout_surfaces",
+    "I08": "pass_aggregate_only_allowlisted_telemetry_and_carrier_redaction",
+    "I09": "pass_disabled_install_returns_before_mutation_and_emits_no_mechanism_state",
+    "I10": "pass_zero_activation_endpoints_report_untested",
+    "I11": "pass_cohort_denominators_are_separate_and_no_pooled_rates_are_emitted",
+    "I12": "pass_isolated_launcher_sets_one_attempt_and_zero_client_retries"
+  },
+  "contract_test_verdicts": {
+    "T01": "pass",
+    "T02": "pass",
+    "T03": "pass",
+    "T04": "pass",
+    "T05": "pass",
+    "T06": "pass",
+    "T07": "pass",
+    "T08": "pass",
+    "T09": "pass",
+    "T10": "pass",
+    "T11": "pass",
+    "T12": "pass",
+    "T13": "pass",
+    "T14": "pass"
+  },
+  "tests": [
+    {
+      "name": "focused",
+      "command": "python -m pytest -q tests/test_g011_g013_integrated_agent.py",
+      "executions": 1,
+      "exit_code": 0,
+      "passed": 38,
+      "failed": 0,
+      "output_path": "experiments/g011_g013_integrated_implementation_20261022/independent_review_002/focused_suite_output.txt",
+      "output_sha256": "e55059577c7596be6303ac4b50ddbbc27476316d766026116d93581d681e1b1d"
+    },
+    {
+      "name": "focused_plus_current_regressions",
+      "command": "python -m pytest -q tests/test_g011_g013_integrated_agent.py tests/test_g013_intent_first_agent.py tests/test_g0131_convergent_agent.py tests/test_g0132_task_workspace.py tests/test_run_multi_query_dynamic_workers.py",
+      "executions": 1,
+      "exit_code": 0,
+      "passed": 58,
+      "failed": 0,
+      "output_path": "experiments/g011_g013_integrated_implementation_20261022/independent_review_002/current_mainline_regression_output.txt",
+      "output_sha256": "6ae231e3f68ed49428c0b215d005fd2c069310aaae0dd87badcfa8e8cf05c5e3"
+    }
+  ],
+  "residual_unknowns": [
+    "Real-provider carrier shape, model authorship, activation rate, and action sensitivity remain unevaluated.",
+    "Strict score, timeout impact, and causal benefit remain unknown.",
+    "Acceptance is a local engineering gate only and is not admission or formal benchmark evidence."
+  ],
+  "next_safe_action": {
+    "action": "freeze six-question small panel",
+    "executed": false,
+    "authorization_required_before_execution": true
+  }
+}

@@ -1,0 +1,66 @@
+# G13 Intent-First Requirement Coverage Policy
+
+Solve the user's data question by maintaining a lightweight working checklist
+of what the answer must establish and what evidence has actually been obtained.
+This checklist is part of your ordinary reasoning. Do not call a special
+recording tool, emit a sidecar, or follow a fixed carrier schema for it.
+
+## 1. Build the requirement checklist
+
+Before committing to a query plan, identify the concrete obligations in the
+request. Include, when applicable:
+
+- requested entities and output grain;
+- filters, exclusions, time windows, and business rules;
+- metrics, grouping, ordering, ranking, and tie behavior;
+- required joins or transformations across data sources;
+- expected output columns, units, and answer format.
+
+Treat database descriptions and hints as useful context, not as substitutes
+for checking the actual schema and data.
+
+## 2. Acquire evidence against requirements
+
+Inspect the available databases and schemas before assuming table, field, key,
+or value semantics. Use bounded samples, aggregates, and metadata queries to
+test important assumptions. Use Python when cross-database joins, normalization,
+deduplication, text processing, or multi-step calculations are clearer and more
+reliable outside a single query.
+
+After each tool result, update your working view of every affected requirement:
+
+- covered: the result directly supports the needed computation;
+- partial: useful evidence exists but another source or check is needed;
+- conflicting: the result contradicts the current plan or another observation;
+- unknown: the tool failed, the schema is ambiguous, or evidence is absent.
+
+These labels are reasoning aids, not a required output format. Never convert a
+failed or missing observation into positive evidence.
+
+## 3. Let uncovered requirements drive the next action
+
+Choose the next tool action that addresses the highest-impact unresolved
+requirement or discriminates between competing data interpretations. Avoid
+repeating a query unless its arguments or purpose materially change. When a
+result conflicts with the current plan, revise the plan or query rather than
+merely restating the original interpretation.
+
+Prefer operations that produce reusable intermediate results. Keep joins,
+normalization rules, filters, and aggregation grain explicit enough to inspect
+and correct. Do not stop simply because one plausible result has been found.
+
+## 4. Verify before answering
+
+Before `return_answer`, check the working checklist against the requested
+output. In particular, verify:
+
+- every requested component is represented;
+- joins and filters implement the intended population;
+- aggregation grain, ordering, ranking, and ties are correct;
+- units, time semantics, null handling, and output formatting are consistent;
+- the final claims come from actual tool results rather than assumptions.
+
+When practical, run one independent aggregate, count, sample, or consistency
+check that could reveal a material error in the final result. If a requirement
+cannot be resolved within the available data or tools, preserve that limitation
+and return the best supported answer without inventing facts.

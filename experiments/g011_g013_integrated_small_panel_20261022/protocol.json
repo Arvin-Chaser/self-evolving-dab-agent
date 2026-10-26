@@ -1,0 +1,94 @@
+{
+  "schema_version": "g011_g013_integrated_small_panel_protocol_v1",
+  "status": "frozen_not_executed",
+  "panel_id": "g011_g013_integrated_small_panel_v1_20261022",
+  "purpose": "Engineering activation gate for the integrated G11-G13 candidate; not benchmark-benefit or causal evidence.",
+  "candidate_binding": {
+    "implementation_contract_sha256": "a346f79c0035c6d7a591918cca37d2044fbb7a95e693bafcda01054e790312f8",
+    "repaired_source_sha256": "c16b09d13f30acb8aa6539d7993d1c9cf30f94f75f0b430371d1449fd60f79a7",
+    "integrated_launcher_sha256": "bedb1aa93b3c3c0eba539168009f317c18226aa1b2d7de30be847bb186cde9af",
+    "integrated_policy_sha256": "869cfa801d785f07b5af1a853c68b0dd8d5ace8c7168f55182ce600780bb0dfb",
+    "runner_sha256": "a37143b9809ff11cc11544e067c55d2d91fd5676b11a4f6e5e807c1e3f54e64b",
+    "analyzer_sha256": "7098732c74b00c063d1d63c9c77436a18822d5e2e9f18009324f977cdaed3e4c",
+    "evidence_pack_sha256": "8f00fc5a7850b2943773ab9ba74d21eb5c133ff3366c51a423d5f3b111c9ce85",
+    "focused_tests_sha256": "be0200e8021d9643cf8f8cb13ea2d174789387d4ea8998eb3cfb5311c9783e01",
+    "independent_review_002_sha256": "ff901bc92c30702f59f0e76c533500be3f4a30bb663097e0abed3bef647a657d"
+  },
+  "task_binding": {
+    "parent_56_task_manifest_sha256": "576a7d718bbe54d94ce6b7c32b92530394f55b39865d718a376320a5b11d51f7",
+    "panel_size": 6,
+    "anonymous_selection_required": true,
+    "reference_outcomes_frozen_before_execution": true,
+    "operational_batch_is_not_a_research_export": true
+  },
+  "execution_controls": {
+    "description_mode": "base_no_hint",
+    "provider": "deepseek_official",
+    "model": "deepseek-flash",
+    "openai_compatible_base_url": "https://api.deepseek.com/v1",
+    "credential_environment_variable_name": "DEEPSEEK_API_KEY",
+    "credential_value_persisted": false,
+    "database_and_evaluator": "same DataAgentBench database boundary, registry, strict evaluator, and analyzer family as frozen G13",
+    "per_task_wall_timeout_seconds": 1200,
+    "postgres_statement_timeout_ms": 1080000,
+    "per_model_request_timeout_seconds": 600,
+    "max_iterations": 0,
+    "workers": 1,
+    "same_dataset_family_serialized": true,
+    "candidate_attempts": 1,
+    "model_attempts_per_turn": 1,
+    "sdk_internal_retries": 0,
+    "automatic_retry_after_failure": false,
+    "observer_during_batch": false,
+    "second_arm": false,
+    "hints": false,
+    "timeout_extension_allowed": false
+  },
+  "go_metrics": {
+    "protocol_or_privacy_violations": 0,
+    "invariant_violations": 0,
+    "completed_tasks": 6,
+    "valid_authored_state_tasks_min": 4,
+    "correct_structural_binding_rate": 1.0,
+    "view_bearing_tasks_min": 2,
+    "later_action_measurable_tasks_min": 2,
+    "structurally_contradictory_later_actions_max": 0,
+    "mechanism_initiated_tool_calls": 0,
+    "forced_answers": 0,
+    "strict_pass_guardrail_regressions_max": 0,
+    "strict_recoveries_over_frozen_reference_min": 1,
+    "new_timeout_failures_max": 0
+  },
+  "no_go_if": [
+    "Any privacy, protocol, invariant, scoring, timeout, forced-action, or carrier-integrity violation occurs.",
+    "Valid authored state appears in fewer than four tasks.",
+    "Fewer than two tasks deliver a view with a later measurable action.",
+    "Any sufficient-budget later action is structurally contradictory.",
+    "The prior strict-pass guardrail regresses or no prior non-pass task becomes strict pass.",
+    "Authentication, quota, provider, schema, database, or benchmark infrastructure fails; do not retry automatically."
+  ],
+  "launch_preconditions": [
+    "Create and hash an isolated candidate source snapshot without changing the independently reviewed files.",
+    "Use a reviewed batch launch path that invokes experiments/run_dab_tool_agent_g011_g013_integrated.py or equivalently passes --enable-g011-g013-integrated with one model attempt and zero SDK retries.",
+    "Run a provider-free prepare-only verification for all six operational batch rows.",
+    "Verify exact registry, upstream benchmark, evaluator, Python, provider route, database, disk, and idle-process bindings before any launch claim.",
+    "Create one atomic unique launch claim bound to this protocol and both task manifests."
+  ],
+  "known_execution_gap": {
+    "status": "must_be_closed_before_launch",
+    "finding": "The generic multi-query runner currently invokes experiments/run_dab_tool_agent.py directly and has no integrated-mode pass-through flag. The frozen protocol therefore requires a separately reviewed isolated batch launch path before execution.",
+    "candidate_or_review_invalidated": false,
+    "reason": "This is a future panel-launch integration requirement; no reviewed candidate source is changed by this freeze."
+  },
+  "stop_conditions": [
+    "Stop before launch if any bound hash changes or the isolated batch launch path is not independently reviewed.",
+    "Stop on the first authentication, quota, provider, schema, database, privacy, protocol, or invariant failure; do not retry.",
+    "Stop after the six-task panel and require an independent result review before considering any 56-task run."
+  ],
+  "execution": {
+    "performed": false,
+    "prepare_only_performed": false,
+    "launch_claim_created": false,
+    "result_claimed": false
+  }
+}
