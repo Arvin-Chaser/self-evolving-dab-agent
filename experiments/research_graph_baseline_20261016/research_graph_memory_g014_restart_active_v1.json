@@ -1,0 +1,1670 @@
+{
+  "cross_layer_edges": [
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g011:001",
+      "target": "evidence:g008"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g011:001",
+      "target": "evidence:g009"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g011:001",
+      "target": "evidence:g010"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g011:003",
+      "target": "evidence:g008"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g011:003",
+      "target": "evidence:g009"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g011:003",
+      "target": "evidence:g010"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g011:004",
+      "target": "evidence:g007"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g011:004",
+      "target": "evidence:g008"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g011:004",
+      "target": "evidence:g009"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g011:004",
+      "target": "evidence:g010"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g011:005",
+      "target": "evidence:g007"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g011:005",
+      "target": "evidence:g008"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g011:005",
+      "target": "evidence:g009"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g011:005",
+      "target": "evidence:g010"
+    },
+    {
+      "relation": "promoted_to",
+      "source": "research_target:g011:005",
+      "target": "experiment:g011"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g012:001",
+      "target": "evidence:g003"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g012:001",
+      "target": "evidence:g004"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g012:001",
+      "target": "evidence:g005"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g012:001",
+      "target": "evidence:g006"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g012:001",
+      "target": "evidence:g007"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g012:001",
+      "target": "evidence:g008"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g012:001",
+      "target": "evidence:g009"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g012:001",
+      "target": "evidence:g010"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g012:001",
+      "target": "evidence:g011"
+    },
+    {
+      "relation": "promoted_to",
+      "source": "research_target:g012:003",
+      "target": "experiment:g012"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g013:001",
+      "target": "evidence:g000"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g013:001",
+      "target": "evidence:g006"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g013:001",
+      "target": "evidence:g008"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g013:001",
+      "target": "evidence:g010"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g013:001",
+      "target": "evidence:g011"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g013:001",
+      "target": "evidence:g012"
+    },
+    {
+      "relation": "promoted_to",
+      "source": "research_target:g013:003",
+      "target": "experiment:g013"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g014:restart:001",
+      "target": "evidence:g000"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g014:restart:001",
+      "target": "evidence:g007"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g014:restart:001",
+      "target": "evidence:g008"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g014:restart:001",
+      "target": "evidence:g009"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g014:restart:001",
+      "target": "evidence:g010"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g014:restart:001",
+      "target": "evidence:g011"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g014:restart:001",
+      "target": "evidence:g012"
+    },
+    {
+      "relation": "motivated_by",
+      "source": "research_target:g014:restart:001",
+      "target": "evidence:g013"
+    }
+  ],
+  "formal_evolution_layer": {
+    "authority": "frozen_formal_generation_graphs",
+    "generation_refs": [
+      {
+        "generation": 0,
+        "graph": {
+          "path": "experiments/research_graph_baseline_20261016/g000_graph.json",
+          "sha256": "256570b3813f79bced5332994c5e3506765cd88ebdbaf6371115e9e3290bc86e"
+        },
+        "node_ids": [
+          "problem:g000",
+          "hypothesis:g000",
+          "experiment:g000",
+          "evidence:g000"
+        ],
+        "status": "four_nodes_complete"
+      },
+      {
+        "generation": 1,
+        "graph": {
+          "path": "experiments/research_graph_baseline_20261016/g001_graph.json",
+          "sha256": "c8d35afeb677d018c76711737df8c30b468e1574c18d7450702188a857196b9b"
+        },
+        "node_ids": [
+          "problem:g001",
+          "hypothesis:g001",
+          "experiment:g001",
+          "evidence:g001"
+        ],
+        "status": "four_nodes_complete"
+      },
+      {
+        "generation": 2,
+        "graph": {
+          "path": "experiments/research_graph_baseline_20261016/g002_graph.json",
+          "sha256": "38852be6a2cef504cbc936a7b919db7f879c709f9e5a6a594ce432f716cb5b54"
+        },
+        "node_ids": [
+          "problem:g002",
+          "hypothesis:g002",
+          "experiment:g002",
+          "evidence:g002"
+        ],
+        "status": "four_nodes_complete"
+      },
+      {
+        "generation": 3,
+        "graph": {
+          "path": "experiments/research_graph_baseline_20261016/g003_safe_snapshot/g003_graph.json",
+          "sha256": "039fc4fbc51410d87f7adc6e0c9017fb963d7979e9b10bce22f1c38949e67f29"
+        },
+        "node_ids": [
+          "problem:g003",
+          "hypothesis:g003",
+          "experiment:g003",
+          "evidence:g003"
+        ],
+        "status": "four_nodes_complete"
+      },
+      {
+        "generation": 4,
+        "graph": {
+          "path": "experiments/research_graph_baseline_20261016/g004_safe_snapshot/g004_graph.json",
+          "sha256": "fdb9de4a70e4b18c95845b3c6ac753f4650bdca7b6be370de92071a0ce6c2eda"
+        },
+        "node_ids": [
+          "problem:g004",
+          "hypothesis:g004",
+          "experiment:g004",
+          "evidence:g004"
+        ],
+        "status": "four_nodes_complete"
+      },
+      {
+        "generation": 5,
+        "graph": {
+          "path": "experiments/research_graph_baseline_20261016/g005_safe_snapshot/g005_graph.json",
+          "sha256": "2310f5b7b16e21242ed055577bd148a9989ae4f5107011bfae444693b8a3b42d"
+        },
+        "node_ids": [
+          "problem:g005",
+          "hypothesis:g005",
+          "experiment:g005",
+          "evidence:g005"
+        ],
+        "status": "four_nodes_complete"
+      },
+      {
+        "generation": 6,
+        "graph": {
+          "path": "experiments/research_graph_baseline_20261016/g006_safe_snapshot/g006_graph.json",
+          "sha256": "f7aa97ae352d827bb34d3e984aea7a38cd4d2082aeb55917dd78bc369b884775"
+        },
+        "node_ids": [
+          "problem:g006",
+          "hypothesis:g006",
+          "experiment:g006",
+          "evidence:g006"
+        ],
+        "status": "four_nodes_complete"
+      },
+      {
+        "generation": 7,
+        "graph": {
+          "path": "experiments/research_graph_baseline_20261016/g007_safe_snapshot/g007_graph.json",
+          "sha256": "22ffea533d2078bce07d6ef89615de8d9c8649bcb97fbf439f598f0ab3a26d72"
+        },
+        "node_ids": [
+          "problem:g007",
+          "hypothesis:g007",
+          "experiment:g007",
+          "evidence:g007"
+        ],
+        "status": "four_nodes_complete"
+      },
+      {
+        "generation": 8,
+        "graph": {
+          "path": "experiments/research_graph_baseline_20261016/g008_safe_snapshot/g008_graph.json",
+          "sha256": "c769fd157db33e7fe2432285d4e15718307f5c7b91dde91ebcf83b19fbca83e8"
+        },
+        "node_ids": [
+          "problem:g008",
+          "hypothesis:g008",
+          "experiment:g008",
+          "evidence:g008"
+        ],
+        "status": "four_nodes_complete"
+      },
+      {
+        "generation": 9,
+        "graph": {
+          "path": "experiments/research_graph_baseline_20261016/g009_safe_snapshot/g009_graph.json",
+          "sha256": "e49a7c765eef8aea4dd4bc295dfc907f7cf0fa743df41efff94fb4b9e31d0abd"
+        },
+        "node_ids": [
+          "problem:g009",
+          "hypothesis:g009",
+          "experiment:g009",
+          "evidence:g009"
+        ],
+        "status": "four_nodes_complete"
+      },
+      {
+        "generation": 10,
+        "graph": {
+          "path": "experiments/research_graph_baseline_20261016/g010_safe_snapshot/g010_graph.json",
+          "sha256": "2426502a697c988c77edc134bba0a4dd9612543733d19ce9d7bb3107083f3b3a"
+        },
+        "node_ids": [
+          "problem:g010",
+          "hypothesis:g010",
+          "experiment:g010",
+          "evidence:g010"
+        ],
+        "status": "four_nodes_complete"
+      },
+      {
+        "generation": 11,
+        "graph": {
+          "path": "experiments/research_graph_baseline_20261016/g011_solution_loop_safe_snapshot/g011_solution_loop_graph.json",
+          "sha256": "e0a8e0a032cfb1f91506cb3d8fa0b463955e6bc48b85b3566262c8a0ec8163a4"
+        },
+        "node_ids": [
+          "problem:g011",
+          "hypothesis:g011",
+          "experiment:g011",
+          "evidence:g011"
+        ],
+        "status": "four_nodes_complete"
+      },
+      {
+        "generation": 12,
+        "graph": {
+          "path": "experiments/research_graph_baseline_20261016/g012_safe_snapshot/g012_graph.json",
+          "sha256": "790282ece9c81abad1b239c629cd622681162fcf94523b45c81df9de0fae9076"
+        },
+        "node_ids": [
+          "problem:g012",
+          "hypothesis:g012",
+          "experiment:g012",
+          "evidence:g012"
+        ],
+        "status": "four_nodes_complete"
+      },
+      {
+        "generation": 13,
+        "graph": {
+          "path": "experiments/research_graph_baseline_20261016/g013_safe_snapshot/g013_graph.json",
+          "sha256": "a231eff12aad1d850b79b89e791bd1c8bd8d43d4941ff28c684cc8a4ff2b32b6"
+        },
+        "node_ids": [
+          "problem:g013",
+          "hypothesis:g013",
+          "experiment:g013",
+          "evidence:g013"
+        ],
+        "status": "four_nodes_complete"
+      }
+    ],
+    "node_kinds": [
+      "problem",
+      "hypothesis",
+      "experiment",
+      "evidence"
+    ],
+    "rule": "Each completed generation keeps exactly Problem, Hypothesis, Experiment, and Evidence. Only this layer contains benchmark Evidence."
+  },
+  "promotion_rule": "A research target may connect to a formal Experiment only after Research Meta emits an experiment_ready specification and the implementation passes deterministic admission. Promotion creates new formal nodes and never rewrites incubation history.",
+  "research_incubation_layer": {
+    "authority": "append_only_interface_research_history",
+    "edges": [
+      {
+        "relation": "informed_by",
+        "source": "research_target:g011:001",
+        "target": "opportunity_snapshot:g011:bootstrap"
+      },
+      {
+        "relation": "bounded_by",
+        "source": "research_target:g011:001",
+        "target": "interface_snapshot:g011:bootstrap"
+      },
+      {
+        "relation": "investigates",
+        "source": "interface_investigation:g011:001",
+        "target": "research_target:g011:001"
+      },
+      {
+        "relation": "derived_from",
+        "source": "interface_finding:g011:001",
+        "target": "interface_investigation:g011:001"
+      },
+      {
+        "relation": "revises",
+        "source": "research_target:g011:002",
+        "target": "research_target:g011:001"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g011:002",
+        "target": "interface_finding:g011:001"
+      },
+      {
+        "relation": "revises",
+        "source": "research_target:g011:003",
+        "target": "research_target:g011:002"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g011:003",
+        "target": "interface_finding:g011:001"
+      },
+      {
+        "relation": "investigates",
+        "source": "interface_investigation:g011:002",
+        "target": "research_target:g011:003"
+      },
+      {
+        "relation": "derived_from",
+        "source": "interface_finding:g011:002",
+        "target": "interface_investigation:g011:002"
+      },
+      {
+        "relation": "revises",
+        "source": "research_target:g011:004",
+        "target": "research_target:g011:003"
+      },
+      {
+        "relation": "bounded_by",
+        "source": "research_target:g011:004",
+        "target": "interface_finding:g011:002"
+      },
+      {
+        "relation": "revises",
+        "source": "research_target:g011:005",
+        "target": "research_target:g011:004"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g011:005",
+        "target": "interface_finding:g011:002"
+      },
+      {
+        "relation": "investigates",
+        "source": "interface_investigation:g011:003",
+        "target": "research_target:g011:005"
+      },
+      {
+        "relation": "derived_from",
+        "source": "interface_finding:g011:003",
+        "target": "interface_investigation:g011:003"
+      },
+      {
+        "relation": "bounded_by",
+        "source": "research_target:g011:005",
+        "target": "interface_finding:g011:003"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g012:001",
+        "target": "research_target:g011:002"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g012:001",
+        "target": "research_target:g011:003"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g012:001",
+        "target": "interface_investigation:g011:002"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g012:001",
+        "target": "interface_finding:g011:002"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g012:001",
+        "target": "research_target:g011:004"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g012:001",
+        "target": "research_target:g011:005"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g012:001",
+        "target": "interface_investigation:g011:003"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g012:001",
+        "target": "interface_finding:g011:003"
+      },
+      {
+        "relation": "investigates",
+        "source": "interface_investigation:g012:001",
+        "target": "research_target:g012:001"
+      },
+      {
+        "relation": "derived_from",
+        "source": "interface_finding:g012:001",
+        "target": "interface_investigation:g012:001"
+      },
+      {
+        "relation": "revises",
+        "source": "research_target:g012:002",
+        "target": "research_target:g012:001"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g012:002",
+        "target": "interface_finding:g012:001"
+      },
+      {
+        "relation": "investigates",
+        "source": "interface_investigation:g012:002",
+        "target": "research_target:g012:002"
+      },
+      {
+        "relation": "derived_from",
+        "source": "interface_finding:g012:002",
+        "target": "interface_investigation:g012:002"
+      },
+      {
+        "relation": "revises",
+        "source": "research_target:g012:003",
+        "target": "research_target:g012:002"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g012:003",
+        "target": "interface_finding:g012:002"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g013:001",
+        "target": "research_target:g011:001"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g013:001",
+        "target": "interface_finding:g011:001"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g013:001",
+        "target": "research_target:g012:002"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g013:001",
+        "target": "interface_finding:g012:002"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g013:001",
+        "target": "research_target:g012:003"
+      },
+      {
+        "relation": "investigates",
+        "source": "interface_investigation:g013:001",
+        "target": "research_target:g013:001"
+      },
+      {
+        "relation": "derived_from",
+        "source": "interface_finding:g013:001",
+        "target": "interface_investigation:g013:001"
+      },
+      {
+        "relation": "revises",
+        "source": "research_target:g013:002",
+        "target": "research_target:g013:001"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g013:002",
+        "target": "interface_finding:g013:001"
+      },
+      {
+        "relation": "investigates",
+        "source": "interface_investigation:g013:002",
+        "target": "research_target:g013:002"
+      },
+      {
+        "relation": "derived_from",
+        "source": "interface_finding:g013:002",
+        "target": "interface_investigation:g013:002"
+      },
+      {
+        "relation": "revises",
+        "source": "research_target:g013:003",
+        "target": "research_target:g013:002"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g013:003",
+        "target": "interface_finding:g013:002"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g014:restart:001",
+        "target": "research_target:g012:001"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g014:restart:001",
+        "target": "interface_finding:g012:001"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g014:restart:001",
+        "target": "research_target:g013:001"
+      },
+      {
+        "relation": "informed_by",
+        "source": "research_target:g014:restart:001",
+        "target": "interface_finding:g013:001"
+      }
+    ],
+    "evidence_class": "interface_research_not_benchmark_evidence",
+    "node_kinds": [
+      "opportunity_snapshot",
+      "interface_snapshot",
+      "research_target",
+      "interface_investigation",
+      "interface_finding"
+    ],
+    "nodes": [
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/research_opportunity_registry_v1.json",
+            "sha256": "8b66eb3b8180ca0acc3cf1b84dec5bac1e46ae90ca55d25d4de703762bab070d"
+          }
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "id": "opportunity_snapshot:g011:bootstrap",
+        "kind": "opportunity_snapshot",
+        "statement": "Six-axis opportunity memory used to seed G11 incubation selection.",
+        "status": "historical_research_context"
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/runtime_interface_capability_map_v1.json",
+            "sha256": "bab58645e5b255eb31a3a94fc2002705afefdd028b9fe0c108689a9251544919"
+          }
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "id": "interface_snapshot:g011:bootstrap",
+        "kind": "interface_snapshot",
+        "statement": "Hash-bound runtime capability snapshot used before G11 interface investigation.",
+        "status": "source_verified_snapshot"
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_research_meta_002/final_canonical.json",
+            "sha256": "14543ada04bceb75f2e5fad030a1d7fcf7f67f9014eb2fe911dd4b19bdb0aff3"
+          }
+        ],
+        "axis_id": "state_evidence",
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "hypothesis": "A task-agnostic runtime claim-evidence ledger can represent answer claims with provenance and support, contradiction, missing-evidence, or unknown status, and can use those statuses to trigger targeted repair rather than another generic audit turn. If the binding is reliable and non-leaking, it would provide a more falsifiable mechanism than structural audit exposure, with potential to reduce known strict failures without increasing timeout or other terminal failures; this remains a hypothesis to investigate, not a demonstrated effect.",
+        "id": "research_target:g011:001",
+        "kind": "research_target",
+        "state": "interface_investigation",
+        "statement": "G8 and G9 establish structural audit exposure while explicitly leaving semantic verification quality unobserved, and G10's fixed checklist is structurally supported but directionally contradicted. The series therefore lacks evidence that an answer gate can distinguish supported claims from unsupported or contradicted claims. The capability map also reports no verified structured obligation-evidence binding or general semantic-verification signal.",
+        "status": "investigated_and_revised"
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_interface_investigation_001/scoped_source/exploratory_implementation_manifest.json",
+            "sha256": "5522e8a07987b5b1279b37abbdd39c1fa3f346e4d3e428a94c139093a99818ce"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_interface_investigation_001/scoped_source/BLOCKED.md",
+            "sha256": "ae8a6c0daa88ad669c08edfe0228ed36748fb2a03b80f4b4773d326d0e90090d"
+          }
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "id": "interface_investigation:g011:001",
+        "kind": "interface_investigation",
+        "performed_by": "implementation_meta_exploratory_call",
+        "scope": "source_review_and_no_task_synthetic_prototype",
+        "status": "completed",
+        "test_summary": "passed"
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_interface_investigation_001/scoped_source/exploratory_implementation_manifest.json",
+            "sha256": "5522e8a07987b5b1279b37abbdd39c1fa3f346e4d3e428a94c139093a99818ce"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_interface_investigation_001/scoped_source/BLOCKED.md",
+            "sha256": "ae8a6c0daa88ad669c08edfe0228ed36748fb2a03b80f4b4773d326d0e90090d"
+          }
+        ],
+        "blocked_scope": [
+          "General free-text claim extraction and claim-to-evidence binding.",
+          "General semantic support or contradiction verification.",
+          "Treating model self-assertion, IDs, digests, counts, or audit presence as support.",
+          "Exporting raw task, answer, message, argument, result, credential, or trace content to Research Meta or a sidecar."
+        ],
+        "established": [
+          "Tool-call provenance and model-response turn availability can be checked structurally.",
+          "A bounded structured scalar assertion can be checked against uniquely bound in-memory observations.",
+          "The observation-only prototype passed synthetic no-leak and inertness checks."
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "id": "interface_finding:g011:001",
+        "kind": "interface_finding",
+        "limitations": [
+          "A 'supported' row means only that the structured scalar assertion matched a bound observation. It does not mean the free-text answer claim is supported. The ledger never sees or exports the answer text."
+        ],
+        "statement": "A bounded provenance-plus-structured-scalar-equality mechanism is feasible and synthetically tested. General free-text claim extraction and general semantic claim-evidence verification are blocked and remain unknown.",
+        "status": "bounded_feasibility_with_general_scope_blocked",
+        "unknowns": [
+          "How to extract the actual natural-language answer claims from the free-text return_answer payload without a source-verified claim schema.",
+          "How to bind the answer's natural-language claims to the structured claim records; a structured claim can be internally supported while the answer says something different.",
+          "General semantic entailment and contradiction for arbitrary tool results and arbitrary answer claims.",
+          "How the runtime model would author the structured envelope. No new claim tool exists, the return_answer argument schema is not verified to accept extra fields, and the self_observation sidecar is model-authored.",
+          "Whether a new side-channel or tool for claim submission is permitted by the protocol.",
+          "Whether a general tool-success or task-relevance signal exists beyond local failure text and result storage.",
+          "Whether large-result file content can be read and evaluated safely and content-blindly; the prototype treats large results as truncated.",
+          "Whether file-stored results are visible across turns in the same way as in-memory results.",
+          "Whether the caller-supplied claim turn boundary is trustworthy in a real runtime.",
+          "Whether the configured self-observation tool name differs from the default; the adapter must be given the actual name to mark it non-evidence.",
+          "Whether the observation-only wrapper is inert in a real DAB run; only synthetic enabled-versus-disabled checks were run.",
+          "Whether any downstream repair decision would be attributable to an explicit support or contradiction state rather than another audit turn.",
+          "Whether the mechanism would reduce strict failures, increase timeouts, or have any causal benefit. No benchmark outcome was measured."
+        ]
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_research_meta_003/final_raw.txt",
+            "sha256": "3c1c509dee2fcb3f36af8567adec1c64e2e4c4209a1549ff1f093b6a47d345fc"
+          }
+        ],
+        "axis_id": "state_evidence",
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "hypothesis": "A runtime-maintained, task-agnostic plan/evidence record with model-authored entries may be structurally representable and deterministically checkable for whether a referenced observation is a unique prior tool dispatch in the same task, whether it was available before the plan or claim turn, whether it was truncated or failed, whether revisions are ordered, and whether the record is unavailable or unknown. Such checks may make unresolved evidence and revision state explicit and keep unknown statuses visible. They cannot establish semantic support, free-text claim validity, task relevance, answer correctness, or benchmark benefit; the behavioral value of the record remains a hypothesis, and model-authored plans or citations are not verified truth.",
+        "id": "research_target:g011:002",
+        "kind": "research_target",
+        "state": "interface_investigation",
+        "statement": "G8 and G9 support only structural audit exposure, G10's checklist is structurally supported but directionally contradicted, and the independent synthetic investigation blocks general semantic claim verification under the scoped interface. The series lacks a verified way for the runtime agent to maintain a revisable task plan and evidence record whose structural integrity can be checked without pretending to judge natural-language meaning. The bounded question is whether such a record can be represented, revised, and checked for provenance, turn availability, completeness, and failure boundaries using legitimate agent-visible runtime content, while semantic support and answer correctness remain explicitly unknown.",
+        "status": "current_revised_target"
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_research_meta_solution_loop_002/final_raw.txt",
+            "sha256": "8ac5183d11f4ff1eb948abb0eec95990ebd644be4addddb0a18209f973f8b934"
+          }
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "hypothesis": "A task-agnostic plan/evidence record whose references and revision order can be checked structurally can make unresolved evidence visible and actionable. If the agent uses those statuses to choose targeted acquisition, revise the plan, or preserve unknown, it may change how it solves tasks beyond another generic audit. Structural validity is not semantic support, answer correctness, or evidence of benchmark benefit.",
+        "id": "research_target:g011:003",
+        "kind": "research_target",
+        "mechanism_id": "mech_g011_structural_plan_evidence_ledger",
+        "primary_lens": "state_memory_belief_update",
+        "related_lenses": [
+          "evidence_acquisition_grounding",
+          "action_tool_policy_recovery",
+          "synthesis_verification_termination"
+        ],
+        "state": "interface_investigation",
+        "statement": "G8/G9 show structural audit exposure but no verified semantic verification, G10's checklist is directionally contradicted, and the series lacks a runtime-maintained state that makes missing, stale, ambiguous, truncated, failed, or unknown evidence explicit enough to redirect work.",
+        "status": "investigated_with_bounded_finding"
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_solution_loop_interface_investigation_001/input_binding.json",
+            "sha256": "c71b4f338b926918d1e93537fef1d29f246547cefada027693b849a5a37873e0"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_solution_loop_interface_investigation_001/scoped_source/exploratory_implementation_manifest.json",
+            "sha256": "3fac0dbe10a18c16ef3fc226bbdc1235903397ccffda8be5043d041be3912b44"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_solution_loop_interface_investigation_001/independent_verification.json",
+            "sha256": "2d102dc3c100896029a2d78ac925f70ef3c2866ee03dfc604644c1588da390ff"
+          }
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "id": "interface_investigation:g011:002",
+        "kind": "interface_investigation",
+        "performed_by": "implementation_meta_exploratory_call",
+        "scope": "source_review_and_no_task_synthetic_behavior_prototype",
+        "status": "completed_artifacts_verified_transport_incomplete",
+        "test_summary": "66_passed_independently",
+        "transport_note": "The Meta SSE stream ended on idle timeout after artifacts were written. No final model message exists; independent verification covers artifacts only."
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_solution_loop_interface_investigation_001/scoped_source/exploratory_implementation_manifest.json",
+            "sha256": "3fac0dbe10a18c16ef3fc226bbdc1235903397ccffda8be5043d041be3912b44"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_solution_loop_interface_investigation_001/scoped_source/BOUNDED_FINDINGS.md",
+            "sha256": "445f578014d1677117665287491a871cf2cd4202541bcfab81ab98d710ae1ff8"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_solution_loop_interface_investigation_001/independent_verification.json",
+            "sha256": "2d102dc3c100896029a2d78ac925f70ef3c2866ee03dfc604644c1588da390ff"
+          }
+        ],
+        "blocked_scope": [
+          "General semantic support, contradiction, task relevance, answer correctness, or proof that a model-authored plan is good.",
+          "Claiming that a step/ref-index guidance message chooses the semantically correct query or evidence source.",
+          "Promotion before a safe real record-authoring contract, carrier no-leak review, real runner integration, and real-model behavior specification exist."
+        ],
+        "established": [
+          "The existing model-authored self-observation path can carry a strict task-agnostic plan/evidence record without creating a new tool primitive.",
+          "Record creation, revision order, provenance availability, truncation, failure, ambiguity, staleness, and unknown fallbacks are deterministically checkable.",
+          "A bounded call_llm guidance path can consume structural unresolved states and alter a synthetic next-action path without forging tool results, answers, or scoring.",
+          "Independent execution passed 66 no-task synthetic tests and matched every manifest output hash."
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "id": "interface_finding:g011:002",
+        "kind": "interface_finding",
+        "limitations": [
+          "A 'unique' or 'resolved' reference means only that exactly one prior observation is structurally available, provenance-checked, non-failed, non-truncated, and available at the record boundary. It does not mean the observation supports any answer claim. The record is model-authored. Semantic status, correctness status, and coverage status are always unknown.",
+          "The synthetic GuidanceAwarePolicy is programmed to react to guidance; real-model compliance and action quality were not tested.",
+          "The Implementation Meta final message was lost to a transport timeout; only independently verified saved artifacts are authoritative."
+        ],
+        "statement": "feasible_bounded for a model-authored structural plan/evidence record, deterministic structural validation, and synthetic bounded behavior use. General free-text claim extraction, semantic support, contradiction, and answer correctness remain unknown. No real run, benchmark, score, or causal benefit was established.",
+        "status": "bounded_substrate_feasible_end_to_end_unverified",
+        "unknowns": [
+          "Whether a real model will author a usable record and copy opaque IDs accurately.",
+          "Whether a prompt overlay or tool-description change is required, and whether that change is protocol-permitted.",
+          "Whether the provider accepts an undeclared self_observation.plan_record property.",
+          "Whether the existing observation-log carrier would pass a separate no-leak review in the freeform form.",
+          "Whether the model follows the bounded guidance rather than ignoring it or treating it as evidence.",
+          "Whether the guidance changes timeout or iteration behavior.",
+          "Whether structural guidance improves strict-task outcomes at all.",
+          "Whether large-result file content can be safely made available as complete evidence; the prototype treats it as truncated.",
+          "Whether the configured self-observation tool name differs from the default; the adapter must be configured with the actual name.",
+          "Whether the outer wrapper is inert in a real DAB run; only synthetic enabled-versus-disabled checks were run.",
+          "Whether the caller-supplied response boundary matches the real provider turn boundary in every edge case.",
+          "Whether a real model treats the user-role structural note as an instruction or as conversational content.",
+          "Whether any repair decision would be attributable to structural guidance rather than another audit turn.",
+          "Whether the mechanism would reduce strict failures or have any causal benefit."
+        ]
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_research_meta_solution_loop_revision_001/final_raw.txt",
+            "sha256": "7f0b3c2b94b280200bda80136bf81fbc714bce3f7471035ee49786fe64594467"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_research_meta_solution_loop_revision_002/final_raw.txt",
+            "sha256": "9bc635605885ae850caf6cbcf8caaaddc3db9f0aa4f30f883c27ca3b9f634d1f"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_research_meta_solution_loop_revision_003/final_raw.txt",
+            "sha256": "913ca8820208b6ee40ec91f268436c95e626412994e0c4cd88e78acddee9a28a"
+          }
+        ],
+        "code_parent": {
+          "candidate_tree_sha256": "572b8c92f4aaa3834e36a7899d667123eb548d0a6f1675a243cc07a9974244ac",
+          "generation": 7
+        },
+        "contract_boundary": "Exact tested record schema is preserved. The fixed authoring instruction and guidance cap are new pre-registered experiment policies, not interface facts.",
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "hypothesis": "A model-authored plan and evidence record using the exact tested schema, deterministic structural validation, and a bounded task-agnostic structural guidance channel can make unresolved evidence and revision state explicit and may change evidence acquisition, plan revision, or preservation of unknown. Structural validity is not semantic support, task relevance, answer correctness, or benchmark benefit. No strict improvement, timeout reduction, or directional score effect is predicted, and real-model adoption remains unknown.",
+        "id": "research_target:g011:004",
+        "kind": "research_target",
+        "limitations": [
+          "The 66 independently verified synthetic tests establish bounded artifact behavior only; they do not establish real-model adoption, semantic support, answer correctness, benchmark benefit, or a causal score change.",
+          "The formal G0-G10 history is unpaired and descriptive; G8-G9 establish structural audit exposure only, and G10 is a user-authorized two-run reconciliation whose checklist is directionally contradicted but is not causal evidence about this ledger.",
+          "The plan and evidence record is model-authored and structurally checkable only; semantic support, contradiction, relevance, coverage, and answer correctness remain unknown, and no general semantic verifier is required or permitted.",
+          "Provider acceptance, prompt or tool-description permission, real-model authorship, real guidance compliance, real timeout behavior, the actual self-observation tool name, the real response boundary, and real carrier no-leak inertness remain admission or empirical unknowns.",
+          "The new authoring instruction and the guidance cap of three are explicitly new experiment policies and are not prototype-established facts.",
+          "If the carrier, exact schema, no-leak boundary, or cap tests fail admission, no experiment should run, and no replacement schema, generic audit, or semantic verifier may be substituted.",
+          "This assessment uses only the hash-bound two-layer packet and aggregate research history; Research Meta did not inspect raw tasks, answers, hints, validators, messages, tool arguments or results, answer-bearing logs, credentials, or old research lines.",
+          "No code was written, no candidate was created, no Graph was modified, and no implementation or evaluation was authorized in this call."
+        ],
+        "mechanism_id": "mech_g011_structural_plan_evidence_ledger",
+        "revision_history": [
+          "revision_001 retained but failed its outer validator because an empty experiment-ready interface_gaps array was rejected",
+          "revision_002 passed the outer validator but independent review found an unimplemented authoring overlay and prototype-cap labeling inconsistency",
+          "revision_003 repaired both contract inconsistencies and is the authoritative experiment-ready revision"
+        ],
+        "state": "experiment_ready",
+        "statement": "G8 and G9 establish structural audit exposure without semantic verification, G10's different fixed checklist is formally contradicted in its two-run repair view, and the G0-G10 series lacks a runtime-maintained state that makes missing, stale, ambiguous, truncated, failed, unavailable, or unknown evidence structurally explicit enough to redirect work. The bounded question is whether the exact tested model-authored plan and evidence record can be carried and validated in a real run without semantic overclaim or protocol leakage.",
+        "status": "formal_contract_ready_pending_implementation_admission"
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_research_meta_solution_loop_revision_004/final_raw.txt",
+            "sha256": "9a0d6943a4b262429b8270664b0ede8bc9effbae5a15d0c882d63691e236d193"
+          }
+        ],
+        "code_parent": {
+          "candidate_tree_sha256": "572b8c92f4aaa3834e36a7899d667123eb548d0a6f1675a243cc07a9974244ac",
+          "generation": 7
+        },
+        "contract_boundary": "Exact structural schema and freeform carrier; model-authored state is not semantic support. The authoring instruction and guidance cap are pre-registered experiment policies.",
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "hypothesis": "A model-authored plan and evidence record using the exact tested schema, deterministic structural validation, and a bounded task-agnostic structural guidance channel can make unresolved evidence and revision state explicit and may change evidence acquisition, plan revision, or preservation of unknown. Structural validity is not semantic support, task relevance, answer correctness, or benchmark benefit. No strict improvement, timeout reduction, or directional score effect is predicted, and real-model adoption remains unknown.",
+        "id": "research_target:g011:005",
+        "kind": "research_target",
+        "limitations": [
+          "The 66 independently verified synthetic tests establish bounded artifact behavior only; they do not establish real-model adoption, semantic support, answer correctness, benchmark benefit, or a causal score change. The 110 focused implementation tests and candidate-tree hash also do not ratify implementation.",
+          "The formal G0-G10 history is unpaired and descriptive; G8-G9 establish structural audit exposure only, and G10 is a user-authorized two-run reconciliation whose checklist is directionally contradicted but is not causal evidence about this ledger.",
+          "The plan and evidence record is model-authored and structurally checkable only; semantic support, contradiction, relevance, coverage, plan quality, and answer correctness remain unknown, and no general semantic verifier is required or permitted.",
+          "The declared freeform carrier is source-grounded and the nested plan_record property is rejected, but live provider acceptance, real-model authorship, real guidance compliance, the actual self-observation tool name, the real response boundary, real carrier no-leak inertness, and real timeout behavior remain admission or empirical unknowns.",
+          "The new authoring instruction and the guidance cap of three are explicitly new experiment policies and are not prototype-established facts.",
+          "If the carrier, exact schema, no-leak boundary, or cap tests fail admission, no experiment should run, and no replacement schema, generic audit, alternate carrier, or semantic verifier may be substituted.",
+          "This assessment uses only the hash-bound two-layer packet and aggregate research history; Research Meta did not inspect raw tasks, answers, hints, validators, messages, tool arguments or results, answer-bearing logs, credentials, or old research lines.",
+          "No code was written, no candidate was created, no Graph was modified, and no implementation or evaluation was authorized in this call."
+        ],
+        "mechanism_id": "mech_g011_structural_plan_evidence_ledger",
+        "revision_note": "Revision 004 corrects Revision 003 by freezing self_observation.freeform and rejecting the undeclared nested plan_record carrier. The unrelated report-exclusion sentence is non-operative and supplies no launch permission or runtime behavior.",
+        "state": "experiment_ready",
+        "statement": "G8 and G9 establish structural audit exposure without semantic verification, G10's different fixed checklist is formally contradicted in its two-run repair view, and the G0-G10 series lacks a runtime-maintained state that makes missing, stale, ambiguous, truncated, failed, unavailable, or unknown evidence structurally explicit enough to redirect work. The bounded question is whether the exact tested model-authored plan and evidence record can be carried and validated in a real run without semantic overclaim or protocol leakage.",
+        "status": "revision_004_authoritative_contract_source_admitted_pending_remote_preflight"
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_solution_loop_formal_implementation_001/implementation_manifest_revision_002.json",
+            "sha256": "44a7a9508f8f1c68ab0ab70dfb3c820ca8f61eeefe880d1bc37453f614c75675"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_solution_loop_candidate_003/assembly.json",
+            "sha256": "e251b93d3e1d98b2acbb095a8ea133f3e1a9da16f64ebdd3d471dc1837ad48d7"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_solution_loop_candidate_003/admission.json",
+            "sha256": "9121bfb8a6797d55086c18f433b067addd3df8f2ed0a950530442c21423ad068"
+          }
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "id": "interface_investigation:g011:003",
+        "kind": "interface_investigation",
+        "performed_by": "implementation_meta_with_two_bounded_same_spec_repairs_and_outer_mechanical_admission",
+        "scope": "formal_implementation_repair_and_deterministic_source_admission_without_tasks",
+        "status": "completed_no_formal_run",
+        "test_summary": "116_g011_passed_269_candidate_passed_with_exact_five_inherited_parent_failures"
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_solution_loop_formal_implementation_001/implementation_manifest_revision_002.json",
+            "sha256": "44a7a9508f8f1c68ab0ab70dfb3c820ca8f61eeefe880d1bc37453f614c75675"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g011_solution_loop_candidate_003/admission.json",
+            "sha256": "9121bfb8a6797d55086c18f433b067addd3df8f2ed0a950530442c21423ad068"
+          }
+        ],
+        "established": [
+          "The declared self_observation.freeform carrier and nested-carrier rejection are bound to Research Revision 004.",
+          "The multi-query runner and single-task runner are both disabled by default; one explicit outer flag propagates verbatim to each child.",
+          "All 116 G11 no-task tests pass, and the complete candidate has exactly the same five inherited failures as G7 with no new failures.",
+          "The source archive, candidate tree, implementation manifest, fixed protocol, extractor, no-leak boundary, and change surface are hash-bound before any formal task."
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "id": "interface_finding:g011:003",
+        "kind": "interface_finding",
+        "limitations": [
+          "No benchmark task, formal evaluation, answer correctness, semantic support, or causal score effect is established.",
+          "The five inherited G7 tool-failure-recovery test failures are unchanged and explicitly outside the G11 change claim."
+        ],
+        "statement": "The exact G11 structural ledger is implemented on G7 with an explicit default-off multi-query activation path, pre-registered content-blind extractor, and deterministic source admission. This establishes implementation conformance only.",
+        "status": "formal_candidate_source_admitted_pending_remote_provider_and_runtime_preflight",
+        "unknowns": [
+          "Live provider acceptance of the declared freeform tool schema remains for unified preflight.",
+          "Real upstream no-task response-boundary integration remains for unified preflight.",
+          "Real-model record authorship, identifier copying, guidance compliance, and any benchmark effect remain unknown."
+        ]
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g012_research_meta_solution_loop_002/final_raw.txt",
+            "sha256": "dbec815cb166728bfabf9f3fface219bccce0da72ffd58e23e1c5e6f0967eefc"
+          }
+        ],
+        "de_risk_questions": [
+          "Can evidence obligations and statuses be derived from legitimately visible runtime context without semantic answer judging or raw-content export?",
+          "Can provenance, staleness, ambiguity, truncation, failure, and unknown be validated deterministically without imputing resolved status?",
+          "Can a bounded interface change a synthetic next action when a status becomes unresolved without forging tool results or forcing an answer?",
+          "Can enabled-versus-disabled behavior remain identical outside the intended state and action channel?",
+          "Can per-task guidance, extra turns, extra dispatches, and remaining time be bounded so the mechanism cannot extend the wall limit?",
+          "Can the carrier and aggregate outputs pass a no-leak review for tasks, answers, hints, validators, messages, arguments, results, traces, identifiers, credentials, and task content?",
+          "Would the resulting behavioral change be distinguishable from another generic audit or checklist?"
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "hypothesis": "A runtime-maintained, task-agnostic evidence-obligation state that records provenance, availability, freshness, ambiguity, truncation, failure, and unknown status can make unresolved evidence explicit and can change subsequent acquisition, plan revision, or unknown-preserving termination while preserving semantic unknowns. This is a structural state-and-action hypothesis, not a claim of semantic support, correctness, or benchmark benefit.",
+        "id": "research_target:g012:001",
+        "interface_gaps": [
+          "Unverified state carrier and structural validator for obligation-level evidence status.",
+          "Unverified non-semantic derivation of evidence obligations and statuses.",
+          "Unverified bounded action-selection or guidance channel that changes behavior without leakage.",
+          "Unverified distinction between instrumentation gaps and genuine evidence gaps.",
+          "Unverified real-run budget, provider, and response-boundary behavior.",
+          "No established runtime evidence that the model authors or follows the state accurately; G11 observed zero binding."
+        ],
+        "kind": "research_target",
+        "limitations": [
+          "This assessment uses only the hash-bound two-layer packet and the retained prior output as data; it did not inspect raw tasks, answers, hints, validators, messages, tool arguments or results, answer-bearing logs, credentials, or old research lines.",
+          "Formal G0-G11 comparisons are unpaired and descriptive except for G10's user-authorized two-run repair view, which is supplementary and not a clean causal comparison. G11 also carries an evaluation-research acceptance caveat in its formal contract.",
+          "The outcome-partition fields strict_verdict_missing_completed_count and strict_verdict_unknown_completed_count alias the same completed strict-verdict unknown cases; all counts here treat them once and never add them together.",
+          "Completed strict-verdict unknowns remain unknown, and timeouts or other terminal failures remain failures in all formal generations.",
+          "Interface findings and no-task synthetic tests establish bounded feasibility only; they are not benchmark evidence, semantic support, answer correctness, or proof of task benefit.",
+          "The selected mechanism's feasibility is unverified, and this call performs no implementation, no Experiment freeze, no implementation candidate construction, and no evaluation.",
+          "The ranking is a research-value judgment under the stated criteria and is not a validated prediction of strict-pass improvement."
+        ],
+        "mechanism_id": "mech_uncertainty_typed_evidence_state_and_gap_action",
+        "no_task_checks": [
+          "Schema, lifecycle, provenance, uniqueness, boundary availability, truncation, failure, ambiguity, staleness, and unknown-fallback tests.",
+          "Redaction and no-leak tests covering tasks, answers, hints, validators, messages, tool arguments and results, traces, identifiers, credentials, and task content.",
+          "Enabled-versus-disabled control-flow, dispatch, result, timing, and scoring inertness tests.",
+          "Synthetic sensitivity tests where changing an evidence status changes a bounded next-action choice.",
+          "Cap tests for messages, extra model turns, extra tool dispatches, and the remaining-time guard.",
+          "Provider and response-boundary fixtures proving the interface is source-grounded and not guessed."
+        ],
+        "primary_lens": "state_memory_belief_update",
+        "related_lenses": [
+          "evidence_acquisition_grounding",
+          "action_tool_policy_recovery",
+          "synthesis_verification_termination"
+        ],
+        "state": "interface_investigation",
+        "statement": "The formal history establishes structural observability, timeout localization, and terminal-audit exposure, but not a maintained uncertainty state that turns unresolved evidence into targeted acquisition, action change, or unknown-preserving termination. G10's checklist is directionally contradicted, and G11's behavioral channel was never exercised because no record or guidance binding occurred.",
+        "status": "selected_for_no_task_interface_investigation"
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g012_interface_investigation_001/input_binding.json",
+            "sha256": "1fbf40735cf4719b594686c9f61263df22e8ec9a2276d1fa421098c88d7f048c"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g012_interface_investigation_001/scoped_source/exploratory_implementation_manifest.json",
+            "sha256": "6e9c91bc97a806a0b88ccdb2054e91ec2308ae4fa00606b4b61f1c7b4aa7333c"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g012_interface_investigation_001/independent_verification.json",
+            "sha256": "d9668e7516c6b94b584497a0eeda7bf840f29c80711106650013892eb8d20507"
+          }
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "id": "interface_investigation:g012:001",
+        "kind": "interface_investigation",
+        "performed_by": "implementation_meta_exploratory_call",
+        "scope": "source_review_and_no_task_synthetic_behavior_prototype",
+        "status": "completed_independently_verified",
+        "test_summary": "26_passed_independently"
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g012_interface_investigation_001/scoped_source/exploratory_implementation_manifest.json",
+            "sha256": "6e9c91bc97a806a0b88ccdb2054e91ec2308ae4fa00606b4b61f1c7b4aa7333c"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g012_interface_investigation_001/scoped_source/BOUNDED_FINDINGS.md",
+            "sha256": "4be36232917fea5b46d777054f8905cefb70e14d2ecd92a326a5dad59a14466a"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g012_interface_investigation_001/independent_verification.json",
+            "sha256": "d9668e7516c6b94b584497a0eeda7bf840f29c80711106650013892eb8d20507"
+          }
+        ],
+        "claim_boundary": {
+          "benchmark_evidence": false,
+          "formal_candidate": false,
+          "gap_directed_model_action_proven": false,
+          "semantic_support_proven": false,
+          "strict_benefit_proven": false
+        },
+        "established": [
+          "A model-facing freeform record carrier and fixed authoring policy exist in the frozen source.",
+          "The reviewed ledger distinguishes structural provenance and uncertainty states without semantic promotion.",
+          "A synthetic unresolved state changes an internal directive and whether fixed guidance is present.",
+          "The fixture preserves tool dispatch and result behavior in its status-sensitivity comparison."
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "id": "interface_finding:g012:001",
+        "kind": "interface_finding",
+        "open_gaps": [
+          "The fixed model-facing guidance is generic and does not expose the selected action, target, or status.",
+          "The synthetic fixture does not show a model selecting a different next action in response to a gap.",
+          "Real provider acceptance, model-authored record adoption, and model compliance remain untested.",
+          "Obligations are model-authored; omitted obligations and semantic support are not independently detected.",
+          "The existing raw-context log surface requires separate no-leak review before formal admission."
+        ],
+        "remaining_unknowns": [
+          "Evidence obligations are model-authored plan positions; the runtime does not independently derive task obligations or detect omitted obligations.",
+          "The model must use a genuinely visible identifier such as var_<tool_call_id>; obs:<ordinal> is an internal ordinal and is not generally visible in the transcript.",
+          "The active state is re-evaluated only when the model submits a new accepted record; new observations do not automatically update it.",
+          "The runtime's fixed guidance is generic and does not expose the selected action code, target step/ref, or target status; real model compliance and action selection are untested.",
+          "Live provider acceptance of self_observation.freeform and real model record authoring/accuracy are untested.",
+          "The base DataAgent's existing llm_calls.jsonl/final_agent context logs contain model messages and are a separate raw-context surface; G11 sidecar and self-observation redaction do not erase those existing logs.",
+          "G11's frozen formal history reports zero recognized records and zero guidance bindings; this investigation does not establish the cause, semantic support, correctness, or benchmark benefit."
+        ],
+        "statement": "The frozen carrier, structural ledger, and bounded generic guidance work in no-task fixtures; gap-directed model action and live adoption remain unverified.",
+        "status": "bounded_substrate_verified_action_gap_open"
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g012_research_meta_post_interface_001/final_raw.txt",
+            "sha256": "3124fcb7d12ab5a48436654451043fdcd1be27fe1897b53ed53eaa26d3467c72"
+          }
+        ],
+        "de_risk_questions": [
+          "Can evidence obligations be independently derived, or must the contract explicitly limit itself to model-authored obligations without claiming omitted-obligation detection?",
+          "Can a protocol-permitted model-facing state expose action, target, and status and yield a distinguishable bounded next-action choice beyond an internal enum or generic guidance?",
+          "Can active state either update after observations or explicitly preserve staleness without imputing resolved status?",
+          "Can instrumentation gaps be separated from genuine evidence gaps across missing, malformed, truncated, failed, ambiguous, and unavailable records?",
+          "Can the carrier, actual tool name, provider acceptance, and response boundary be admitted using no-task fixtures without leakage or protocol violation?",
+          "Can a real model author a schema-valid record, copy genuinely visible identifiers, and follow bounded guidance in a synthetic no-benchmark fixture?",
+          "Can the existing raw-context log surface pass a dedicated no-leak review for tasks, answers, hints, validators, messages, tool arguments or results, traces, identifiers, credentials, and task content?",
+          "Can guidance messages, extra model turns, extra tool dispatches, mechanism-initiated calls, and remaining time be bounded so the 1200-second wall limit is never extended?",
+          "Would the resulting behavior be distinguishable from another generic audit or checklist under the same state availability?"
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "hypothesis": "A runtime-maintained, task-agnostic evidence state that distinguishes model-authored obligations from independently derived structural facts and exposes a bounded, protocol-permitted unresolved-state view can change acquisition, revision, or unknown-preserving termination while preserving semantic unknowns. This remains an interface and behavioral hypothesis, not a demonstrated next-action choice, semantic verification, or benchmark benefit.",
+        "id": "research_target:g012:002",
+        "kind": "research_target",
+        "mechanism_id": "mech_uncertainty_typed_evidence_state_and_gap_action",
+        "primary_lens": "state_memory_belief_update",
+        "related_lenses": [
+          "evidence_acquisition_grounding",
+          "action_tool_policy_recovery",
+          "synthesis_verification_termination"
+        ],
+        "state": "interface_investigation",
+        "statement": "The selected mechanism remains the correct target, but the verified G12 finding establishes only a synthetic structural carrier and ledger plus generic guidance. It does not establish gap-directed model action, independent obligation derivation, live model record adoption, provider acceptance, semantic support, or score benefit. The central unresolved problem is how to turn structural unresolved evidence into a bounded, non-semantic action choice while keeping model-authored obligations separate from independently derived structural facts.",
+        "status": "revised_after_bounded_interface_finding_not_experiment_ready",
+        "unresolved_interfaces": [
+          "Independent obligation derivation and omitted-obligation detection | unresolved: obligations are model-authored plan positions; the runtime does not independently derive task obligations or detect omitted obligations, and neither model-authored nor derived obligations may be promoted to semantic support. Minimum no-task checks: synthetic complete and deliberately omitted obligation fixtures; verify a non-semantic structural derivation flags omission or returns explicit unknown; verify separate labels for model-authored versus independently derived facts; no-leak review of derived identifiers and aggregates.",
+          "Model-facing gap-directed action choice | unresolved: the selected action, target step/ref, and status are not exposed, and the internal action enum plus generic guidance are not a demonstrated next-action choice. Minimum no-task checks: a protocol-permitted model-facing unresolved-state view using opaque identifiers; a controlled synthetic sensitivity test where different structural statuses yield different bounded next actions; a same-state generic-audit control; enabled-versus-disabled inertness; no-leak testing. Such a fixture would still not establish real-model compliance.",
+          "Active state freshness and update semantics | unresolved: active state is re-evaluated only when a new accepted record is submitted, and new observations do not automatically update it. Minimum no-task checks: inject observations after a record; verify stale or unresolved state persists or updates deterministically; verify no false resolved status; retest revision, supersession, active-head, and terminal lifecycle behavior.",
+          "Instrumentation gap versus genuine evidence gap | unresolved: missing records, malformed records, truncation, failure, ambiguity, unavailability, and genuine evidence gaps can be confused. Minimum no-task checks: fault injection for each condition; verify frozen unknown or rejection categories and no imputation; report instrumentation loss separately from evidence status.",
+          "Provider, carrier, and response-boundary acceptance | unresolved: live provider acceptance of self_observation.freeform, the actual configured self-observation tool name, and the real provider response boundary remain unverified. Minimum no-task checks: no-task provider and schema preflight using synthetic messages; verify the configured carrier and sanitization before base dispatch; test response-boundary fixtures; fail closed on mismatch.",
+          "Real-model record adoption and compliance | unresolved: G11 observed zero records and zero guidance bindings; real model authorship, identifier copying, and guidance compliance remain untested. Minimum no-task checks: a no-benchmark synthetic authoring fixture with the real provider to test schema-valid record creation and use of a genuinely visible identifier such as var_<tool_call_id>; a controlled guidance-compliance probe; no benchmark or semantic claim.",
+          "Existing raw-context log no-leak boundary | unresolved: base DataAgent llm_calls.jsonl and final_agent logs contain model messages and are not erased by G11/G12 sidecar redaction. Minimum no-task checks: synthetic-message static and data-flow audit of the existing log surface; allow-list and redaction tests; confirm no tasks, answers, hints, validators, messages, tool arguments or results, raw traces, identifiers, credentials, or task content are exported; admission must block on failure.",
+          "Budget and terminal-risk interface | unresolved: caps and the 180-second guard are synthetically tested, but real-run deadline behavior and timeout effects remain unverified. Minimum no-task checks: threshold and fault-injection tests for cap and deadline suppression; no wall-timeout extension; no forced answer or tool dispatch; identical behavior outside the intended channel when enabled versus disabled.",
+          "Semantic-evidence boundary | unresolved and out of scope: no semantic support, contradiction, relevance, coverage, plan-quality, or answer-correctness interface is established; structural unique or resolved must remain non-semantic. Minimum no-task checks: serialization and reporting tests that forbid semantic-status fields and labels, and verification that unique or resolved never map to supported or correct."
+        ],
+        "why_now": "G11's zero binding and G12's synthetic substrate move the question from carrier feasibility to the action interface and obligation provenance. A formal run now would test a mechanism whose model-facing action channel and independent obligation derivation are not established; completing those interface checks is the highest-value next step before freezing any experiment."
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g012_interface_investigation_002/input_binding.json",
+            "sha256": "775d5645ab3f26aaf19a725e9bb4033fd413832bc33134aa42fe3304143f99d9"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g012_interface_investigation_002/scoped_source/exploratory_implementation_manifest.json",
+            "sha256": "24a15c31d909e76bf03f1ed603862d3fefc2927d58ead8307a86d797b3db32ec"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g012_interface_investigation_002/independent_verification.json",
+            "sha256": "2318e1aaa71d2b66a3bffea2c195f920197d79025abed59b3f5790e34705ea24"
+          }
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "id": "interface_investigation:g012:002",
+        "kind": "interface_investigation",
+        "performed_by": "implementation_meta_exploratory_call",
+        "scope": "source_review_and_no_task_structured_action_interface_prototype",
+        "status": "completed_independently_verified",
+        "test_summary": "41_passed_independently"
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g012_interface_investigation_002/scoped_source/exploratory_implementation_manifest.json",
+            "sha256": "24a15c31d909e76bf03f1ed603862d3fefc2927d58ead8307a86d797b3db32ec"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g012_interface_investigation_002/scoped_source/BOUNDED_FINDINGS.md",
+            "sha256": "212f1e59be637eee685162c23caa9a5ec87f248badafac285d4c4f5dbf5c7f60"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g012_interface_investigation_002/independent_verification.json",
+            "sha256": "2318e1aaa71d2b66a3bffea2c195f920197d79025abed59b3f5790e34705ea24"
+          }
+        ],
+        "claim_boundary": {
+          "benchmark_evidence": false,
+          "formal_candidate": false,
+          "real_model_gap_directed_action_proven": false,
+          "semantic_support_proven": false,
+          "strict_benefit_proven": false
+        },
+        "established": [
+          "The synthetic structured view exposes selected structural action, status, and opaque target at the reviewed call_llm message boundary.",
+          "A same-state generic guidance control does not carry those selected fields.",
+          "A programmed synthetic policy distinguishes absent and unknown states through the structured view; this is conditional interface sensitivity only.",
+          "Freshness and instrumentation categories remain structural and do not promote semantic support or omitted-obligation claims."
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "id": "interface_finding:g012:002",
+        "kind": "interface_finding",
+        "open_gaps": [
+          "A programmed synthetic policy is not evidence that a real model will author records or select a different next action.",
+          "No provider call, live carrier acceptance, response-boundary acceptance, or real-model compliance check was performed.",
+          "Obligations remain model-authored; a structural inventory cannot detect omitted semantic obligations.",
+          "The existing raw-context log surface still needs separate no-leak admission review.",
+          "The prototype's latest_attempt directive source and target-token mapping are not formal runtime contracts."
+        ],
+        "remaining_unknowns": [
+          "Real provider acceptance of self_observation.freeform, the actual configured tool name, and the real response boundary remain unverified; a later separately admitted no-task preflight is required.",
+          "Real-model record adoption, schema-valid authorship, opaque-identifier copying, structured-directive reading, and guidance compliance remain untested.",
+          "No real-model next-action choice or benefit is established; the synthetic policy is a conditional interface demonstration only.",
+          "Independent semantic obligation derivation is unavailable without task content; only a structural observation inventory is implemented.",
+          "Unreferenced eligible observations are not omitted semantic obligations; omission status remains not determined.",
+          "Freshness includes the record-carrying call's own observation; an independent-new-observation count would require additional call-level provenance tracking.",
+          "The target-token mapping rule is stated but its real-model usability is unknown.",
+          "The structured message is longer and more formatted than the exact generic template; a synthetic length-matched control was exercised, but real-model sensitivity remains unknown.",
+          "The latest_attempt directive source is a prototype extension that surfaces rejected attempts; it has not been reviewed as a formal runtime behavior.",
+          "The existing base DataAgent llm_calls.jsonl and final_agent.json raw-context logs remain a separate no-leak surface and were not audited or erased.",
+          "The invalid-ref status is not reachable through the formal parser; invalid tokens are classified as malformed records.",
+          "No formal candidate, frozen Experiment, Evidence extractor, launch, or score was created."
+        ],
+        "statement": "A structured unresolved-state view reaches the synthetic model-facing boundary and supports programmed action differentiation against generic guidance; real model adoption and provider acceptance remain untested.",
+        "status": "conditional_action_interface_real_model_unknown"
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g012_research_meta_post_interface_003/final_raw.txt",
+            "sha256": "67086825a82f1bd3bcc34297c85410ced236c965085c2ec94723bfc567c0b190"
+          }
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "hypothesis": "On the fixed 56-task no-hint protocol, an active-only G12 structured directive derived from a model-authored schema-valid G11 plan/evidence record can be delivered at the existing call_llm boundary and can induce at least one real-model structurally directive-consistent next action under the frozen caps, with no semantic promotion, prohibited-content persistence, mechanism-initiated tool call, or behavior change outside the intended channel. The programmed synthetic policy does not establish this; real-model adoption and action choice remain measured endpoints. No strict improvement, timeout reduction, semantic support, or causal benefit is predicted.",
+        "id": "research_target:g012:003",
+        "kind": "research_target",
+        "mechanism_id": "mech_uncertainty_typed_evidence_state_and_gap_action",
+        "primary_lens": "state_memory_belief_update",
+        "related_lenses": [
+          "evidence_acquisition_grounding",
+          "action_tool_policy_recovery",
+          "synthesis_verification_termination"
+        ],
+        "state": "experiment_ready",
+        "statement": "G11's behavioral channel was never exercised because no model-authored record or guidance binding occurred. G12's second interface finding now establishes a structured unresolved-state view at the reviewed model-facing boundary and shows conditional sensitivity under a programmed synthetic policy, but it does not establish real-model adoption, real-model action selection, provider acceptance, live carrier behavior, or an audited raw-context boundary. The problem is to formalize and test whether a model-authored structural evidence state can induce a bounded, structurally directive-consistent next action in a real frozen DAB run while keeping structural binding, adoption, action choice, strict outcome, and semantic status separate.",
+        "status": "formal_spec_proposed_admission_not_yet_passed",
+        "why_now": "The second interface finding closes the earlier information-bearing action-view gap enough to specify a real-model falsification test. Remaining carrier, provider, response-boundary, freshness, and no-leak issues are admission checks, while real-model adoption and action choice are precisely what a formal run can measure. Continuing interface investigation would repeat structural fixtures without a new benchmark-independent question."
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g013_research_meta_solution_loop_004/final_raw.txt",
+            "sha256": "6609b286be192258ab0cb3ccace712139896cd80534be74d9bc71a1576bed071"
+          }
+        ],
+        "de_risk_questions": [
+          "Can requirement rows and structural coverage states be represented without treating model authorship as evidence of correctness?",
+          "Can the runtime update coverage after new observations while preserving staleness and distinguishing instrumentation loss from genuine evidence absence?",
+          "Can a bounded model-facing view change a programmed next-action choice against a same-state generic control?",
+          "Can the design remain inert outside the intended state and action channel and avoid extending the wall limit?",
+          "Can real-model carrier acceptance, row authorship, opaque-identifier copying, and instruction compliance be tested without task or answer leakage?",
+          "Can the existing raw-context log surface pass a separate no-leak admission review?"
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "hypothesis": "If a runtime agent maintains a model-authored requirement-to-observation coverage matrix from legitimately visible task and tool context, and uses only structural coverage states to choose a bounded next evidence action or preserve unknown, then its evidence-acquisition and termination behavior can change measurably without semantic correctness judgments. The hypothesis predicts no strict-pass increase, semantic support, or causal benefit and treats real-model adoption and action choice as empirical endpoints.",
+        "id": "research_target:g013:001",
+        "interface_gaps": [
+          "Unverified requirement-coverage carrier, row schema, and structural validator.",
+          "Unverified model-facing unresolved-coverage action view.",
+          "Unverified separation of instrumentation loss from genuine evidence absence.",
+          "Unverified freshness behavior, duplicate handling, and update semantics after new observations.",
+          "Unverified provider, response-boundary, and raw-context no-leak admission.",
+          "No real-model adoption, opaque-reference copying, or compliance evidence."
+        ],
+        "kind": "research_target",
+        "limitations": [
+          "This assessment used only the supplied frozen packet and prior attempt as data. It did not inspect raw tasks, answers, hints, validators, messages, tool arguments or results, answer-bearing logs, credentials, old research lines, or the invalid manual G13 directory.",
+          "Formal G0-G12 comparisons are unpaired and descriptive. G10 is a user-authorized two-run repair view with a preserved invalid original run and cannot support a clean causal comparison.",
+          "The two completed-unknown count fields describe the same cases and were counted once; they were never added together or reclassified.",
+          "Incubation history is interface research, not benchmark evidence, proof of correctness, or evidence of task benefit.",
+          "Timeout localization, structural provenance, audit exposure, and synthetic action sensitivity do not establish timeout causation, semantic support, relevance, coverage, correctness, or causal improvement.",
+          "The mechanism ranking is a research-value judgment, not a validated prediction of task success or a claim that the selected mechanism has a proven runtime interface.",
+          "No code, source candidate, frozen formal run, or evaluation was produced; this response stops at a research target in interface investigation."
+        ],
+        "mechanism_id": "mech_requirement_observation_coverage",
+        "no_task_checks": [
+          "Requirement-row schema and deterministic coverage-state transition tests.",
+          "Duplicate, stale, truncated, failed, unavailable, and unknown fault-injection tests.",
+          "Synthetic sensitivity proving different coverage states produce different bounded next actions, with a same-state generic-control comparison.",
+          "Cap, deadline, forced-action, and no-wall-timeout-extension tests.",
+          "No-leak, protocol, response-boundary, and enabled-versus-disabled inertness tests.",
+          "A no-benchmark provider fixture for real-model row authorship and bounded action compliance after separate safety review."
+        ],
+        "primary_lens": "task_representation_decomposition",
+        "related_lenses": [
+          "evidence_acquisition_grounding",
+          "state_memory_belief_update",
+          "action_tool_policy_recovery"
+        ],
+        "state": "interface_investigation",
+        "statement": "The fixed-56 history shows persistent known strict failures and completed strict-verdict unknowns while structural observability and audit exposure changed. It does not show whether failures involve incomplete task decomposition, unaddressed observable requirements, or evidence gaps that the agent never makes explicit.",
+        "status": "selected_for_no_task_interface_investigation"
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g013_interface_investigation_001/input_binding.json",
+            "sha256": "b109dd8385772a52a5c1f8849bf90e6472c3d47233945f747fd8241429fbfb6c"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g013_interface_investigation_001/scoped_source/exploratory_implementation_manifest.json",
+            "sha256": "f5fd8fa52df71196f101686c33f2569f22e28a354ab08b97e44eeeb6f3391db7"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g013_interface_investigation_001/independent_verification.json",
+            "sha256": "8f95b4cfc9c8a29f1e2419e45382a766446c3dce3ccc1449ed5e1b6468003f6b"
+          }
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "id": "interface_investigation:g013:001",
+        "kind": "interface_investigation",
+        "performed_by": "codex_bounded_interface_investigation",
+        "scope": "synthetic_no_task_requirement_coverage_interface",
+        "status": "completed_independently_replayed",
+        "test_summary": "49_passed_independently"
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g013_interface_investigation_001/scoped_source/exploratory_implementation_manifest.json",
+            "sha256": "f5fd8fa52df71196f101686c33f2569f22e28a354ab08b97e44eeeb6f3391db7"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g013_interface_investigation_001/scoped_source/BOUNDED_FINDINGS.md",
+            "sha256": "745fe68e7d62bd590e89681bee8e47065bdc0430aab6c0a836ebde207b9bc7f6"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g013_interface_investigation_001/independent_verification.json",
+            "sha256": "8f95b4cfc9c8a29f1e2419e45382a766446c3dce3ccc1449ed5e1b6468003f6b"
+          }
+        ],
+        "claim_boundary": {
+          "benchmark_evidence": false,
+          "formal_candidate": false,
+          "real_model_behavior_proven": false,
+          "semantic_coverage_proven": false,
+          "strict_benefit_proven": false
+        },
+        "contradicted": [],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "id": "interface_finding:g013:001",
+        "kind": "interface_finding",
+        "statement": "An opaque structural requirement-coverage carrier, deterministic fault-aware state transitions, and bounded action view work in no-task fixtures; provider acceptance, real-model authorship, and real-model action compliance remain unknown.",
+        "status": "bounded_structural_interface_verified_real_model_unknown",
+        "unknown": [
+          "real-model authorship and opaque-reference copying",
+          "provider and production response-boundary acceptance",
+          "real-model action compliance",
+          "production runtime carrier and code parent",
+          "omitted semantic requirements and semantic coverage",
+          "raw-context log admission"
+        ],
+        "verified": [
+          "strict opaque carrier and row validation",
+          "coverage, freshness, revision, duplicate, and fault transitions",
+          "instrumentation loss separated from evidence absence",
+          "conditional structural next-action view",
+          "disabled, action-cap, and deadline-guard inertness",
+          "aggregate-only structural export boundary"
+        ]
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g013_research_meta_post_interface_002/final_raw.txt",
+            "sha256": "10ea715d6c05a7c0c5fd1b489ec5933e4a274c6765e473c1a36bce21fc783f39"
+          }
+        ],
+        "de_risk_questions": [
+          "Can requirement rows and structural coverage states be represented without treating model authorship as evidence of correctness?",
+          "Can the runtime update coverage after new observations while preserving staleness and distinguishing instrumentation loss from genuine evidence absence?",
+          "Can the strict opaque carrier be accepted at the actual production response boundary without silent rewriting, dropping, duplication, or guessed boundary behavior?",
+          "Can enabled-versus-disabled behavior remain inert outside the intended carrier and action channel without extending the wall limit?",
+          "Can no-leak and aggregate-only export boundaries hold when the carrier is exercised with a real provider under synthetic, no-task content?",
+          "Can real-model row authorship, opaque-reference copying, and bounded action compliance then be reserved for formal measurement rather than assumed interface facts?"
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "hypothesis": "A model-authored, structurally typed requirement-to-observation coverage state can make unresolved structural coverage visible to a bounded next-action decision and preserve unknown, while model authorship and structural status remain non-semantic and are never promoted to semantic support, relevance, correctness, or truth. No strict improvement, benchmark benefit, or causal effect is predicted.",
+        "id": "research_target:g013:002",
+        "interface_gaps": [
+          "No production runtime carrier attachment or selected code parent is established for this mechanism.",
+          "Real-provider acceptance at the actual production response boundary is unverified.",
+          "The carrier may be rejected, rewritten, truncated, duplicated, or silently dropped by the provider boundary.",
+          "No production no-leak admission review has established that the carrier cannot expose raw content or answer-bearing context.",
+          "A model-authored requirement row cannot establish semantic requirement coverage or detect omitted semantic requirements.",
+          "Real-model row authorship, opaque-reference copying, and bounded action compliance remain untested.",
+          "The existing raw-context log surface still requires separate admission review before any task-bearing use."
+        ],
+        "kind": "research_target",
+        "mechanism_id": "mech_requirement_observation_coverage",
+        "next_interface_investigation": {
+          "failure_criteria": [
+            "The provider rejects the carrier or the production response boundary cannot be source-grounded without guessing.",
+            "Any opaque token is altered, dropped, duplicated, or interpreted semantically by the carrier.",
+            "Malformed, truncated, missing, or rejected instrumentation is treated as resolved or as genuine evidence absence.",
+            "Any prohibited content is persisted or exported, or any agent-visible behavior changes outside the intended carrier.",
+            "Any mechanism-initiated tool call, forced answer, scoring mutation, wall-timeout extension, or failure to preserve unknown occurs.",
+            "Any required check depends on prohibited sources or cannot be performed without task-bearing or answer-bearing content."
+          ],
+          "no_task_checks": [
+            "Perform one synthetic provider round-trip only through the source-grounded production response boundary and verify that the configured carrier is accepted rather than silently replaced and that opaque tokens are preserved exactly.",
+            "Exercise one missing, one truncated, one malformed, and one provider-rejected carrier response; each must remain explicit unknown and must never be reclassified as genuine evidence absence or resolved.",
+            "Verify zero persistence or export of raw requirement text, task content, answers, hints, validators, messages, tool arguments or results, identifiers, credentials, traces, or other prohibited content.",
+            "Verify enabled-versus-disabled control flow remains identical outside the carrier: no mechanism-initiated tool call, no forced answer, no scoring mutation, no wall-timeout extension, and no uncaught behavior change.",
+            "Verify the configured self-observation or carrier name and the actual response boundary are source-grounded and hash-consistent, with fail-closed behavior on mismatch.",
+            "Verify output remains aggregate-only and contains no semantic-support, correctness, relevance, coverage, task, answer, or raw-identifier fields."
+          ],
+          "prototype_scope": "One minimal synthetic, no-benchmark carrier and provider-boundary fixture using opaque requirement and visible-observation tokens only. It does not attach to benchmark tasks, inspect semantic content, score answers, build a formal code candidate, or repeat the established 49 structural fixtures; it addresses only the new production-boundary, provider-acceptance, and no-leak question.",
+          "question": "Can the already-verified strict opaque requirement-and-observation carrier be attached to the actual production model-response boundary and accepted by the configured real provider with exact opaque-token preservation, explicit unknown on malformed, truncated, or absent data, zero prohibited-content persistence, and enabled-versus-disabled inertness, using only synthetic no-task content?",
+          "source_scope": [
+            "Only the supplied hash-bound G13 packet and verified interface artifacts: input_binding_sha256 b109dd8385772a52a5c1f8849bf90e6472c3d47233945f747fd8241429fbfb6c, findings_sha256 745fe68e7d62bd590e89681bee8e47065bdc0430aab6c0a836ebde207b9bc7f6, implementation_manifest_sha256 f5fd8fa52df71196f101686c33f2569f22e28a354ab08b97e44eeeb6f3391db7, independent-verification outputs, packet-listed verified code-parent metadata, and source-grounded runtime carrier and response-boundary descriptions. No raw tasks, answers, hints, validators, messages, tool arguments or results, answer-bearing logs, credentials, task identifiers, or unlisted implementation directories may be used."
+          ],
+          "success_criteria": [
+            "Exactly one accepted synthetic round-trip occurs at the actual production response boundary with exact opaque-token preservation and no guessed boundary.",
+            "All missing, malformed, truncated, and provider-rejected cases yield explicit unknown with instrumentation loss separated from evidence absence.",
+            "No prohibited content is persisted or exported, and only aggregate structural output is produced.",
+            "Enabled-versus-disabled inertness holds for tool dispatch, answer forcing, scoring, and wall-timeout behavior.",
+            "The configured carrier name and response boundary are source-grounded and hash-consistent.",
+            "If these conditions hold, Research Meta may reassess whether a formal contract can be specified honestly; this investigation itself does not select a code parent or create a formal experiment."
+          ]
+        },
+        "no_task_checks": [
+          "Exercise the strict opaque carrier through the supplied synthetic structural state machine without repeating already-established transition, duplicate, freshness, or instrumentation-loss fixtures.",
+          "Use one new discriminating synthetic provider and production-response-boundary fixture to verify exact opaque-token preservation, explicit unknown on malformed or truncated input, and no semantic promotion.",
+          "Verify enabled-versus-disabled inertness for control flow, tool dispatch, answer forcing, scoring, and wall-timeout behavior.",
+          "Verify aggregate-only output excludes requirement IDs, observation IDs, semantic support, correctness, task content, and all prohibited raw content.",
+          "Verify the configured carrier name and response boundary are source-grounded and fail closed on mismatch."
+        ],
+        "primary_lens": "task_representation_decomposition",
+        "related_lenses": [
+          "evidence_acquisition_grounding",
+          "state_memory_belief_update",
+          "action_tool_policy_recovery"
+        ],
+        "state": "interface_investigation",
+        "statement": "The fixed-56 history leaves persistent known strict failures and completed strict-verdict unknowns without evidence of whether task requirements are explicitly represented, tracked, and addressed. The first G13 finding verifies only a bounded structural carrier and state machine; it does not establish that a real provider and real model can use the carrier at the production boundary, or that structural coverage maps to semantic requirement satisfaction.",
+        "status": "revised_after_first_finding_requires_provider_boundary_investigation",
+        "why_now": "The 49 no-task tests close the earlier carrier, transition, instrumentation-separation, structural-view, inertness, and aggregate-export questions. The remaining pre-formal blocker is whether the carrier and response boundary can be attached to the actual production path with real-provider acceptance and no leakage. Real-model authorship, opaque-reference copying, and action compliance can become formal measured endpoints only after that boundary is established."
+      },
+      {
+        "accepted_provider_round_trip_count": 1,
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g013_provider_boundary_investigation_002/input_binding.json",
+            "sha256": "f7d7c5549036ecb40d11c51cf25a6a880e45d721fb2d05c27808a49968a0c0a3"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g013_provider_boundary_investigation_002/provider_boundary_receipt.json",
+            "sha256": "1eb66dcabf19bfad3802a54095bf480e0ea546fe6694a65f3015795cca8d0963"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g013_provider_boundary_investigation_001/failure_receipt.json",
+            "sha256": "4501f1c5b97c240824f969d06931e73092ad332cc4efdb05e8afac89a46b6220"
+          }
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "id": "interface_investigation:g013:002",
+        "kind": "interface_investigation",
+        "performed_by": "codex_bounded_provider_boundary_investigation",
+        "provider_request_count_total": 2,
+        "scope": "synthetic_real_provider_production_response_boundary",
+        "status": "completed_independently_replayed",
+        "test_summary": "12_passed_independently"
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g013_provider_boundary_investigation_002/interface_findings.json",
+            "sha256": "2e6ada16d49a46a12b605a35b2931f61527c3966a7a1e85532e494a6b243f89b"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g013_provider_boundary_investigation_002/investigation_manifest.json",
+            "sha256": "9e5fca88d8ae5c23ea155bf564a0a4ab9793c0a3b4a11ce2b6361fad3a63da73"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g013_provider_boundary_investigation_002/independent_verification.json",
+            "sha256": "3f1b9512085b9475f7feff6da14124683ce528be9f9904356c27b0bf8135bcdb"
+          }
+        ],
+        "claim_boundary": {
+          "benchmark_evidence": false,
+          "causal_benefit_proven": false,
+          "formal_candidate": false,
+          "formal_experiment": false,
+          "semantic_coverage_proven": false
+        },
+        "contradicted": [],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "id": "interface_finding:g013:002",
+        "kind": "interface_finding",
+        "statement": "A source-grounded production tool schema and real DeepSeek response boundary accepted one synthetic opaque carrier with exact token copying and fail-closed structural faults; formal authorship, action compliance, semantic coverage, and task-bearing behavior remain untested.",
+        "status": "verified_synthetic_provider_boundary_formal_endpoints_untested",
+        "unknown": [
+          "formal real-model row authorship rate across benchmark tasks",
+          "formal real-model action compliance after a structural next-action view",
+          "semantic requirement completeness, relevance, support, correctness, or task truth",
+          "task-bearing production no-leak behavior and benchmark benefit",
+          "production runtime attachment and code parent selection"
+        ],
+        "verified": [
+          "the source-generated production self-observation tool schema was accepted by DeepSeek",
+          "one synthetic response reached the source-grounded choices[0].message.tool_calls boundary",
+          "the real provider copied both opaque tokens exactly into one strict carrier",
+          "missing, malformed, truncated, and provider-rejected fixtures all remained explicit unknown",
+          "enabled and disabled paths were inert for tool dispatch, answer forcing, scoring, and wall time",
+          "the research export stayed aggregate-only and the isolated raw synthetic response passed privacy scans"
+        ]
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g013_research_meta_post_finding_002/final_raw.txt",
+            "sha256": "0e01fa9290e8ecf722a3e3092e60b74c335b15f439811774cb0c4bb4210bf3b1"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g013_formal_research_contract.json",
+            "sha256": "5c60ad036745f2219582d1e0a9e6ef10ce82920461537702df3ed691121d917c"
+          }
+        ],
+        "code_parent": {
+          "candidate_tree_sha256": "572b8c92f4aaa3834e36a7899d667123eb548d0a6f1675a243cc07a9974244ac",
+          "generation": 7,
+          "selection_reason": "Generation 7 is selected because it is the last verified structural-instrumentation code parent before the G8-G12 audit, checklist, ledger, and uncertainty-gap-action lines, and its listed candidate tree is explicitly verified in the packet. It provides a source-grounded hook and provenance base without already instantiating a competing behavioral mechanism. G11 and G12 were not selected because their trees embed different mechanisms, and using them would risk substituting another mechanism into this reassessment. The selection is based on verified parent identity and mechanism neutrality, not implementation convenience or prior repair effort."
+        },
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "hypothesis": "A model-authored, structurally typed requirement-to-observation coverage state can make unresolved structural coverage visible to a bounded next-action decision and preserve unknown, while model authorship and structural status remain non-semantic. The contract measures real-model row authorship, exact opaque-token copying, structural coverage transitions, and bounded action compliance without predicting strict-pass improvement, semantic support, correctness, benchmark benefit, or a causal effect.",
+        "id": "research_target:g013:003",
+        "kind": "research_target",
+        "mechanism_id": "mech_requirement_observation_coverage",
+        "primary_lens": "task_representation_decomposition",
+        "related_lenses": [
+          "evidence_acquisition_grounding",
+          "state_memory_belief_update",
+          "action_tool_policy_recovery"
+        ],
+        "state": "experiment_ready",
+        "statement": "The fixed-56 history shows persistent known strict failures and completed strict-verdict unknowns while structural observability and audit exposure changed, but it does not show whether failures involve incomplete task decomposition, unaddressed observable requirements, or evidence gaps that the agent never makes explicit.",
+        "status": "formal_contract_frozen_implementation_not_started",
+        "why_now": "The second interface finding closes the practical carrier and provider-boundary question by accepting the source-generated production schema at the actual DeepSeek response boundary, preserving both opaque tokens exactly, failing closed on structural faults, and keeping the non-carrier path inert. Further interface work would merely pre-prove formal authorship or action endpoints, which are now appropriate measured endpoints under a frozen contract."
+      },
+      {
+        "artifacts": [
+          {
+            "path": "experiments/research_graph_baseline_20261016/g014_restart_research_meta_001/final.json",
+            "sha256": "38a354ff4eed572732c4780f0c7228a35daaadfd429cc8db978f49d8c1b5d8df"
+          },
+          {
+            "path": "experiments/research_graph_baseline_20261016/g014_restart_research_meta_001/active_restart_packet.json",
+            "sha256": "0e4525b5f8378f536eb68fa36125d076f319b08ecd6dc60a80625a4824711b04"
+          }
+        ],
+        "de_risk_questions": [
+          "Can two or more competing interpretations be represented and updated without leaking raw task, answer, argument, or result content to the research layer?",
+          "Can a deterministic discriminator-selection rule choose a bounded next observation without requiring a general semantic verifier?",
+          "Can a real model distinguish branch-sensitive guidance from a same-state generic audit message?",
+          "Can branch retirement and unknown preservation remain explicit when observations are missing, stale, conflicting, or non-discriminating?",
+          "Can the mechanism remain inert when disabled and avoid forced tools, forced answers, scoring changes, or wall-timeout extension?"
+        ],
+        "evidence_class": "interface_research_not_benchmark_evidence",
+        "hypothesis": "If a runtime agent maintains explicit competing interpretations of the task or data, updates them from visible observations, and chooses bounded next evidence actions by their discriminating value, then at least some synthetic or real-model runs can exhibit branch-sensitive acquisition and explicit branch retirement or unknown preservation, without treating structural state as semantic support or predicting a strict-pass increase.",
+        "id": "research_target:g014:restart:001",
+        "interface_gaps": [
+          "No verified branch-register carrier or schema.",
+          "No verified discriminator-selection policy.",
+          "No verified protocol-permitted live action channel.",
+          "No evidence of real-model branch authorship or compliance.",
+          "No admitted no-leak and inertness boundary for branch state."
+        ],
+        "kind": "research_target",
+        "limitations": [
+          "This assessment uses only the hash-bound packet and aggregate packet facts; it does not inspect raw tasks, answers, hints, validators, messages, tool arguments or results, answer-bearing logs, credentials, or old research lines.",
+          "Formal G0-G13 differences are unpaired and descriptive except for G10's user-authorized two-run repair view, which remains supplementary and not a clean causal comparison; no causality is inferred.",
+          "Incubation nodes are interface-research history only and are not benchmark evidence, proof of correctness, or evidence of task benefit.",
+          "Structural coverage, provenance, timeout localization, audit exposure, synthetic action sensitivity, and provider acceptance do not establish semantic support, relevance, correctness, coverage, or truth.",
+          "Completed strict-verdict unknowns remain unknown, timeouts and other terminal failures remain failures in the fixed 56, and the two completed-unknown count fields are treated as referring to the same cases rather than summed.",
+          "The mechanism candidates and ranking are research-value judgments, not validated predictions of strict-pass improvement; no implementation, Experiment freeze, candidate source, or evaluation is produced.",
+          "The selected mechanism has an unverified interface and recent zero-binding evidence makes feasibility uncertain; the state remains interface_investigation rather than experiment_ready."
+        ],
+        "mechanism_id": "mech_competing_hypothesis_evidence_discrimination",
+        "no_task_checks": [
+          "Synthetic ambiguity fixtures where different viable-branch states select different bounded next observations.",
+          "A same-state generic-message control that does not expose branch choice or discriminating rationale.",
+          "Observation-driven retirement of only contradicted branches and preservation of unknown under non-discriminating evidence.",
+          "Fault tests for missing, stale, conflicting, and instrumentation-loss observations.",
+          "Enabled-versus-disabled inertness, cap, deadline, no-leak, and aggregate-only export checks."
+        ],
+        "primary_lens": "hypothesis_search",
+        "related_lenses": [
+          "task_representation_decomposition",
+          "evidence_acquisition_grounding",
+          "state_memory_belief_update",
+          "action_tool_policy_recovery",
+          "synthesis_verification_termination"
+        ],
+        "state": "interface_investigation",
+        "statement": "The fixed-56 history shows persistent known strict failures and completed strict-verdict unknowns while structural observability and late audit exposure changed, but it does not show whether the agent maintains competing interpretations or chooses evidence that discriminates among them.",
+        "status": "active_restart_selected_for_no_task_interface_investigation",
+        "why_now": "The active packet has accumulated structural observability and late audit mechanisms, yet hypothesis branching and discriminating evidence search remain unexamined. Recent formal generations also show that merely preparing a model-authored state or generic directive can yield zero binding, so the next direction needs to establish state-and-action sensitivity before any formal benchmark contract is considered."
+      }
+    ],
+    "rule": "Research Meta targets, Implementation Meta interface investigations, verified findings, and subsequent target revisions are retained here. These nodes describe feasibility and research state, never benchmark effect or answer correctness."
+  },
+  "schema_version": "research_graph_memory_v2",
+  "status": "append_only_two_layer_research_memory"
+}
