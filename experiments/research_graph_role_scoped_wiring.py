@@ -452,3 +452,530 @@ def graph_use_sidecar(
         graph_use_required=graph_use_required,
         allowed_receipts=session.issued_receipts,
     )
+
+
+# ---------------------------------------------------------------------------
+# Bounded competing-hypothesis register
+# ---------------------------------------------------------------------------
+#
+# The prototype below is deliberately independent of providers, tasks, graph
+# packets, and filesystem state.  Its inputs are synthetic opaque structural
+# tokens.  A register can select at most one declared discriminating
+# observation per bounded action, retire only branches contradicted by a
+# well-formed observation, and retain an explicit unknown result for every
+# observation fault.  The aggregate export contains counts and fixed status
+# enums only; opaque IDs and structural values never cross that boundary.
+
+_COMPETING_HYPOTHESIS_EXPORT_SCHEMA = "research_graph_competing_hypothesis_aggregate_v1"
+_COMPETING_HYPOTHESIS_MAX_HYPOTHESES = 8
+_COMPETING_HYPOTHESIS_MAX_EXPECTATIONS = 32
+_COMPETING_HYPOTHESIS_MAX_TOKEN_LENGTH = 64
+_COMPETING_HYPOTHESIS_MAX_REGISTER_BYTES = 32768
+_COMPETING_HYPOTHESIS_FAULT_REASONS = (
+    "missing",
+    "stale",
+    "conflicting",
+    "non_discriminating",
+    "instrumentation_loss",
+)
+_COMPETING_HYPOTHESIS_GUARD_REASONS = (
+    "action_budget_exhausted",
+    "observation_budget_exhausted",
+    "deadline_exceeded",
+    "stale_tick",
+    "no_issued_observation",
+    "observation_mismatch",
+)
+_COMPETING_HYPOTHESIS_UNKNOWN_REASONS = frozenset(
+    {*_COMPETING_HYPOTHESIS_FAULT_REASONS, *_COMPETING_HYPOTHESIS_GUARD_REASONS}
+)
+_COMPETING_HYPOTHESIS_STATUSES = frozenset({"open", "single_viable", "disabled", "unknown"})
+_COMPETING_HYPOTHESIS_OBSERVATION_STATUSES = frozenset(
+    {"observed", *_COMPETING_HYPOTHESIS_FAULT_REASONS}
+)
+_STRUCTURAL_TOKEN_CHARS = frozenset(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_:-."
+)
+
+
+def _require_structural_token(value: Any, label: str) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or len(value) > _COMPETING_HYPOTHESIS_MAX_TOKEN_LENGTH
+        or any(char not in _STRUCTURAL_TOKEN_CHARS for char in value)
+    ):
+        raise ValueError(f"{label} must be an opaque structural token")
+    return value
+
+
+def _require_bounded_integer(value: Any, label: str, *, minimum: int, maximum: int) -> int:
+    if (
+        not isinstance(value, int)
+        or isinstance(value, bool)
+        or value < minimum
+        or value > maximum
+    ):
+        raise ValueError(f"{label} is outside its bound")
+    return value
+
+
+def _normalise_competing_hypotheses(
+    hypotheses: Sequence[Mapping[str, Any]],
+) -> tuple[dict[str, Any], ...]:
+    if (
+        isinstance(hypotheses, (str, bytes, bytearray))
+        or not isinstance(hypotheses, Sequence)
+        or not 2 <= len(hypotheses) <= _COMPETING_HYPOTHESIS_MAX_HYPOTHESES
+    ):
+        raise ValueError("Competing hypothesis count is outside its bound")
+    rows: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for row in hypotheses:
+        if not isinstance(row, Mapping) or set(row) != {"hypothesis_id", "expectations"}:
+            raise ValueError("Competing hypothesis schema differs")
+        hypothesis_id = _require_structural_token(row["hypothesis_id"], "hypothesis_id")
+        if hypothesis_id in seen:
+            raise ValueError("Competing hypothesis IDs must be unique")
+        seen.add(hypothesis_id)
+        expectations = row["expectations"]
+        if (
+            not isinstance(expectations, Mapping)
+            or not expectations
+            or len(expectations) > _COMPETING_HYPOTHESIS_MAX_EXPECTATIONS
+        ):
+            raise ValueError("Structural observation expectations are outside their bound")
+        normalised: dict[str, str] = {}
+        for observation_id, value in expectations.items():
+            observation_id = _require_structural_token(observation_id, "observation_id")
+            normalised[observation_id] = _require_structural_token(value, "observation value")
+        rows.append({"hypothesis_id": hypothesis_id, "expectations": normalised})
+    if _serialized_bytes(rows) > _COMPETING_HYPOTHESIS_MAX_REGISTER_BYTES:
+        raise ValueError("Competing hypothesis register exceeds its serialized-byte budget")
+    return tuple(rows)
+
+
+class CompetingHypothesisRegister:
+    """A bounded state machine over synthetic structural hypotheses.
+
+    Every hypothesis begins viable.  An observed value can retire mismatching
+    viable hypotheses, while faults never change viability.  The class exposes
+    only opaque structural IDs and aggregate counts; it has no provider, task,
+    network, database, filesystem, or clock dependency.
+    """
+
+    def __init__(
+        self,
+        hypotheses: Sequence[Mapping[str, Any]],
+        *,
+        enabled: bool = True,
+        max_actions: int = 4,
+        max_observations: int = 8,
+        deadline_tick: int = 64,
+    ) -> None:
+        if not isinstance(enabled, bool):
+            raise ValueError("enabled must be a boolean")
+        self._enabled = enabled
+        self._max_actions = _require_bounded_integer(
+            max_actions, "max_actions", minimum=1, maximum=8
+        )
+        self._max_observations = _require_bounded_integer(
+            max_observations, "max_observations", minimum=1, maximum=32
+        )
+        self._deadline_tick = _require_bounded_integer(
+            deadline_tick, "deadline_tick", minimum=1, maximum=1_000_000
+        )
+        self._hypotheses = _normalise_competing_hypotheses(hypotheses)
+        self._hypotheses_by_id = {
+            row["hypothesis_id"]: row for row in self._hypotheses
+        }
+        self._states = {row["hypothesis_id"]: "viable" for row in self._hypotheses}
+        self._retirement_reasons: dict[str, str] = {}
+        self._observed_observation_ids: set[str] = set()
+        self._pending_observation_id: str | None = None
+        self._actions_issued = 0
+        self._observation_attempts = 0
+        self._contradicted_retirements = 0
+        self._unknown_events = 0
+        self._last_tick = -1
+        self._last_status = "disabled" if not enabled else "open"
+        self._last_unknown_reason: str | None = None
+        self._fault_counts = {reason: 0 for reason in _COMPETING_HYPOTHESIS_FAULT_REASONS}
+        self._guard_counts = {reason: 0 for reason in _COMPETING_HYPOTHESIS_GUARD_REASONS}
+
+    @property
+    def enabled(self) -> bool:
+        return self._enabled
+
+    @property
+    def viable_hypothesis_ids(self) -> tuple[str, ...]:
+        return tuple(
+            sorted(
+                hypothesis_id
+                for hypothesis_id, state in self._states.items()
+                if state == "viable"
+            )
+        )
+
+    @property
+    def pending_observation_id(self) -> str | None:
+        return self._pending_observation_id
+
+    def structural_state_fingerprint(self) -> str:
+        """Hash structural state without exposing IDs, values, or raw observations."""
+        return _sha256(
+            {
+                "hypotheses": self._hypotheses,
+                "states": self._states,
+                "observed_observation_ids": sorted(self._observed_observation_ids),
+            }
+        )
+
+    def _viable_count(self) -> int:
+        return sum(state == "viable" for state in self._states.values())
+
+    def _record_unknown(
+        self, reason: str, *, observation_id: str | None = None
+    ) -> dict[str, Any]:
+        if reason not in _COMPETING_HYPOTHESIS_UNKNOWN_REASONS:
+            raise ValueError("Unknown competing-hypothesis reason")
+        self._unknown_events += 1
+        if reason in self._fault_counts:
+            self._fault_counts[reason] += 1
+        else:
+            self._guard_counts[reason] += 1
+        self._last_status = "unknown"
+        self._last_unknown_reason = reason
+        return {
+            "mode": "register_observation",
+            "action": "observe",
+            "status": "unknown",
+            "reason": reason,
+            "observation_id": observation_id,
+            "retired_count": 0,
+            "viable_count": self._viable_count(),
+        }
+
+    def _check_tick(self, at_tick: Any) -> str | None:
+        if not isinstance(at_tick, int) or isinstance(at_tick, bool) or at_tick < 0:
+            raise ValueError("at_tick must be a non-negative integer")
+        if at_tick < self._last_tick:
+            return "stale_tick"
+        self._last_tick = at_tick
+        if at_tick >= self._deadline_tick:
+            return "deadline_exceeded"
+        return None
+
+    def _discriminating_candidates(self) -> list[tuple[int, int, int, str]]:
+        viable = self.viable_hypothesis_ids
+        if len(viable) < 2:
+            return []
+        common_observations: set[str] | None = None
+        for hypothesis_id in viable:
+            observation_ids = set(
+                self._hypotheses_by_id[hypothesis_id]["expectations"]
+            )
+            common_observations = (
+                observation_ids
+                if common_observations is None
+                else common_observations & observation_ids
+            )
+        candidates: list[tuple[int, int, int, str]] = []
+        for observation_id in sorted(common_observations or ()):
+            if observation_id in self._observed_observation_ids:
+                continue
+            groups: dict[str, int] = {}
+            for hypothesis_id in viable:
+                value = self._hypotheses_by_id[hypothesis_id]["expectations"][
+                    observation_id
+                ]
+                groups[value] = groups.get(value, 0) + 1
+            if len(groups) < 2:
+                continue
+            # Prefer the most distinct branches, then the best-balanced split.
+            # The observation ID is the final deterministic tie-breaker.
+            candidates.append(
+                (-len(groups), max(groups.values()), len(viable), observation_id)
+            )
+        return candidates
+
+    def select_discriminating_observation(self, *, at_tick: int = 0) -> dict[str, Any]:
+        """Issue one bounded structural observation action, if available."""
+        if not self._enabled:
+            return {
+                "mode": "disabled",
+                "action": None,
+                "status": "disabled",
+                "reason": "disabled",
+                "observation_id": None,
+                "retired_count": 0,
+                "viable_count": self._viable_count(),
+            }
+        tick_reason = self._check_tick(at_tick)
+        if tick_reason is not None:
+            return self._record_unknown(tick_reason)
+        if self._pending_observation_id is not None:
+            return {
+                "mode": "register_action",
+                "action": "observe",
+                "status": "open",
+                "reason": None,
+                "observation_id": self._pending_observation_id,
+                "new_action": False,
+                "retired_count": 0,
+                "viable_count": self._viable_count(),
+            }
+        if self._viable_count() < 2:
+            self._last_status = "single_viable"
+            self._last_unknown_reason = None
+            return {
+                "mode": "register_action",
+                "action": None,
+                "status": "single_viable",
+                "reason": None,
+                "observation_id": None,
+                "new_action": False,
+                "retired_count": 0,
+                "viable_count": self._viable_count(),
+            }
+        if self._actions_issued >= self._max_actions:
+            return self._record_unknown("action_budget_exhausted")
+        if self._observation_attempts >= self._max_observations:
+            return self._record_unknown("observation_budget_exhausted")
+        candidates = self._discriminating_candidates()
+        if not candidates:
+            return self._record_unknown("non_discriminating")
+        observation_id = min(candidates)[-1]
+        self._actions_issued += 1
+        self._pending_observation_id = observation_id
+        self._last_status = "open"
+        self._last_unknown_reason = None
+        return {
+            "mode": "register_action",
+            "action": "observe",
+            "status": "open",
+            "reason": None,
+            "observation_id": observation_id,
+            "new_action": True,
+            "retired_count": 0,
+            "viable_count": self._viable_count(),
+        }
+
+    def record_observation(
+        self, observation: Mapping[str, Any], *, at_tick: int = 0
+    ) -> dict[str, Any]:
+        """Consume one issued observation and update viability fail-closed."""
+        if not self._enabled:
+            return {
+                "mode": "disabled",
+                "action": None,
+                "status": "disabled",
+                "reason": "disabled",
+                "observation_id": None,
+                "retired_count": 0,
+                "viable_count": self._viable_count(),
+            }
+        tick_reason = self._check_tick(at_tick)
+        if tick_reason is not None:
+            return self._record_unknown(tick_reason)
+        if self._pending_observation_id is None:
+            return self._record_unknown("no_issued_observation")
+        if not isinstance(observation, Mapping):
+            return self._record_unknown("instrumentation_loss")
+        observation_id = observation.get("observation_id")
+        if observation_id != self._pending_observation_id:
+            return self._record_unknown("observation_mismatch")
+        status = observation.get("status")
+        if status not in _COMPETING_HYPOTHESIS_OBSERVATION_STATUSES:
+            self._observation_attempts += 1
+            self._pending_observation_id = None
+            return self._record_unknown("instrumentation_loss", observation_id=observation_id)
+        if self._observation_attempts >= self._max_observations:
+            return self._record_unknown(
+                "observation_budget_exhausted", observation_id=observation_id
+            )
+        if status != "observed":
+            self._observation_attempts += 1
+            self._pending_observation_id = None
+            return self._record_unknown(status, observation_id=observation_id)
+
+        value = observation.get("value")
+        declared_values = {
+            row["expectations"].get(observation_id) for row in self._hypotheses
+        }
+        declared_values.discard(None)
+        if not isinstance(value, str) or value not in declared_values:
+            self._observation_attempts += 1
+            self._pending_observation_id = None
+            return self._record_unknown(
+                "instrumentation_loss", observation_id=observation_id
+            )
+        viable = self.viable_hypothesis_ids
+        grouped_values = {
+            self._hypotheses_by_id[hypothesis_id]["expectations"][observation_id]
+            for hypothesis_id in viable
+        }
+        if len(grouped_values) < 2:
+            self._observation_attempts += 1
+            self._pending_observation_id = None
+            return self._record_unknown(
+                "non_discriminating", observation_id=observation_id
+            )
+
+        contradicted = [
+            hypothesis_id
+            for hypothesis_id in viable
+            if self._hypotheses_by_id[hypothesis_id]["expectations"][observation_id]
+            != value
+        ]
+        for hypothesis_id in contradicted:
+            self._states[hypothesis_id] = "retired"
+            self._retirement_reasons[hypothesis_id] = "contradicted_by_structural_observation"
+        self._contradicted_retirements += len(contradicted)
+        self._observed_observation_ids.add(observation_id)
+        self._observation_attempts += 1
+        self._pending_observation_id = None
+        self._last_status = "single_viable" if self._viable_count() == 1 else "open"
+        self._last_unknown_reason = None
+        return {
+            "mode": "register_observation",
+            "action": "observe",
+            "status": "observed",
+            "reason": None,
+            "observation_id": observation_id,
+            "retired_count": len(contradicted),
+            "viable_count": self._viable_count(),
+        }
+
+    def generic_message_control(self) -> dict[str, Any]:
+        """Return the fixed same-state control message without changing state."""
+        return {
+            "mode": "generic_control",
+            "action": "observe",
+            "status": "generic",
+            "reason": None,
+            "message": "Continue with the next bounded structural observation.",
+            "observation_id": None,
+            "state_fingerprint": self.structural_state_fingerprint(),
+        }
+
+    def aggregate_export(self) -> dict[str, Any]:
+        """Export fixed structural aggregates only; no IDs or values cross over."""
+        return {
+            "schema_version": _COMPETING_HYPOTHESIS_EXPORT_SCHEMA,
+            "enabled": self._enabled,
+            "hypothesis_count": len(self._hypotheses),
+            "viable_count": self._viable_count(),
+            "retired_count": len(self._retirement_reasons),
+            "actions_issued": self._actions_issued,
+            "observation_attempts": self._observation_attempts,
+            "observation_faults": sum(self._fault_counts.values()),
+            "unknown_events": self._unknown_events,
+            "contradicted_retirements": self._contradicted_retirements,
+            "last_status": self._last_status,
+            "last_unknown_reason": self._last_unknown_reason,
+            "fault_status_counts": dict(self._fault_counts),
+            "guard_counts": dict(self._guard_counts),
+        }
+
+
+def validate_competing_hypothesis_aggregate_export(
+    value: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate the fixed aggregate-only export boundary."""
+    checked = _copy_json(value)
+    required = {
+        "schema_version",
+        "enabled",
+        "hypothesis_count",
+        "viable_count",
+        "retired_count",
+        "actions_issued",
+        "observation_attempts",
+        "observation_faults",
+        "unknown_events",
+        "contradicted_retirements",
+        "last_status",
+        "last_unknown_reason",
+        "fault_status_counts",
+        "guard_counts",
+    }
+    if (
+        not isinstance(checked, dict)
+        or set(checked) != required
+        or checked.get("schema_version") != _COMPETING_HYPOTHESIS_EXPORT_SCHEMA
+        or not isinstance(checked.get("enabled"), bool)
+        or checked.get("last_status") not in _COMPETING_HYPOTHESIS_STATUSES
+    ):
+        raise ValueError("Competing-hypothesis aggregate export schema differs")
+    for key in required - {
+        "schema_version",
+        "enabled",
+        "last_status",
+        "last_unknown_reason",
+        "fault_status_counts",
+        "guard_counts",
+    }:
+        if (
+            not isinstance(checked.get(key), int)
+            or isinstance(checked[key], bool)
+            or checked[key] < 0
+        ):
+            raise ValueError("Competing-hypothesis aggregate count differs")
+    reason = checked.get("last_unknown_reason")
+    if reason is not None and reason not in _COMPETING_HYPOTHESIS_UNKNOWN_REASONS:
+        raise ValueError("Competing-hypothesis aggregate reason differs")
+    faults = checked.get("fault_status_counts")
+    guards = checked.get("guard_counts")
+    if (
+        not isinstance(faults, dict)
+        or set(faults) != set(_COMPETING_HYPOTHESIS_FAULT_REASONS)
+        or not isinstance(guards, dict)
+        or set(guards) != set(_COMPETING_HYPOTHESIS_GUARD_REASONS)
+    ):
+        raise ValueError("Competing-hypothesis aggregate counts differ")
+    for counts in (faults, guards):
+        if any(
+            not isinstance(count, int) or isinstance(count, bool) or count < 0
+            for count in counts.values()
+        ):
+            raise ValueError("Competing-hypothesis aggregate counts differ")
+    if checked["hypothesis_count"] != checked["viable_count"] + checked["retired_count"]:
+        raise ValueError("Competing-hypothesis aggregate viability differs")
+    if checked["observation_faults"] != sum(faults.values()):
+        raise ValueError("Competing-hypothesis aggregate faults differ")
+    return checked
+
+
+def synthetic_competing_hypothesis_register(
+    *,
+    enabled: bool = True,
+    max_actions: int = 4,
+    max_observations: int = 8,
+    deadline_tick: int = 64,
+) -> CompetingHypothesisRegister:
+    """Build a deterministic, task-free three-hypothesis synthetic fixture.
+
+    ``obs:0`` initially splits the first viable branch.  If its value selects
+    the pair, the next call selects ``obs:1`` to split that surviving pair.
+    """
+    return CompetingHypothesisRegister(
+        (
+            {
+                "hypothesis_id": "hyp:0",
+                "expectations": {"obs:0": "value:0", "obs:1": "value:0"},
+            },
+            {
+                "hypothesis_id": "hyp:1",
+                "expectations": {"obs:0": "value:0", "obs:1": "value:1"},
+            },
+            {
+                "hypothesis_id": "hyp:2",
+                "expectations": {"obs:0": "value:1", "obs:1": "value:0"},
+            },
+        ),
+        enabled=enabled,
+        max_actions=max_actions,
+        max_observations=max_observations,
+        deadline_tick=deadline_tick,
+    )
