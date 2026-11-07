@@ -1,0 +1,70 @@
+{
+  "schema": "clean_export_manifest_v1",
+  "generated_at": "2026-11-07T05:14:28.1052971Z",
+  "files": [
+    {
+      "path": ".gitignore",
+      "sha256": "18a662dcefbd52a0867b9959dd09a39363208a4ea62a6ce77b03831dac279150"
+    },
+    {
+      "path": "ADB_HANDOFF.md",
+      "sha256": "8d6196557fd50fbaa0b5f59e2bd780e8ade3b8d6a015c6fb1e012dc327680e3a"
+    },
+    {
+      "path": "DAB_EVOLUTION_AUDIT_CN.md",
+      "sha256": "b548b916c5b375df56ae9a57e403e494eca6c08050f3aa9abce3e95aa24bf56a"
+    },
+    {
+      "path": "evolution_core/__init__.py",
+      "sha256": "6060bd7c10f23a535a5779238fd7e3584bf462eaa70a30deab0699965a2c8747"
+    },
+    {
+      "path": "evolution_core/feedback.py",
+      "sha256": "027dae00d9cefb7f55198ea4158ff144fdf3cbb4bada37e2bf8903d480d02717"
+    },
+    {
+      "path": "evolution_core/interfaces.py",
+      "sha256": "b402d851c1e9cd61090c7278e763027fae99eeb0ef6604788fde11376d2618bb"
+    },
+    {
+      "path": "evolution_core/lineage.py",
+      "sha256": "3e5e816827ae00668205fed5d79455321ff12093cb33475230cf003c17dc804f"
+    },
+    {
+      "path": "evolution_core/loop.py",
+      "sha256": "3cde403ab2c997fa6bf50ee1b79ee54f2a6167f01d89e414a43e7ae0f48c97bb"
+    },
+    {
+      "path": "evolution_core/models.py",
+      "sha256": "84ae095b6534956a1f16ac25a131e03508ad10ce8b039480a82f93ebec5afc65"
+    },
+    {
+      "path": "evolution_core/observer.py",
+      "sha256": "00b661b517fa7d64a353886840a79ddbcc5fd9874d1e996abf5b7ef70d38b121"
+    },
+    {
+      "path": "evolution_core/workspace.py",
+      "sha256": "9728896a99291425442bcd4749913205148a04217d35c3fc7119eb63498f4453"
+    },
+    {
+      "path": "examples/__init__.py",
+      "sha256": "558194dc30f7f3bc90d65fd025a5acf5a6f766a0c2c5a9ed6fd3796a7c9217eb"
+    },
+    {
+      "path": "examples/minimal_workflow.py",
+      "sha256": "60c81fa877a274e6a45672df9734fef8aeca7e25c5995d3a97d5b5507e98c4a3"
+    },
+    {
+      "path": "pyproject.toml",
+      "sha256": "45ecacd57c3366a49ed8cef74d4af5bf9184c9bde6c34b981412026dc7b8beed"
+    },
+    {
+      "path": "README.md",
+      "sha256": "8e9e8937d74dab1137d1cbf5c5ebf9096c72c20ab30f8e59e13e5a10a462fa90"
+    },
+    {
+      "path": "tests/test_core.py",
+      "sha256": "2ef4f3e2317213d325fecd0e6c5174bc954f9f7be581cc3a9d99e60099e574c7"
+    }
+  ]
+}
