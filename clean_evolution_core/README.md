@@ -50,5 +50,7 @@ There are no DAB query IDs, PATENTS/CPC rules, gold answers, validators,
 benchmark prompts, Docker images, provider credentials, logs, traces, archived
 candidates, or ADB bridge scripts in this export.
 
-This directory is prepared for a later GitHub upload. It is not pushed to a
-remote repository by this task.
+This directory is mirrored in the `clean_evolution_core/` directory of the
+`Arvin-Chaser/self-evolving-dab-agent` GitHub repository. The export remains
+benchmark-neutral and can be copied into an ADB adapter project without
+importing DAB-specific files.

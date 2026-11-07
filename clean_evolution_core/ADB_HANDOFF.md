@@ -57,4 +57,6 @@ ADB 只需要提供四类接口：
 
 ## 当前仓库状态
 
-本目录只完成本地 clean export 和 Git 初始提交准备，没有包含 DAB/ADB 数据、凭据或运行日志。推送前需要绑定目标 GitHub repository；目标 URL 不在当前会话中，因此当前提交会保持未设置 remote 的状态，等待绑定后执行 `git push`。
+本目录已镜像到 `Arvin-Chaser/self-evolving-dab-agent` GitHub 仓库的
+`clean_evolution_core/`。远端提交是在已有 DAB 文件旁边追加 clean core，
+没有替换或删除历史 benchmark 代码。本导出仍不包含 DAB/ADB 数据、凭据或运行日志。
